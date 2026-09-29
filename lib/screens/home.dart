@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../store.dart';
-import '../models.dart';
 
 class HomeScreen extends StatelessWidget {
   final MatchStore store;
