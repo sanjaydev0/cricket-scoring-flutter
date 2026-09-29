@@ -360,8 +360,6 @@ class ScoringScreen extends StatelessWidget {
                         if (t == 'Run Out') {
                           _runOutDialog(context);
                         } else {
-                          _tap(context, 'WICKET',
-                              runs: 0);
                           store.score(
                               action: 'WICKET',
                               wicketType: t);
