@@ -5,3 +5,5 @@ build/
 *.apk
 *.aab
 .DS_Store
+.zed/
+AGENTS.md
