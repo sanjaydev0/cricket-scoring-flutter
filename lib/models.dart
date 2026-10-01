@@ -9,7 +9,7 @@ class Rules {
   bool freeHit;
   Rules({
     this.widePenalty = 1,
-    this.noBallPenalty = 1,
+    this.noBallPenalty = 0,
     this.lastManStanding = false,
     this.freeHit = false,
   });
@@ -32,12 +32,14 @@ class MatchConfig {
   String teamB;
   int totalOvers;
   int playersPerSide;
+  int commonPlayers; // odd-man: plays for both sides
   Rules rules;
   MatchConfig({
     this.teamA = 'EAGLES XI',
     this.teamB = 'TITANS',
     this.totalOvers = 6,
     this.playersPerSide = 8,
+    this.commonPlayers = 0,
     Rules? rules,
   }) : rules = rules ?? Rules();
   factory MatchConfig.fromJson(Map<String, dynamic> j) => MatchConfig(
@@ -45,6 +47,7 @@ class MatchConfig {
         teamB: (j['teamB'] ?? 'TITANS').toString(),
         totalOvers: (j['totalOvers'] ?? 6) as int,
         playersPerSide: (j['playersPerSide'] ?? 8) as int,
+        commonPlayers: (j['commonPlayers'] ?? 0) as int,
         rules: Rules.fromJson((j['rules'] ?? {}) as Map<String, dynamic>),
       );
   Map<String, dynamic> toJson() => {
@@ -52,8 +55,13 @@ class MatchConfig {
         'teamB': teamB,
         'totalOvers': totalOvers,
         'playersPerSide': playersPerSide,
+        'commonPlayers': commonPlayers,
         'rules': rules.toJson(),
       };
+  /// e.g. "6 + 6 + 1" or "8 v 8"
+  String get sidesLabel => commonPlayers > 0
+      ? '$playersPerSide + $playersPerSide + $commonPlayers'
+      : '$playersPerSide v $playersPerSide';
 }
 
 class Ball {

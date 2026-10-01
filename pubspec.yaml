@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  shadcn_ui: ^0.53.6
   shared_preferences: ^2.2.3
 
 dev_dependencies:

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../store.dart';
 import '../models.dart';
+import 'widgets.dart';
 
 class SetupScreen extends StatefulWidget {
   final MatchStore store;
@@ -15,16 +17,20 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   void initState() {
     super.initState();
+    final d = widget.store.draft;
     cfg = MatchConfig(
-        teamA: widget.store.draft.teamA,
-        teamB: widget.store.draft.teamB,
-        totalOvers: widget.store.draft.totalOvers,
-        playersPerSide: widget.store.draft.playersPerSide,
-        rules: Rules(
-            widePenalty: widget.store.draft.rules.widePenalty,
-            noBallPenalty: widget.store.draft.rules.noBallPenalty,
-            lastManStanding: widget.store.draft.rules.lastManStanding,
-            freeHit: widget.store.draft.rules.freeHit));
+      teamA: d.teamA,
+      teamB: d.teamB,
+      totalOvers: d.totalOvers,
+      playersPerSide: d.playersPerSide,
+      commonPlayers: d.commonPlayers,
+      rules: Rules(
+        widePenalty: d.rules.widePenalty,
+        noBallPenalty: d.rules.noBallPenalty,
+        lastManStanding: d.rules.lastManStanding,
+        freeHit: d.rules.freeHit,
+      ),
+    );
     a = TextEditingController(text: cfg.teamA);
     b = TextEditingController(text: cfg.teamB);
   }
@@ -33,115 +39,161 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('MATCH SETUP')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-              controller: a,
-              decoration: const InputDecoration(
-                  labelText: 'Team A (bats first)', border: OutlineInputBorder()),
-              onChanged: (v) => cfg.teamA = v.toUpperCase()),
-          const SizedBox(height: 12),
-          TextField(
-              controller: b,
-              decoration: const InputDecoration(
-                  labelText: 'Team B', border: OutlineInputBorder()),
-              onChanged: (v) => cfg.teamB = v.toUpperCase()),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: cfg.totalOvers,
-                  decoration: const InputDecoration(
-                      labelText: 'Overs', border: OutlineInputBorder()),
-                  items: [2, 3, 5, 6, 8, 10, 12, 15, 20]
-                      .map((e) =>
-                          DropdownMenuItem(value: e, child: Text('$e ov')))
-                      .toList(),
-                  onChanged: (v) => setState(() => cfg.totalOvers = v!),
+      body: ResponsiveCenter(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            ShadCard(
+              title: const Text('Teams'),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const TeamDot(MatchStore.teamAColor),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ShadInput(
+                            controller: a,
+                            placeholder:
+                                const Text('Team A (bats first)'),
+                            textCapitalization:
+                                TextCapitalization.characters,
+                            onChanged: (v) =>
+                                cfg.teamA = v.toUpperCase(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const TeamDot(MatchStore.teamBColor),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ShadInput(
+                            controller: b,
+                            placeholder: const Text('Team B'),
+                            textCapitalization:
+                                TextCapitalization.characters,
+                            onChanged: (v) =>
+                                cfg.teamB = v.toUpperCase(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: cfg.playersPerSide,
-                  decoration: const InputDecoration(
-                      labelText: 'Players/side',
-                      border: OutlineInputBorder()),
-                  items: [5, 6, 7, 8, 9, 11]
-                      .map((e) =>
-                          DropdownMenuItem(value: e, child: Text('$e')))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => cfg.playersPerSide = v!),
+            ),
+            const SizedBox(height: 12),
+            ShadCard(
+              title: const Text('Format'),
+              description:
+                  Text('Sides: ${cfg.sidesLabel}'),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
+                  children: [
+                    StepperRow(
+                        label: 'Overs',
+                        value: cfg.totalOvers,
+                        min: 1,
+                        max: 50,
+                        onChanged: (v) =>
+                            setState(() => cfg.totalOvers = v)),
+                    const SizedBox(height: 8),
+                    StepperRow(
+                        label: 'Players / side',
+                        value: cfg.playersPerSide,
+                        min: 2,
+                        max: 15,
+                        onChanged: (v) => setState(
+                            () => cfg.playersPerSide = v)),
+                    const SizedBox(height: 8),
+                    StepperRow(
+                        label: 'Common (both sides)',
+                        hint: 'Odd-man: e.g. 13 players = 6 + 6 + 1',
+                        value: cfg.commonPlayers,
+                        min: 0,
+                        max: 2,
+                        onChanged: (v) => setState(
+                            () => cfg.commonPlayers = v)),
+                  ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-              title: const Text('Free Hit on No-Ball'),
-              value: cfg.rules.freeHit,
-              onChanged: (v) =>
-                  setState(() => cfg.rules.freeHit = v)),
-          SwitchListTile(
-              title: const Text('Last Man Standing (no all-out)'),
-              value: cfg.rules.lastManStanding,
-              onChanged: (v) =>
-                  setState(() => cfg.rules.lastManStanding = v)),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: cfg.rules.widePenalty,
-                  decoration: const InputDecoration(
-                      labelText: 'Wide +', border: OutlineInputBorder()),
-                  items: [0, 1, 2]
-                      .map((e) =>
-                          DropdownMenuItem(value: e, child: Text('+$e')))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => cfg.rules.widePenalty = v!),
+            ),
+            const SizedBox(height: 12),
+            ShadCard(
+              title: const Text('Rules'),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
+                  children: [
+                    StepperRow(
+                        label: 'Wide penalty',
+                        hint: 'Default 1',
+                        value: cfg.rules.widePenalty,
+                        min: 0,
+                        max: 2,
+                        onChanged: (v) => setState(
+                            () => cfg.rules.widePenalty = v)),
+                    const SizedBox(height: 8),
+                    StepperRow(
+                        label: 'No-ball penalty',
+                        hint: 'Default 0',
+                        value: cfg.rules.noBallPenalty,
+                        min: 0,
+                        max: 2,
+                        onChanged: (v) => setState(
+                            () => cfg.rules.noBallPenalty = v)),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Free hit on no-ball'),
+                        ShadSwitch(
+                            value: cfg.rules.freeHit,
+                            onChanged: (v) => setState(
+                                () => cfg.rules.freeHit = v)),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Last man standing'),
+                        ShadSwitch(
+                            value: cfg.rules.lastManStanding,
+                            onChanged: (v) => setState(() =>
+                                cfg.rules.lastManStanding = v)),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  value: cfg.rules.noBallPenalty,
-                  decoration: const InputDecoration(
-                      labelText: 'No-ball +',
-                      border: OutlineInputBorder()),
-                  items: [0, 1, 2]
-                      .map((e) =>
-                          DropdownMenuItem(value: e, child: Text('+$e')))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => cfg.rules.noBallPenalty = v!),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 54,
-            child: FilledButton(
+            ),
+            const SizedBox(height: 16),
+            ShadButton(
               onPressed: () {
-                if (a.text.trim().isEmpty || b.text.trim().isEmpty) {
+                if (a.text.trim().isEmpty ||
+                    b.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Enter both team names')));
+                          content:
+                              Text('Enter both team names')));
                   return;
                 }
                 widget.store.draft = cfg;
                 widget.store.startMatch(cfg);
                 Navigator.pushReplacementNamed(context, '/scoring');
               },
-              child: const Text('START SCORING ▶',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              child: const Text('START SCORING'),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
