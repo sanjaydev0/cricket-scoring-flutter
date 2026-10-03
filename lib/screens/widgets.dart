@@ -81,8 +81,8 @@ class StepperRow extends StatelessWidget {
   }
 }
 
-/// Vibrant glare-proof ball badges. Saturated solid fills, bolddark/light
-/// text, ordered by impact: W > 6 > 4 > extras > routine > dot.
+/// Vibrant glare-proof ball badges. Solid fills only — no borders.
+/// Ordered by impact: W > 6 > 4 > extras > routine > dot.
 class BallBadge extends StatelessWidget {
   final Ball ball;
   final bool isLatest;
@@ -93,13 +93,12 @@ class BallBadge extends StatelessWidget {
     final t = ball.badge;
     late Color bg;
     late Color fg;
-    bool hollow = false;
     if (t == 'W') {
-      bg = const Color(0xFFE5383B);
+      bg = const Color(0xFFDC143C); // crimson
       fg = Colors.white;
     } else if (t == '6' || t.startsWith('N6')) {
-      bg = const Color(0xFFF48C06);
-      fg = Colors.black;
+      bg = const Color(0xFFEC008C); // hyper magenta
+      fg = Colors.white;
     } else if (t == '4' || t.startsWith('N4')) {
       bg = const Color(0xFF2DC653);
       fg = Colors.black;
@@ -113,32 +112,44 @@ class BallBadge extends StatelessWidget {
       bg = const Color(0xFF00B4D8);
       fg = Colors.black;
     } else if (t == '0') {
-      hollow = true;
-      bg = Colors.transparent;
-      fg = Colors.grey;
+      bg = const Color(0xFF131316); // carbon black
+      fg = Colors.white;
+    } else if (t == '1') {
+      bg = const Color(0xFF38BDF8); // sky
+      fg = Colors.white;
+    } else if (t == '2') {
+      bg = const Color(0xFF2563EB); // blue
+      fg = Colors.white;
+    } else if (t == '3') {
+      bg = const Color(0xFF1E3A8A); // deep navy
+      fg = Colors.white;
     } else {
       bg = const Color(0xFF334155);
       fg = Colors.white;
     }
-    return Container(
+    final badge = Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: hollow ? Colors.transparent : bg,
+        color: bg,
         shape: BoxShape.circle,
-        border: Border.all(
-            color: hollow
-                ? const Color(0xFF64748B)
-                : (isLatest ? Colors.black : bg),
-            width: isLatest ? 3 : 2),
+        boxShadow: isLatest
+            ? [
+                BoxShadow(
+                    color: bg.withValues(alpha: 0.55),
+                    blurRadius: 10,
+                    spreadRadius: 2)
+              ]
+            : null,
       ),
       alignment: Alignment.center,
       child: Text(t,
           style: TextStyle(
-              color: hollow ? const Color(0xFF64748B) : fg,
-              fontWeight: FontWeight.w900,
-              fontSize: 12)),
+              color: fg, fontWeight: FontWeight.w900, fontSize: 12)),
     );
+    // Latest ball reads via scale + glow, never a border.
+    if (!isLatest) return badge;
+    return Transform.scale(scale: 1.12, child: badge);
   }
 }
 
@@ -211,20 +222,25 @@ class ResponsiveCenter extends StatelessWidget {
   }
 }
 
-/// One-shot hero celebration on boundary/wicket. Single 700ms run,
-/// ease-out, never loops, never blocks input.
+/// One-shot numeral-only celebration on boundary/wicket.
+/// Never changes layout: font size, tile padding and geometry stay fixed.
+/// Only the numerals (or a clipped overlay above them) animate.
 class Celebrate extends StatefulWidget {
-  final String mode; // off/pulse/glow/shimmer
-  final String valueKey; // changes per ball
+  final String mode; // off/rise/pop/flash/glow/roll/shake/sweep/ring/burst/blink
+  final String valueKey; // score string — change re-fires
   final bool fire; // true when last ball deserves it
-  final Color accent;
-  final Widget child;
+  final String label; // floating tag: +4 / +6 / W
+  final Color tint; // event color (boundary tint / wicket red)
+  final String text;
+  final TextStyle style;
   const Celebrate({
     required this.mode,
     required this.valueKey,
     required this.fire,
-    required this.accent,
-    required this.child,
+    required this.label,
+    required this.tint,
+    required this.text,
+    required this.style,
     super.key,
   });
   @override
@@ -233,20 +249,9 @@ class Celebrate extends StatefulWidget {
 
 class _CelebrateState extends State<Celebrate>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 700));
   String _last = '';
-
-  @override
-  void didUpdateWidget(Celebrate old) {
-    super.didUpdateWidget(old);
-    if (widget.valueKey != _last) {
-      _last = widget.valueKey;
-      if (widget.fire && widget.mode != 'off') {
-        _c.forward(from: 0);
-      }
-    }
-  }
 
   @override
   void initState() {
@@ -255,53 +260,133 @@ class _CelebrateState extends State<Celebrate>
   }
 
   @override
+  void didUpdateWidget(Celebrate old) {
+    super.didUpdateWidget(old);
+    if (widget.valueKey != _last) {
+      _last = widget.valueKey;
+      if (widget.fire && widget.mode != 'off') _c.forward(from: 0);
+    }
+  }
+
+  @override
   void dispose() {
     _c.dispose();
     super.dispose();
   }
 
+  Text _text(Color color, {List<Shadow>? shadows}) =>
+      Text(widget.text, style: widget.style.copyWith(color: color, shadows: shadows));
+
   @override
   Widget build(BuildContext context) {
-    if (widget.mode == 'off' || !widget.fire) return widget.child;
+    final base = widget.style.color ?? Colors.black;
+    if (widget.mode == 'off' || !widget.fire) return _text(base);
+    final label = widget.label;
+    final tint = widget.tint;
     return AnimatedBuilder(
       animation: _c,
       builder: (_, __) {
         final t = Curves.easeOutCubic.transform(_c.value);
         switch (widget.mode) {
-          case 'glow':
+          case 'rise': // floating +4/+6/W tag rises and dissolves
+            return Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                _text(base),
+                Positioned(
+                  top: -8 - t * 44,
+                  child: Opacity(
+                    opacity: (1 - t).clamp(0.0, 1.0),
+                    child: Text(label,
+                        style: TextStyle(
+                            color: tint,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
+            );
+          case 'flash': // numerals tint to event color, ease back
+            final k = t < 0.35 ? t / 0.35 : 1 - (t - 0.35) / 0.65;
+            return _text(Color.lerp(base, tint, k.clamp(0.0, 1.0))!);
+          case 'glow': // soft bloom behind numerals, decays
+            return _text(base, shadows: [
+              Shadow(color: tint.withValues(alpha: 0.85 * (1 - t)), blurRadius: 28 * (1 - t) + 2),
+              Shadow(color: tint.withValues(alpha: 0.5 * (1 - t)), blurRadius: 60 * (1 - t) + 4),
+            ]);
+          case 'roll': // quick vertical roll into the new number
+            return ClipRect(
+              child: Transform.translate(
+                offset: Offset(0, 26 * (1 - t) * (1 - t)),
+                child: Opacity(opacity: 0.25 + 0.75 * t, child: _text(base)),
+              ),
+            );
+          case 'shake': // tiny decaying shiver, tile stays put
+            final d = (1 - t) * 4 * sin(t * 28);
+            return Transform.translate(offset: Offset(d, 0), child: _text(base));
+          case 'sweep': // light band sweeps the numerals once
+            return ShaderMask(
+              shaderCallback: (r) => LinearGradient(
+                colors: [base, Colors.white, base],
+                stops: [0.0, (0.15 + t * 0.7).clamp(0.0, 1.0), (0.35 + t * 0.7).clamp(0.0, 1.0)],
+              ).createShader(r),
+              child: _text(Colors.white),
+            );
+          case 'ring': // thin ring pings behind numerals, clipped
             return Stack(
               alignment: Alignment.center,
               children: [
                 Container(
-                  width: 220 + t * 130,
-                  height: 110 + t * 60,
+                  width: 200 + t * 90,
+                  height: 84 + t * 36,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: widget.accent
-                            .withValues(alpha: (1 - t) * 0.9),
-                        width: 5 * (1 - t) + 1),
+                        color: tint.withValues(alpha: (1 - t) * 0.8),
+                        width: 4 * (1 - t) + 1),
                   ),
                 ),
-                widget.child,
+                _text(base),
               ],
             );
-          case 'shimmer':
-            return ShaderMask(
-              shaderCallback: (r) => LinearGradient(
-                colors: [
-                  widget.accent,
-                  Colors.white,
-                  widget.accent,
-                ],
-                stops: [0.0, 0.2 + t * 0.6, 0.4 + t * 0.6],
-              ).createShader(r),
-              child: widget.child,
+          case 'burst': // three chips drift out and dissolve
+            const offs = [Offset(-46, -30), Offset(0, -52), Offset(46, -30)];
+            return Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                _text(base),
+                for (var i = 0; i < 3; i++)
+                  Positioned(
+                    left: offs[i].dx * t,
+                    top: 8 + offs[i].dy * t,
+                    child: Opacity(
+                      opacity: (1 - t).clamp(0.0, 1.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                            color: tint,
+                            borderRadius: BorderRadius.circular(10)),
+                        child: Text(label,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                  ),
+              ],
             );
-          default: // pulse — single gentle bump, settles exactly at 1x
+          case 'blink': // two quick scoreboard dips
+            final o = (t * 4) % 2 < 1 ? 0.35 : 1.0;
+            return Opacity(
+                opacity: t > 0.85 ? 1.0 : o, child: _text(base));
+          default: // pop — single gentle bump, settles exactly at 1x
             return Transform.scale(
-                scale: 1 + 0.08 * sin(t * 3.14159),
-                child: widget.child);
+                scale: 1 + 0.07 * sin(t * 3.14159),
+                child: _text(base));
         }
       },
     );

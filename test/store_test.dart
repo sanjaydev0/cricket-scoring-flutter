@@ -48,6 +48,14 @@ void main() {
     }
   });
 
+  test('eleven celebrations with legacy migration', () {
+    expect(MatchStore.celebIds.length, 11);
+    expect(MatchStore.migrateCeleb('pulse'), 'pop');
+    expect(MatchStore.migrateCeleb('shimmer'), 'sweep');
+    expect(MatchStore.migrateCeleb('glow'), 'glow');
+    expect(MatchStore.migrateCeleb('nope'), 'rise');
+  });
+
   test('over strip defers rollover until next ball', () {
     final s = freshStore();
     for (var i = 0; i < 6; i++) {

@@ -110,29 +110,41 @@ class ScoringScreen extends StatelessWidget {
                           final lastBadge = cur.isNotEmpty
                               ? cur.last.badge
                               : '';
-                          final fire = lastBadge == 'W' ||
-                              lastBadge == '4' ||
-                              lastBadge == '6' ||
-                              lastBadge.startsWith('N4') ||
+                          final isW =
+                              lastBadge == 'W';
+                          final isFour = lastBadge == '4' ||
+                              lastBadge.startsWith('N4');
+                          final isSix = lastBadge == '6' ||
                               lastBadge.startsWith('N6');
+                          final fire =
+                              isW || isFour || isSix;
+                          final label = isW
+                              ? 'W'
+                              : (isFour ? '+4' : '+6');
+                          final tint = isW
+                              ? const Color(0xFFDC143C)
+                              : (isFour
+                                  ? const Color(0xFF2DC653)
+                                  : const Color(0xFFEC008C));
                           return Celebrate(
                             mode: store.celebId,
                             valueKey:
                                 '${inn.runs}/${inn.wickets}',
                             fire: fire,
-                            accent: preset.heroFg,
-                            child: Text(
+                            label: label,
+                            tint: tint,
+                            text:
                                 '${inn.runs}/${inn.wickets}',
-                                style: TextStyle(
-                                    fontFamily: scoreFamily,
-                                    fontSize: 68,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.05,
-                                    color: preset.heroFg,
-                                    fontFeatures: const [
-                                      FontFeature
-                                          .tabularFigures()
-                                    ])),
+                            style: TextStyle(
+                                fontFamily: scoreFamily,
+                                fontSize: 68,
+                                fontWeight: FontWeight.w900,
+                                height: 1.05,
+                                color: preset.heroFg,
+                                fontFeatures: const [
+                                  FontFeature
+                                      .tabularFigures()
+                                ]),
                           );
                         }),
                         if (inn.isFreeHitActive)
@@ -209,7 +221,11 @@ class ScoringScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     child: Row(
                       children: [
-                        Expanded(child: OverStrip(balls: cur)),
+                        // Fixed 6-ball window — never a half-peeking
+                        // 7th ball; older balls scroll left.
+                        SizedBox(
+                            width: 246,
+                            child: OverStrip(balls: cur)),
                         TextButton(
                             onPressed: () => _oversSheet(context),
                             child: Text(
@@ -257,8 +273,8 @@ class ScoringScreen extends StatelessWidget {
                                 sub: nb ? 'NB' : 'DOT',
                                 armed: nb,
                                 radius: preset.keyRadius,
-                                color: preset.keyDefault,
-                                fg: preset.keyFg,
+                                color: Colors.white,
+                                fg: Colors.black,
                                 onTap: () =>
                                     _tap(context, 'DOT')),
                             KeyBtn(
@@ -266,8 +282,8 @@ class ScoringScreen extends StatelessWidget {
                                 sub: nb ? 'N1' : 'RUN',
                                 armed: nb,
                                 radius: preset.keyRadius,
-                                color: preset.keyDefault,
-                                fg: preset.keyFg,
+                                color: Colors.white,
+                                fg: Colors.black,
                                 onTap: () => _tap(context, 'RUNS',
                                     runs: 1)),
                             KeyBtn(
@@ -275,8 +291,8 @@ class ScoringScreen extends StatelessWidget {
                                 sub: nb ? 'N2' : 'RUNS',
                                 armed: nb,
                                 radius: preset.keyRadius,
-                                color: preset.keyDefault,
-                                fg: preset.keyFg,
+                                color: Colors.white,
+                                fg: Colors.black,
                                 onTap: () => _tap(context, 'RUNS',
                                     runs: 2)),
                             KeyBtn(
@@ -284,8 +300,8 @@ class ScoringScreen extends StatelessWidget {
                                 sub: nb ? 'N3' : 'RUNS',
                                 armed: nb,
                                 radius: preset.keyRadius,
-                                color: preset.keyDefault,
-                                fg: preset.keyFg,
+                                color: Colors.white,
+                                fg: Colors.black,
                                 onTap: () => _tap(context, 'RUNS',
                                     runs: 3)),
                             KeyBtn(
@@ -300,8 +316,8 @@ class ScoringScreen extends StatelessWidget {
                             KeyBtn(
                                 label: '6',
                                 sub: nb ? 'N6' : 'SIX',
-                                color: const Color(0xFFF48C06),
-                                fg: Colors.black,
+                                color: const Color(0xFFEC008C),
+                                fg: Colors.white,
                                 armed: nb,
                                 radius: preset.keyRadius,
                                 onTap: () =>
@@ -329,7 +345,7 @@ class ScoringScreen extends StatelessWidget {
                             KeyBtn(
                                 label: 'W',
                                 sub: 'WICKET',
-                                color: const Color(0xFFE5383B),
+                                color: const Color(0xFFDC143C),
                                 fg: Colors.white,
                                 radius: preset.keyRadius,
                                 onTap: () =>

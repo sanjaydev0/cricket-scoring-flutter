@@ -46,7 +46,7 @@ class MatchStore extends ChangeNotifier {
     advancedExtras = p.getBool(kAdvExtras) ?? true;
     styleId = p.getString(kStyle) ?? 'umpire';
     fontId = p.getString(kFont) ?? 'stadium';
-    celebId = p.getString(kCeleb) ?? 'pulse';
+    celebId = MatchStore.migrateCeleb(p.getString(kCeleb));
     SoundService.instance.init(enabled: soundOn);
     final raw = p.getString(kActive);
     if (raw != null) {
@@ -144,16 +144,49 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  static const celebIds = ['off', 'pulse', 'glow', 'shimmer'];
+  static const celebIds = [
+    'off',
+    'rise',
+    'pop',
+    'flash',
+    'glow',
+    'roll',
+    'shake',
+    'sweep',
+    'ring',
+    'burst',
+    'blink',
+  ];
   static const celebNames = {
     'off': 'Off',
-    'pulse': 'Pulse',
-    'glow': 'Glow ring',
-    'shimmer': 'Shimmer',
+    'rise': 'Rise Tag',
+    'pop': 'Pop',
+    'flash': 'Flash Tint',
+    'glow': 'Glow Bloom',
+    'roll': 'Tick Roll',
+    'shake': 'Shake',
+    'sweep': 'Shimmer Sweep',
+    'ring': 'Ring Ping',
+    'burst': 'Chip Burst',
+    'blink': 'Double Blink',
   };
 
+  /// Legacy ids from earlier builds map forward silently.
+  static String migrateCeleb(String? v) {
+    switch (v) {
+      case 'pulse':
+        return 'pop';
+      case 'shimmer':
+        return 'sweep';
+      case 'glow':
+        return 'glow';
+      default:
+        return celebIds.contains(v) ? v! : 'rise';
+    }
+  }
+
   void setCeleb(String id) {
-    celebId = id;
+    celebId = MatchStore.migrateCeleb(id);
     _persist();
     notifyListeners();
   }
