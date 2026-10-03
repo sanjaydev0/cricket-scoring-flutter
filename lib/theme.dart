@@ -49,7 +49,18 @@ class StylePreset {
     required this.stripBg,
   });
 
-  static const ids = ['umpire', 'night', 'solar', 'pitch', 'led'];
+  static const ids = [
+    'umpire',
+    'night',
+    'solar',
+    'pitch',
+    'led',
+    'pureblack',
+    'purewhite',
+    'ocean',
+    'crimson',
+    'slate',
+  ];
 
   static const presets = {
     'umpire': StylePreset(
@@ -97,6 +108,54 @@ class StylePreset {
       keyFg: Color(0xFFFFD54F),
       keyRadius: 6,
       stripBg: Color(0xFF140B02),
+    ),
+    'pureblack': StylePreset(
+      id: 'pureblack',
+      name: 'Pure Black',
+      heroBg: Color(0xFF000000),
+      heroFg: Colors.white,
+      keyDefault: Color(0xFF111111),
+      keyFg: Colors.white,
+      keyRadius: 14,
+      stripBg: Color(0xFF000000),
+    ),
+    'purewhite': StylePreset(
+      id: 'purewhite',
+      name: 'Pure White',
+      heroBg: Colors.white,
+      heroFg: Colors.black,
+      keyDefault: Colors.white,
+      keyFg: Colors.black,
+      keyRadius: 14,
+      stripBg: Colors.white,
+    ),
+    'ocean': StylePreset(
+      id: 'ocean',
+      name: 'Deep Ocean',
+      heroBg: Color(0xFF062A5E),
+      heroFg: Color(0xFF7DD3FC),
+      keyDefault: Color(0xFF0B3B7A),
+      keyFg: Colors.white,
+      keyRadius: 16,
+      stripBg: Color(0xFFE8F4FF),
+    ),
+    'crimson': StylePreset(
+      id: 'crimson',
+      name: 'Crimson Court',
+      heroBg: Color(0xFF7F1D1D),
+      heroFg: Colors.white,
+      keyRadius: 12,
+      stripBg: Color(0xFFFDECEC),
+    ),
+    'slate': StylePreset(
+      id: 'slate',
+      name: 'Slate Storm',
+      heroBg: Color(0xFF1E293B),
+      heroFg: Color(0xFFBEF264),
+      keyDefault: Color(0xFF0F172A),
+      keyFg: Color(0xFFE2E8F0),
+      keyRadius: 8,
+      stripBg: Color(0xFFF1F5F9),
     ),
   };
 

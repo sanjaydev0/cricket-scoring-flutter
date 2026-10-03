@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' show sin;
 import '../models.dart';
 import '../store.dart';
 
@@ -206,6 +207,103 @@ class ResponsiveCenter extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: child,
       ),
+    );
+  }
+}
+
+/// One-shot hero celebration on boundary/wicket. Single 700ms run,
+/// ease-out, never loops, never blocks input.
+class Celebrate extends StatefulWidget {
+  final String mode; // off/pulse/glow/shimmer
+  final String valueKey; // changes per ball
+  final bool fire; // true when last ball deserves it
+  final Color accent;
+  final Widget child;
+  const Celebrate({
+    required this.mode,
+    required this.valueKey,
+    required this.fire,
+    required this.accent,
+    required this.child,
+    super.key,
+  });
+  @override
+  State<Celebrate> createState() => _CelebrateState();
+}
+
+class _CelebrateState extends State<Celebrate>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+  String _last = '';
+
+  @override
+  void didUpdateWidget(Celebrate old) {
+    super.didUpdateWidget(old);
+    if (widget.valueKey != _last) {
+      _last = widget.valueKey;
+      if (widget.fire && widget.mode != 'off') {
+        _c.forward(from: 0);
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _last = widget.valueKey;
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.mode == 'off' || !widget.fire) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        final t = Curves.easeOutCubic.transform(_c.value);
+        switch (widget.mode) {
+          case 'glow':
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 220 + t * 130,
+                  height: 110 + t * 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                        color: widget.accent
+                            .withValues(alpha: (1 - t) * 0.9),
+                        width: 5 * (1 - t) + 1),
+                  ),
+                ),
+                widget.child,
+              ],
+            );
+          case 'shimmer':
+            return ShaderMask(
+              shaderCallback: (r) => LinearGradient(
+                colors: [
+                  widget.accent,
+                  Colors.white,
+                  widget.accent,
+                ],
+                stops: [0.0, 0.2 + t * 0.6, 0.4 + t * 0.6],
+              ).createShader(r),
+              child: widget.child,
+            );
+          default: // pulse — single gentle bump, settles exactly at 1x
+            return Transform.scale(
+                scale: 1 + 0.08 * sin(t * 3.14159),
+                child: widget.child);
+        }
+      },
     );
   }
 }

@@ -16,6 +16,7 @@ class MatchStore extends ChangeNotifier {
   static const kAdvExtras = 'cricket_adv_extras';
   static const kStyle = 'cricket_style';
   static const kFont = 'cricket_score_font';
+  static const kCeleb = 'cricket_celebration';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -29,6 +30,7 @@ class MatchStore extends ChangeNotifier {
   bool advancedExtras = true; // master extra-detail buttons toggle
   String styleId = 'umpire'; // keypad/strip/hero style preset
   String fontId = 'stadium'; // score numeral font
+  String celebId = 'pulse'; // hero celebration: off/pulse/glow/shimmer
   List<String> _undo = [];
   List<String> _redo = [];
   bool loaded = false;
@@ -44,6 +46,7 @@ class MatchStore extends ChangeNotifier {
     advancedExtras = p.getBool(kAdvExtras) ?? true;
     styleId = p.getString(kStyle) ?? 'umpire';
     fontId = p.getString(kFont) ?? 'stadium';
+    celebId = p.getString(kCeleb) ?? 'pulse';
     SoundService.instance.init(enabled: soundOn);
     final raw = p.getString(kActive);
     if (raw != null) {
@@ -105,6 +108,7 @@ class MatchStore extends ChangeNotifier {
     await p.setBool(kAdvExtras, advancedExtras);
     await p.setString(kStyle, styleId);
     await p.setString(kFont, fontId);
+    await p.setString(kCeleb, celebId);
   }
 
   void setTheme(String id) {
@@ -136,6 +140,20 @@ class MatchStore extends ChangeNotifier {
 
   void setFont(String id) {
     fontId = id;
+    _persist();
+    notifyListeners();
+  }
+
+  static const celebIds = ['off', 'pulse', 'glow', 'shimmer'];
+  static const celebNames = {
+    'off': 'Off',
+    'pulse': 'Pulse',
+    'glow': 'Glow ring',
+    'shimmer': 'Shimmer',
+  };
+
+  void setCeleb(String id) {
+    celebId = id;
     _persist();
     notifyListeners();
   }

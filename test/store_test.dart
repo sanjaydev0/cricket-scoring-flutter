@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/store.dart';
+import 'package:cricket_scoring/theme.dart';
 
 MatchStore freshStore() {
   final s = MatchStore();
@@ -38,6 +39,13 @@ void main() {
     s.setFont('ledger');
     expect(s.styleId, 'led');
     expect(s.fontId, 'ledger');
+  });
+
+  test('ten glare-proof presets exist', () {
+    expect(StylePreset.ids.length, 10);
+    for (final id in StylePreset.ids) {
+      expect(StylePreset.of(id).name.isNotEmpty, true);
+    }
   });
 
   test('over strip defers rollover until next ball', () {

@@ -106,77 +106,124 @@ class HomeScreen extends StatelessWidget {
                 const Text('SETTINGS',
                     style: TextStyle(fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
-                const Text('Style',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(
+                      'Styles • ${StylePreset.of(store.styleId).name}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700)),
                   children: [
-                    for (final id in StylePreset.ids)
-                      ChoiceChip(
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: StylePreset.of(id)
-                                    .heroBg,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: Colors.black26),
-                              ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final id in StylePreset.ids)
+                          ChoiceChip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 14,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: StylePreset.of(id)
+                                        .heroBg,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.black26),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(StylePreset.of(id)
+                                    .name),
+                              ],
                             ),
-                            const SizedBox(width: 6),
-                            Text(StylePreset.of(id).name),
-                          ],
-                        ),
-                        selected: store.styleId == id,
-                        onSelected: (_) => store.setStyle(id),
-                      ),
+                            selected: store.styleId == id,
+                            onSelected: (_) =>
+                                store.setStyle(id),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
-                const SizedBox(height: 12),
-                const Text('Score font',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(
+                      'Score font • ${ScoreFonts.names[store.fontId]}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700)),
                   children: [
-                    for (final id in ScoreFonts.ids)
-                      ChoiceChip(
-                        label: Text('142/7',
-                            style: TextStyle(
-                                fontFamily:
-                                    ScoreFonts.family(id),
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16)),
-                        selected: store.fontId == id,
-                        onSelected: (_) => store.setFont(id),
-                      ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final id in ScoreFonts.ids)
+                          ChoiceChip(
+                            label: Text('142/7',
+                                style: TextStyle(
+                                    fontFamily:
+                                        ScoreFonts.family(id),
+                                    fontWeight:
+                                        FontWeight.w900,
+                                    fontSize: 16)),
+                            selected: store.fontId == id,
+                            onSelected: (_) =>
+                                store.setFont(id),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
-                const SizedBox(height: 4),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Arcade sounds'),
-                  subtitle: const Text('Single bleeps for keys'),
-                  value: store.soundOn,
-                  onChanged: (v) => store.setSound(v),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(
+                      'Celebrations • ${MatchStore.celebNames[store.celebId]}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700)),
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final id in MatchStore.celebIds)
+                          ChoiceChip(
+                            label: Text(MatchStore
+                                .celebNames[id]!),
+                            selected: store.celebId == id,
+                            onSelected: (_) =>
+                                store.setCeleb(id),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Advanced extras'),
-                  subtitle:
-                      const Text('WD+overthrows, byes, NB+runs'),
-                  value: store.advancedExtras,
-                  onChanged: (v) =>
-                      store.setAdvancedExtras(v),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Sounds & extras',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700)),
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Arcade sounds'),
+                      subtitle: const Text(
+                          'Single quick bleeps'),
+                      value: store.soundOn,
+                      onChanged: (v) => store.setSound(v),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title:
+                          const Text('Advanced extras'),
+                      subtitle: const Text(
+                          'WD+overthrows, byes, NB+runs'),
+                      value: store.advancedExtras,
+                      onChanged: (v) =>
+                          store.setAdvancedExtras(v),
+                    ),
+                  ],
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
