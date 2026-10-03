@@ -116,35 +116,57 @@ class ScoringScreen extends StatelessWidget {
                               lastBadge.startsWith('N4');
                           final isSix = lastBadge == '6' ||
                               lastBadge.startsWith('N6');
-                          final fire =
-                              isW || isFour || isSix;
-                          final label = isW
-                              ? 'W'
-                              : (isFour ? '+4' : '+6');
-                          final tint = isW
-                              ? const Color(0xFFDC143C)
-                              : (isFour
-                                  ? const Color(0xFF2DC653)
-                                  : const Color(0xFFEC008C));
-                          return Celebrate(
-                            mode: store.celebId,
-                            valueKey:
-                                '${inn.runs}/${inn.wickets}',
-                            fire: fire,
-                            label: label,
-                            tint: tint,
-                            text:
-                                '${inn.runs}/${inn.wickets}',
-                            style: TextStyle(
-                                fontFamily: scoreFamily,
-                                fontSize: 68,
-                                fontWeight: FontWeight.w900,
-                                height: 1.05,
-                                color: preset.heroFg,
-                                fontFeatures: const [
-                                  FontFeature
-                                      .tabularFigures()
-                                ]),
+                          final numStyle = TextStyle(
+                              fontFamily: scoreFamily,
+                              fontSize: 68,
+                              fontWeight: FontWeight.w900,
+                              height: 1.05,
+                              color: preset.heroFg,
+                              fontFeatures: const [
+                                FontFeature
+                                    .tabularFigures()
+                              ]);
+                          // Runs and wickets celebrate independently —
+                          // a boundary never shakes the wicket digit.
+                          return Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
+                            crossAxisAlignment:
+                                CrossAxisAlignment.baseline,
+                            textBaseline:
+                                TextBaseline.alphabetic,
+                            children: [
+                              Celebrate(
+                                mode: store.celebId,
+                                valueKey: '${inn.runs}',
+                                fire: isFour || isSix,
+                                label: isFour ? '+4' : '+6',
+                                tint: isFour
+                                    ? const Color(
+                                        0xFF2DC653)
+                                    : const Color(
+                                        0xFFEC008C),
+                                text: '${inn.runs}',
+                                style: numStyle,
+                              ),
+                              Text('/',
+                                  style: numStyle.copyWith(
+                                      color: preset.heroFg
+                                          .withValues(
+                                              alpha:
+                                                  0.55))),
+                              Celebrate(
+                                mode: store.celebId,
+                                valueKey:
+                                    '${inn.wickets}',
+                                fire: isW,
+                                label: 'W',
+                                tint: const Color(
+                                    0xFFDC143C),
+                                text: '${inn.wickets}',
+                                style: numStyle,
+                              ),
+                            ],
                           );
                         }),
                         if (inn.isFreeHitActive)
@@ -307,8 +329,8 @@ class ScoringScreen extends StatelessWidget {
                             KeyBtn(
                                 label: '4',
                                 sub: nb ? 'N4' : 'FOUR',
-                                color: const Color(0xFF2DC653),
-                                fg: Colors.black,
+                                color: const Color(0xFF15803D),
+                                fg: Colors.white,
                                 armed: nb,
                                 radius: preset.keyRadius,
                                 onTap: () =>
@@ -465,40 +487,18 @@ class _OverStripState extends State<OverStrip> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
+          // Gaps between badges only — exactly 6 full balls per window.
           for (int i = 0; i < balls.length; i++)
             Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: i == balls.length - 1
-                  ? _PopBadge(
-                          key: ValueKey(
-                              '${balls.length}-${balls[i].badge}'),
-                          child: BallBadge(balls[i],
-                              isLatest: true))
-                  : BallBadge(balls[i]),
+              padding: EdgeInsets.only(
+                  right: i == balls.length - 1 ? 0 : 6),
+              child:
+                  BallBadge(balls[i], isLatest: i == balls.length - 1),
             ),
           if (balls.isEmpty)
             const Text('Over 1 • tap to bowl',
                 style: TextStyle(fontSize: 12)),
         ],
-      ),
-    );
-  }
-}
-
-/// Latest ball fades + scales in slowly instead of popping abruptly.
-class _PopBadge extends StatelessWidget {
-  final Widget child;
-  const _PopBadge({required super.key, required this.child});
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 550),
-      curve: Curves.easeInOutCubic,
-      builder: (_, v, __) => Opacity(
-        opacity: v,
-        child: Transform.scale(
-            scale: 0.5 + 0.5 * v, child: child),
       ),
     );
   }

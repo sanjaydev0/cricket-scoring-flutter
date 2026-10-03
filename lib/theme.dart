@@ -2,13 +2,29 @@ import 'package:flutter/material.dart';
 
 /// Score numeral fonts (bundled OFL, 100% offline). '' = system default.
 class ScoreFonts {
-  static const ids = ['stadium', 'condensed', 'block', 'ledger', 'tech'];
+  static const ids = [
+    'stadium',
+    'condensed',
+    'block',
+    'ledger',
+    'tech',
+    'tall',
+    'slab',
+    'wide',
+    'broadcast',
+    'ticket',
+  ];
   static const names = {
     'stadium': 'Stadium Sans',
     'condensed': 'Condensed Punch',
     'block': 'Block Heavy',
     'ledger': 'Mono Ledger',
     'tech': 'Tech Board',
+    'tall': 'Tall Ticket',
+    'slab': 'Ultra Slab',
+    'wide': 'Wide Circuit',
+    'broadcast': 'Broadcast',
+    'ticket': 'Narrow Board',
   };
   static String? family(String id) {
     switch (id) {
@@ -20,6 +36,16 @@ class ScoreFonts {
         return 'PlexMono';
       case 'tech':
         return 'ChakraPetch';
+      case 'tall':
+        return 'BebasTall';
+      case 'slab':
+        return 'AlfaSlab';
+      case 'wide':
+        return 'Audiowide';
+      case 'broadcast':
+        return 'BarlowCond';
+      case 'ticket':
+        return 'Fjalla';
       default:
         return null;
     }

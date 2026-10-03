@@ -35,6 +35,21 @@ flutter:
     - family: ChakraPetch
       fonts:
         - asset: assets/fonts/ChakraPetch.ttf
+    - family: BebasTall
+      fonts:
+        - asset: assets/fonts/BebasTall.ttf
+    - family: AlfaSlab
+      fonts:
+        - asset: assets/fonts/AlfaSlab.ttf
+    - family: Audiowide
+      fonts:
+        - asset: assets/fonts/Audiowide.ttf
+    - family: BarlowCond
+      fonts:
+        - asset: assets/fonts/BarlowCond.ttf
+    - family: Fjalla
+      fonts:
+        - asset: assets/fonts/Fjalla.ttf
 
 flutter_launcher_icons:
   android: true

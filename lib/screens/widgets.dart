@@ -100,8 +100,8 @@ class BallBadge extends StatelessWidget {
       bg = const Color(0xFFEC008C); // hyper magenta
       fg = Colors.white;
     } else if (t == '4' || t.startsWith('N4')) {
-      bg = const Color(0xFF2DC653);
-      fg = Colors.black;
+      bg = const Color(0xFF15803D); // deep green, white numeral
+      fg = Colors.white;
     } else if (t.startsWith('N') || t == 'NB') {
       bg = const Color(0xFF7B2CBF);
       fg = Colors.white;
@@ -115,13 +115,13 @@ class BallBadge extends StatelessWidget {
       bg = const Color(0xFF131316); // carbon black
       fg = Colors.white;
     } else if (t == '1') {
-      bg = const Color(0xFF38BDF8); // sky
-      fg = Colors.white;
+      bg = const Color(0xFFA5F3FC); // light cyan
+      fg = Colors.black;
     } else if (t == '2') {
-      bg = const Color(0xFF2563EB); // blue
-      fg = Colors.white;
+      bg = const Color(0xFF22D3EE); // cyan
+      fg = Colors.black;
     } else if (t == '3') {
-      bg = const Color(0xFF1E3A8A); // deep navy
+      bg = const Color(0xFF0E7490); // deep cyan
       fg = Colors.white;
     } else {
       bg = const Color(0xFF334155);
@@ -133,21 +133,13 @@ class BallBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         shape: BoxShape.circle,
-        boxShadow: isLatest
-            ? [
-                BoxShadow(
-                    color: bg.withValues(alpha: 0.55),
-                    blurRadius: 10,
-                    spreadRadius: 2)
-              ]
-            : null,
       ),
       alignment: Alignment.center,
       child: Text(t,
           style: TextStyle(
               color: fg, fontWeight: FontWeight.w900, fontSize: 12)),
     );
-    // Latest ball reads via scale + glow, never a border.
+    // Latest ball reads via static scale only — no glow, no animation.
     if (!isLatest) return badge;
     return Transform.scale(scale: 1.12, child: badge);
   }
