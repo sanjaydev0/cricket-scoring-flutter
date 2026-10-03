@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../math.dart';
 import '../models.dart';
 import '../store.dart';
@@ -35,6 +34,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
       body: ResponsiveCenter(
+        maxWidth: 640,
         child: FutureBuilder<List<Match>>(
           future: fut,
           builder: (_, snap) {
@@ -54,60 +54,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
               itemCount: h.length,
               itemBuilder: (_, i) {
                 final m = h[i];
-                return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 4),
-                  child: ShadCard(
-                    child: Row(
+                return Card(
+                  child: ListTile(
+                    title: Row(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              ShadBadge(
-                                  child: Text(
-                                      '${m.winner} WON',
-                                      style: const TextStyle(
-                                          fontSize: 10))),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const TeamDot(
-                                      MatchStore.teamAColor,
-                                      size: 9),
-                                  const SizedBox(width: 5),
-                                  Flexible(
-                                      child: Text(
-                                          '${m.config.teamA} vs ${m.config.teamB}',
-                                          style: const TextStyle(
-                                              fontWeight:
-                                                  FontWeight.w800))),
-                                  const SizedBox(width: 5),
-                                  const TeamDot(
-                                      MatchStore.teamBColor,
-                                      size: 9),
-                                ],
-                              ),
-                              Text(
-                                  '${m.innings1.battingTeam}: ${m.innings1.runs}/${m.innings1.wickets} (${CricketMath.ballsToOvers(m.innings1.legalDeliveries)})${m.innings2 == null ? '' : ' • ${m.innings2!.battingTeam}: ${m.innings2!.runs}/${m.innings2!.wickets}'}',
-                                  style: const TextStyle(
-                                      fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                            icon: const Icon(
-                                Icons.delete_outline,
-                                size: 20),
-                            onPressed: () async {
-                              await widget.store
-                                  .deleteHistoryAt(i);
-                              setState(() =>
-                                  fut = widget.store.history());
-                            }),
+                        const TeamDot(MatchStore.teamAColor,
+                            size: 9),
+                        const SizedBox(width: 5),
+                        Flexible(
+                            child: Text(
+                                '${m.config.teamA} vs ${m.config.teamB}',
+                                style: const TextStyle(
+                                    fontWeight:
+                                        FontWeight.w800))),
+                        const SizedBox(width: 5),
+                        const TeamDot(MatchStore.teamBColor,
+                            size: 9),
                       ],
                     ),
+                    subtitle: Text(
+                        '${m.winner} WON • ${m.innings1.battingTeam}: ${m.innings1.runs}/${m.innings1.wickets} (${CricketMath.ballsToOvers(m.innings1.legalDeliveries)})${m.innings2 == null ? '' : ' • ${m.innings2!.battingTeam}: ${m.innings2!.runs}/${m.innings2!.wickets}'}'),
+                    trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () async {
+                          await widget.store
+                              .deleteHistoryAt(i);
+                          setState(
+                              () => fut = widget.store.history());
+                        }),
                   ),
                 );
               },

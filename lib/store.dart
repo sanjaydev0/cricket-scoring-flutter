@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'math.dart';
 import 'models.dart';
+import 'sound.dart';
 
 /// Offline store: SharedPreferences only. No network - 100% offline.
 class MatchStore extends ChangeNotifier {
@@ -11,6 +12,8 @@ class MatchStore extends ChangeNotifier {
   static const kHistory = 'cricket_history_vault_v4';
   static const kUndo = 'cricket_undo_stack_v4';
   static const kTheme = 'cricket_app_theme';
+  static const kSound = 'cricket_sound_on';
+  static const kAdvExtras = 'cricket_adv_extras';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -20,6 +23,8 @@ class MatchStore extends ChangeNotifier {
   MatchConfig draft = MatchConfig();
   bool nbArmed = false;
   String themeId = 'light'; // 'light' | 'dark'
+  bool soundOn = true; // master arcade SFX toggle
+  bool advancedExtras = true; // master extra-detail buttons toggle
   List<String> _undo = [];
   List<String> _redo = [];
   bool loaded = false;
@@ -31,6 +36,9 @@ class MatchStore extends ChangeNotifier {
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
     themeId = _migrateTheme(p.getString(kTheme));
+    soundOn = p.getBool(kSound) ?? true;
+    advancedExtras = p.getBool(kAdvExtras) ?? true;
+    SoundService.instance.init(enabled: soundOn);
     final raw = p.getString(kActive);
     if (raw != null) {
       try {
@@ -86,6 +94,8 @@ class MatchStore extends ChangeNotifier {
     }
     await p.setString(kUndo, jsonEncode(_undo));
     await p.setString(kTheme, themeId);
+    await p.setBool(kSound, soundOn);
+    await p.setBool(kAdvExtras, advancedExtras);
   }
 
   void setTheme(String id) {
@@ -95,6 +105,19 @@ class MatchStore extends ChangeNotifier {
   }
 
   void toggleTheme() => setTheme(themeId == 'dark' ? 'light' : 'dark');
+
+  void setSound(bool v) {
+    soundOn = v;
+    SoundService.instance.setEnabled(v);
+    _persist();
+    notifyListeners();
+  }
+
+  void setAdvancedExtras(bool v) {
+    advancedExtras = v;
+    _persist();
+    notifyListeners();
+  }
 
   void pushSnapshot() {
     if (match == null) return;
@@ -114,6 +137,7 @@ class MatchStore extends ChangeNotifier {
       match!.innings2!.completed = false;
     }
     HapticFeedback.lightImpact();
+    SoundService.instance.undo();
     await _persist();
     notifyListeners();
   }
@@ -274,16 +298,41 @@ class MatchStore extends ChangeNotifier {
     }
 
     _addBall(inn, b);
-    HapticFeedback.mediumImpact();
+    _feedback(b);
     _checkEnd();
     _persist();
     notifyListeners();
     return null;
   }
 
+  /// Haptics + arcade SFX by impact tier. Decoration only — scoring
+  /// never depends on it.
+  void _feedback(Ball b) {
+    final sfx = SoundService.instance;
+    try {
+      if (b.isWicket) {
+        HapticFeedback.heavyImpact();
+        sfx.wicket();
+      } else if (b.badge == '4' ||
+          b.badge == '6' ||
+          b.badge.startsWith('N4') ||
+          b.badge.startsWith('N6')) {
+        HapticFeedback.mediumImpact();
+        sfx.boundary();
+      } else if (b.extra != 'none') {
+        HapticFeedback.selectionClick();
+        sfx.extra();
+      } else {
+        HapticFeedback.lightImpact();
+        sfx.run();
+      }
+    } catch (_) {}
+  }
+
   void toggleNb() {
     nbArmed = !nbArmed;
     HapticFeedback.selectionClick();
+    SoundService.instance.extra();
     notifyListeners();
   }
 
@@ -345,6 +394,7 @@ class MatchStore extends ChangeNotifier {
     m.winner = team;
     m.winMargin = margin ?? 'Declared winner';
     HapticFeedback.heavyImpact();
+    SoundService.instance.fanfare();
     _archive();
     _persist();
     notifyListeners();
@@ -360,6 +410,7 @@ class MatchStore extends ChangeNotifier {
       if (inn.legalDeliveries >= maxBalls || inn.wickets >= maxW) {
         inn.completed = true;
         m.target = inn.runs + 1;
+        SoundService.instance.confirm();
       }
     } else {
       final tgt = m.target ?? (m.innings1.runs + 1);
@@ -369,6 +420,8 @@ class MatchStore extends ChangeNotifier {
         m.winner = inn.battingTeam;
         final wktsLeft = maxW - inn.wickets;
         m.winMargin = 'Won by $wktsLeft wicket${wktsLeft == 1 ? '' : 's'}';
+        HapticFeedback.heavyImpact();
+        SoundService.instance.fanfare();
         _archive();
       } else if (inn.legalDeliveries >= maxBalls || inn.wickets >= maxW) {
         inn.completed = true;

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../store.dart';
 import 'widgets.dart';
 
@@ -19,10 +18,15 @@ class HomeScreen extends StatelessWidget {
             actions: [
               IconButton(
                 icon: Icon(store.themeId == 'dark'
-                    ? Icons.light_mode_outlined
-                    : Icons.dark_mode_outlined),
+                    ? Icons.light_mode
+                    : Icons.dark_mode),
                 tooltip: 'Light / dark',
                 onPressed: () => store.toggleTheme(),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: 'Settings',
+                onPressed: () => _settingsSheet(context),
               ),
             ],
           ),
@@ -30,27 +34,27 @@ class HomeScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                ShadCard(
-                  title: const Text('🏏 Gully Scorer',
-                      style: TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.w900)),
-                  description: const Text(
-                      'Sports utility for umpires. 100% offline.'),
+                Card(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ShadButton(
+                        const Text('🏏',
+                            style: TextStyle(fontSize: 44),
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 4),
+                        const Text('Umpire scorer • 100% offline',
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        FilledButton(
                           onPressed: () =>
                               Navigator.pushNamed(context, '/setup'),
-                          child: Text(hasLive
-                              ? 'START NEW MATCH'
-                              : 'START NEW MATCH'),
+                          child: const Text('START NEW MATCH'),
                         ),
                         if (hasLive) ...[
                           const SizedBox(height: 10),
-                          ShadButton.secondary(
+                          FilledButton.tonal(
                             onPressed: () {
                               final m = store.match!;
                               if (m.completed) {
@@ -67,7 +71,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ],
                         const SizedBox(height: 10),
-                        ShadButton.outline(
+                        OutlinedButton(
                           onPressed: () =>
                               Navigator.pushNamed(context, '/history'),
                           child: const Text('ARCHIVES'),
@@ -81,6 +85,47 @@ class HomeScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _settingsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => ListenableBuilder(
+        listenable: store,
+        builder: (_, __) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('SETTINGS',
+                    style: TextStyle(fontWeight: FontWeight.w900)),
+                SwitchListTile(
+                  title: const Text('Arcade sounds'),
+                  subtitle: const Text('Bleeps for keys & wickets'),
+                  value: store.soundOn,
+                  onChanged: (v) => store.setSound(v),
+                ),
+                SwitchListTile(
+                  title: const Text('Advanced extras'),
+                  subtitle: const Text('WD+overthrows, byes, NB+runs keys'),
+                  value: store.advancedExtras,
+                  onChanged: (v) => store.setAdvancedExtras(v),
+                ),
+                SwitchListTile(
+                  title: const Text('Dark mode'),
+                  value: store.themeId == 'dark',
+                  onChanged: (v) =>
+                      store.setTheme(v ? 'dark' : 'light'),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

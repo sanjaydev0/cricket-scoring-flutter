@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../math.dart';
 import '../store.dart';
 import 'widgets.dart';
@@ -20,10 +19,9 @@ class BreakScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                ShadCard(
-                  title: const Text('1st innings summary'),
+                Card(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
                         Row(
@@ -55,11 +53,13 @@ class BreakScreen extends StatelessWidget {
                             style: TextStyle(
                                 fontSize: 52,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.red.shade700)),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .error)),
                         Text(
                             'RRR ${CricketMath.calcRRR(m.target!, CricketMath.totalBalls(m.config.totalOvers))} RPO'),
                         const SizedBox(height: 16),
-                        ShadButton(
+                        FilledButton(
                             onPressed: () {
                               store.startSecondInnings();
                               Navigator.pushReplacementNamed(
@@ -68,7 +68,7 @@ class BreakScreen extends StatelessWidget {
                             child: const Text(
                                 'COMMENCE 2ND INNINGS')),
                         const SizedBox(height: 8),
-                        ShadButton.outline(
+                        OutlinedButton(
                             onPressed: () => store.undo(),
                             child: const Text('UNDO')),
                       ],
@@ -106,19 +106,22 @@ class ResultScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                ShadCard(
-                  title: Text(
-                      m.winner == 'TIE'
-                          ? 'MATCH TIED'
-                          : '${m.winner} WON',
-                      style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900)),
-                  description: Text(m.winMargin ?? ''),
+                Card(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
+                        Text(
+                            m.winner == 'TIE'
+                                ? 'MATCH TIED'
+                                : '${m.winner} WON',
+                            style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900)),
+                        Text(m.winMargin ?? '',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 12),
                         _innCard(m, inn1.battingTeam,
                             inn1.runs, inn1.wickets,
                             inn1.legalDeliveries),
@@ -133,7 +136,7 @@ class ResultScreen extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
-                                child: ShadButton.outline(
+                                child: OutlinedButton(
                                     onPressed: () {
                                       store.newMatch();
                                       Navigator
@@ -146,7 +149,7 @@ class ResultScreen extends StatelessWidget {
                                         const Text('HOME'))),
                             const SizedBox(width: 10),
                             Expanded(
-                                child: ShadButton(
+                                child: FilledButton(
                                     onPressed: () {
                                       store.newMatch();
                                       Navigator

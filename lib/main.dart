@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import 'store.dart';
+import 'theme.dart';
 import 'screens/home.dart';
 import 'screens/setup.dart';
 import 'screens/scoring.dart';
@@ -27,20 +27,13 @@ class CricketApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: store,
-      builder: (_, __) => ShadApp(
+      builder: (_, __) => MaterialApp(
         title: 'Gully Cricket Scorer',
         debugShowCheckedModeBanner: false,
-        theme: ShadThemeData(
-          brightness: Brightness.light,
-          colorScheme: const ShadZincColorScheme.light(),
-        ),
-        darkTheme: ShadThemeData(
-          brightness: Brightness.dark,
-          colorScheme: const ShadZincColorScheme.dark(),
-        ),
+        theme: UmpireTheme.light(),
+        darkTheme: UmpireTheme.dark(),
         themeMode:
             store.themeId == 'dark' ? ThemeMode.dark : ThemeMode.light,
-        materialThemeBuilder: (context, theme) => theme,
         initialRoute: '/',
         routes: {
           '/': (_) => HomeScreen(store),

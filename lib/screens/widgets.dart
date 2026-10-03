@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../models.dart';
 import '../store.dart';
 
@@ -19,13 +18,14 @@ class TeamDot extends StatelessWidget {
         decoration: BoxDecoration(
           color: Color(colorValue),
           shape: BoxShape.circle,
+          border: Border.all(color: Colors.black26, width: 1),
         ),
       ),
     );
   }
 }
 
-/// − value + stepper (overs, players, penalties).
+/// − value + stepper.
 class StepperRow extends StatelessWidget {
   final String label;
   final int value;
@@ -44,6 +44,7 @@ class StepperRow extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
         Expanded(
@@ -51,42 +52,36 @@ class StepperRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: ShadTheme.of(context).textTheme.small),
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               if (hint != null)
                 Text(hint!,
-                    style: ShadTheme.of(context)
-                        .textTheme
-                        .muted
-                        .copyWith(fontSize: 11)),
+                    style: TextStyle(
+                        fontSize: 11, color: cs.onSurfaceVariant)),
             ],
           ),
         ),
-        ShadButton.outline(
-          size: ShadButtonSize.sm,
+        IconButton.filledTonal(
           onPressed: value > min ? () => onChanged(value - 1) : null,
-          child: const Text('−', style: TextStyle(fontSize: 18)),
+          icon: const Icon(Icons.remove),
         ),
         SizedBox(
-          width: 44,
+          width: 40,
           child: Text('$value',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.w800)),
+                  fontSize: 20, fontWeight: FontWeight.w900)),
         ),
-        ShadButton.outline(
-          size: ShadButtonSize.sm,
+        IconButton.filledTonal(
           onPressed: value < max ? () => onChanged(value + 1) : null,
-          child: const Text('+', style: TextStyle(fontSize: 18)),
+          icon: const Icon(Icons.add),
         ),
       ],
     );
   }
 }
 
-/// Ball badge colors by impact / visual hierarchy:
-/// W red (danger) > 6 gold (peak) > 4 emerald (boundary) >
-/// extras warm family (NB orange, WD yellow, B/LB teal) >
-/// routine runs neutral > dot hollow (least weight).
+/// Vibrant glare-proof ball badges. Saturated solid fills, bolddark/light
+/// text, ordered by impact: W > 6 > 4 > extras > routine > dot.
 class BallBadge extends StatelessWidget {
   final Ball ball;
   final bool isLatest;
@@ -99,53 +94,54 @@ class BallBadge extends StatelessWidget {
     late Color fg;
     bool hollow = false;
     if (t == 'W') {
-      bg = const Color(0xFFDC2626);
+      bg = const Color(0xFFE5383B);
       fg = Colors.white;
     } else if (t == '6' || t.startsWith('N6')) {
-      bg = const Color(0xFFF59E0B);
+      bg = const Color(0xFFF48C06);
       fg = Colors.black;
     } else if (t == '4' || t.startsWith('N4')) {
-      bg = const Color(0xFF059669);
-      fg = Colors.white;
+      bg = const Color(0xFF2DC653);
+      fg = Colors.black;
     } else if (t.startsWith('N') || t == 'NB') {
-      bg = const Color(0xFFEA580C);
+      bg = const Color(0xFF7B2CBF);
       fg = Colors.white;
     } else if (t.startsWith('WD')) {
-      bg = const Color(0xFFEAB308);
+      bg = const Color(0xFFFFBA08);
       fg = Colors.black;
     } else if (t.startsWith('B') || t.startsWith('LB')) {
-      bg = const Color(0xFF14B8A6);
+      bg = const Color(0xFF00B4D8);
       fg = Colors.black;
     } else if (t == '0') {
       hollow = true;
       bg = Colors.transparent;
       fg = Colors.grey;
     } else {
-      final dark = Theme.of(context).brightness == Brightness.dark;
-      bg = dark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7);
-      fg = dark ? Colors.white : Colors.black;
+      bg = const Color(0xFF334155);
+      fg = Colors.white;
     }
     return Container(
-      width: 34,
-      height: 34,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
         color: hollow ? Colors.transparent : bg,
         shape: BoxShape.circle,
         border: Border.all(
-            color: hollow ? Colors.grey : (isLatest ? fg : Colors.transparent),
-            width: isLatest ? 2.5 : 1.2),
+            color: hollow
+                ? const Color(0xFF64748B)
+                : (isLatest ? Colors.black : bg),
+            width: isLatest ? 3 : 2),
       ),
       alignment: Alignment.center,
       child: Text(t,
           style: TextStyle(
-              color: hollow ? Colors.grey.shade600 : fg,
+              color: hollow ? const Color(0xFF64748B) : fg,
               fontWeight: FontWeight.w900,
               fontSize: 12)),
     );
   }
 }
 
-/// Big tactile scoring key (70px) in shadcn button styling.
+/// Big rapid-input key (72px) with strong borders for glare.
 class KeyBtn extends StatelessWidget {
   final String label;
   final String sub;
@@ -164,22 +160,27 @@ class KeyBtn extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final bg = armed ? const Color(0xFFEAB308) : color;
+    final bg = armed ? const Color(0xFFFFBA08) : color;
+    final onFg = armed ? Colors.black : fg;
     return SizedBox(
-      height: 70,
-      child: ShadButton(
-        backgroundColor: bg,
-        foregroundColor: armed ? Colors.black : fg,
+      height: 72,
+      child: FilledButton(
         onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: bg,
+          foregroundColor: onFg,
+          padding: EdgeInsets.zero,
+          side: const BorderSide(color: Colors.black38, width: 1.5),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(label,
                 style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.w900)),
+                    fontSize: 24, fontWeight: FontWeight.w900, height: 1)),
             Text(sub,
-                style:
-                    const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+                style: const TextStyle(
+                    fontSize: 9, fontWeight: FontWeight.w800)),
           ],
         ),
       ),

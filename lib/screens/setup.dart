@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../store.dart';
 import '../models.dart';
 import 'widgets.dart';
@@ -43,23 +42,29 @@ class _SetupScreenState extends State<SetupScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            ShadCard(
-              title: const Text('Teams'),
+            Card(
               child: Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text('TEAMS',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2)),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         const TeamDot(MatchStore.teamAColor),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: ShadInput(
+                          child: TextField(
                             controller: a,
-                            placeholder:
-                                const Text('Team A (bats first)'),
                             textCapitalization:
                                 TextCapitalization.characters,
+                            decoration: const InputDecoration(
+                                labelText: 'Team A (bats first)',
+                                border: OutlineInputBorder()),
                             onChanged: (v) =>
                                 cfg.teamA = v.toUpperCase(),
                           ),
@@ -72,11 +77,13 @@ class _SetupScreenState extends State<SetupScreen> {
                         const TeamDot(MatchStore.teamBColor),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: ShadInput(
+                          child: TextField(
                             controller: b,
-                            placeholder: const Text('Team B'),
                             textCapitalization:
                                 TextCapitalization.characters,
+                            decoration: const InputDecoration(
+                                labelText: 'Team B',
+                                border: OutlineInputBorder()),
                             onChanged: (v) =>
                                 cfg.teamB = v.toUpperCase(),
                           ),
@@ -88,14 +95,17 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ShadCard(
-              title: const Text('Format'),
-              description:
-                  Text('Sides: ${cfg.sidesLabel}'),
+            Card(
               child: Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text('FORMAT • ${cfg.sidesLabel}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2)),
+                    const SizedBox(height: 8),
                     StepperRow(
                         label: 'Overs',
                         value: cfg.totalOvers,
@@ -103,7 +113,6 @@ class _SetupScreenState extends State<SetupScreen> {
                         max: 50,
                         onChanged: (v) =>
                             setState(() => cfg.totalOvers = v)),
-                    const SizedBox(height: 8),
                     StepperRow(
                         label: 'Players / side',
                         value: cfg.playersPerSide,
@@ -111,26 +120,41 @@ class _SetupScreenState extends State<SetupScreen> {
                         max: 15,
                         onChanged: (v) => setState(
                             () => cfg.playersPerSide = v)),
-                    const SizedBox(height: 8),
-                    StepperRow(
-                        label: 'Common (both sides)',
-                        hint: 'Odd-man: e.g. 13 players = 6 + 6 + 1',
-                        value: cfg.commonPlayers,
-                        min: 0,
-                        max: 2,
-                        onChanged: (v) => setState(
-                            () => cfg.commonPlayers = v)),
+                    const SizedBox(height: 4),
+                    const Text('Common player (odd-man)',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700)),
+                    const Text('One player turns out for both sides',
+                        style: TextStyle(fontSize: 11)),
+                    const SizedBox(height: 6),
+                    SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment(
+                            value: 0, label: Text('None')),
+                        ButtonSegment(
+                            value: 1, label: Text('+1 common')),
+                        ButtonSegment(
+                            value: 2, label: Text('+2 common')),
+                      ],
+                      selected: {cfg.commonPlayers},
+                      onSelectionChanged: (s) => setState(
+                          () => cfg.commonPlayers = s.first),
+                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            ShadCard(
-              title: const Text('Rules'),
+            Card(
               child: Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text('RULES',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2)),
                     StepperRow(
                         label: 'Wide penalty',
                         hint: 'Default 1',
@@ -139,7 +163,6 @@ class _SetupScreenState extends State<SetupScreen> {
                         max: 2,
                         onChanged: (v) => setState(
                             () => cfg.rules.widePenalty = v)),
-                    const SizedBox(height: 8),
                     StepperRow(
                         label: 'No-ball penalty',
                         hint: 'Default 0',
@@ -148,35 +171,36 @@ class _SetupScreenState extends State<SetupScreen> {
                         max: 2,
                         onChanged: (v) => setState(
                             () => cfg.rules.noBallPenalty = v)),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Free hit on no-ball'),
-                        ShadSwitch(
-                            value: cfg.rules.freeHit,
-                            onChanged: (v) => setState(
-                                () => cfg.rules.freeHit = v)),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Last man standing'),
-                        ShadSwitch(
-                            value: cfg.rules.lastManStanding,
-                            onChanged: (v) => setState(() =>
-                                cfg.rules.lastManStanding = v)),
-                      ],
-                    ),
+                    SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Free hit on no-ball'),
+                        value: cfg.rules.freeHit,
+                        onChanged: (v) => setState(
+                            () => cfg.rules.freeHit = v)),
+                    SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title:
+                            const Text('Last man standing'),
+                        value: cfg.rules.lastManStanding,
+                        onChanged: (v) => setState(() =>
+                            cfg.rules.lastManStanding = v)),
+                    SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title:
+                            const Text('Advanced extras keys'),
+                        subtitle: const Text(
+                            'WD+overthrows, byes, NB+runs'),
+                        value: widget.store.advancedExtras,
+                        onChanged: (v) =>
+                            widget.store.setAdvancedExtras(v)),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            ShadButton(
+            FilledButton(
+              style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(54)),
               onPressed: () {
                 if (a.text.trim().isEmpty ||
                     b.text.trim().isEmpty) {

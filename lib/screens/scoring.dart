@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../math.dart';
 import '../store.dart';
 import 'widgets.dart';
@@ -34,6 +33,11 @@ class ScoringScreen extends StatelessWidget {
         final totalOvers = m.config.totalOvers;
         final oversFmt = CricketMath.ballsToOvers(inn.legalDeliveries);
         final crr = CricketMath.calcCRR(inn.runs, inn.legalDeliveries);
+        final ballsLeft =
+            CricketMath.totalBalls(totalOvers) - inn.legalDeliveries;
+        final proj = inn.legalDeliveries == 0
+            ? '—'
+            : '${(inn.runs + (inn.runs / inn.legalDeliveries) * ballsLeft).round()}';
         final cur = inn.currentOverBalls;
         final overRuns = cur.fold<int>(0, (s, b) => s + b.totalRuns);
         final overWkts = cur.where((b) => b.isWicket).length;
@@ -42,13 +46,12 @@ class ScoringScreen extends StatelessWidget {
         String? targetLine;
         if (target != null) {
           final need = target - inn.runs;
-          final ballsLeft =
-              CricketMath.totalBalls(totalOvers) - inn.legalDeliveries;
           final rrr = CricketMath.calcRRR(need, ballsLeft);
           targetLine =
               need <= 0 ? 'WON' : 'Need $need off $ballsLeft • RRR $rrr';
         }
         final isTeamA = inn.battingTeam == m.config.teamA;
+        final cs = Theme.of(context).colorScheme;
 
         return Scaffold(
           appBar: AppBar(
@@ -57,6 +60,11 @@ class ScoringScreen extends StatelessWidget {
                 style:
                     const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
             actions: [
+              IconButton(
+                  icon: const Icon(Icons.volume_up_outlined),
+                  tooltip: store.soundOn ? 'Mute sounds' : 'Unmute',
+                  onPressed: () =>
+                      store.setSound(!store.soundOn)),
               IconButton(
                   icon: const Icon(Icons.list_alt),
                   tooltip: 'Overs',
@@ -72,10 +80,11 @@ class ScoringScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(12),
               children: [
-                ShadCard(
+                Card(
+                  color: cs.primaryContainer,
                   child: Padding(
                     padding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                        const EdgeInsets.symmetric(vertical: 16),
                     child: Column(
                       children: [
                         Row(
@@ -86,31 +95,48 @@ class ScoringScreen extends StatelessWidget {
                                 : MatchStore.teamBColor),
                             const SizedBox(width: 8),
                             Text('BATTING: ${inn.battingTeam}',
-                                style: const TextStyle(
-                                    fontSize: 11,
+                                style: TextStyle(
+                                    fontSize: 12,
                                     letterSpacing: 1.2,
-                                    fontWeight: FontWeight.w700)),
+                                    fontWeight: FontWeight.w800,
+                                    color: cs.onPrimaryContainer)),
                           ],
                         ),
                         Text('${inn.runs}/${inn.wickets}',
-                            style: const TextStyle(
-                                fontSize: 64,
+                            style: TextStyle(
+                                fontSize: 68,
                                 fontWeight: FontWeight.w900,
-                                height: 1.1,
-                                fontFeatures: [
+                                height: 1.05,
+                                color: cs.onPrimaryContainer,
+                                fontFeatures: const [
                                   FontFeature.tabularFigures()
                                 ])),
                         if (inn.isFreeHitActive)
                           const Padding(
-                            padding: EdgeInsets.only(top: 6),
-                            child: ShadBadge(
-                                child: Text('FREE HIT ACTIVE')),
+                            padding: EdgeInsets.only(top: 4),
+                            child: Badge(
+                                label: Text('FREE HIT',
+                                    style: TextStyle(
+                                        fontWeight:
+                                            FontWeight.w900))),
                           ),
                         if (targetLine != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: ShadBadge.secondary(
-                                child: Text('TARGET $targetLine')),
+                            child: FilledButton.tonal(
+                              style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize
+                                          .shrinkWrap),
+                              onPressed: null,
+                              child: Text('TARGET $targetLine',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12)),
+                            ),
                           ),
                         const SizedBox(height: 10),
                         Padding(
@@ -123,7 +149,7 @@ class ScoringScreen extends StatelessWidget {
                                   ? 0
                                   : inn.legalDeliveries /
                                       (totalOvers * 6),
-                              minHeight: 6,
+                              minHeight: 8,
                             ),
                           ),
                         ),
@@ -132,9 +158,12 @@ class ScoringScreen extends StatelessWidget {
                           mainAxisAlignment:
                               MainAxisAlignment.spaceEvenly,
                           children: [
-                            _stat('OVERS', '$oversFmt/$totalOvers'),
-                            _stat('CRR', crr),
-                            _stat('EXTRAS', '${inn.extrasTotal}'),
+                            _stat(context, 'OVERS',
+                                '$oversFmt/$totalOvers'),
+                            _stat(context, 'CRR', crr),
+                            _stat(context, 'PROJ', '~$proj'),
+                            _stat(context, 'EXTRAS',
+                                '${inn.extrasTotal}'),
                           ],
                         ),
                       ],
@@ -142,7 +171,7 @@ class ScoringScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                ShadCard(
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(10),
                     child: Row(
@@ -151,13 +180,16 @@ class ScoringScreen extends StatelessWidget {
                         TextButton(
                             onPressed: () => _oversSheet(context),
                             child: Text(
-                                '${overRuns}r • ${overWkts}w ›')),
+                                '${overRuns}r • ${overWkts}w ›',
+                                style: const TextStyle(
+                                    fontWeight:
+                                        FontWeight.w800))),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 10),
-                ShadCard(
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
@@ -169,12 +201,14 @@ class ScoringScreen extends StatelessWidget {
                                 ? 'NO-BALL ARMED — CHOOSE RUNS'
                                 : 'KEYPAD',
                             style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1,
-                                    color: nb
-                                        ? const Color(0xFFEA580C)
-                                        : null)),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                                color: nb
+                                    ? const Color(0xFF7B2CBF)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)),
                         const SizedBox(height: 10),
                         GridView.count(
                           crossAxisCount: 3,
@@ -212,15 +246,15 @@ class ScoringScreen extends StatelessWidget {
                             KeyBtn(
                                 label: '4',
                                 sub: nb ? 'N4' : 'FOUR',
-                                color: const Color(0xFF059669),
-                                fg: Colors.white,
+                                color: const Color(0xFF2DC653),
+                                fg: Colors.black,
                                 armed: nb,
                                 onTap: () =>
                                     _tap(context, 'FOUR')),
                             KeyBtn(
                                 label: '6',
                                 sub: nb ? 'N6' : 'SIX',
-                                color: const Color(0xFFF59E0B),
+                                color: const Color(0xFFF48C06),
                                 fg: Colors.black,
                                 armed: nb,
                                 onTap: () =>
@@ -229,7 +263,7 @@ class ScoringScreen extends StatelessWidget {
                                 label: 'WD',
                                 sub:
                                     '+${m.config.rules.widePenalty}',
-                                color: const Color(0xFFEAB308),
+                                color: const Color(0xFFFFBA08),
                                 fg: Colors.black,
                                 onTap: () =>
                                     _tap(context, 'WIDE')),
@@ -238,7 +272,7 @@ class ScoringScreen extends StatelessWidget {
                                 sub: nb
                                     ? 'ARMED'
                                     : '+${m.config.rules.noBallPenalty}',
-                                color: const Color(0xFFEA580C),
+                                color: const Color(0xFF7B2CBF),
                                 fg: Colors.white,
                                 armed: nb,
                                 onTap: () =>
@@ -246,7 +280,7 @@ class ScoringScreen extends StatelessWidget {
                             KeyBtn(
                                 label: 'W',
                                 sub: 'WICKET',
-                                color: const Color(0xFFDC2626),
+                                color: const Color(0xFFE5383B),
                                 fg: Colors.white,
                                 onTap: () =>
                                     _wicketDialog(context)),
@@ -257,24 +291,22 @@ class ScoringScreen extends StatelessWidget {
                           mainAxisAlignment:
                               MainAxisAlignment.center,
                           children: [
-                            ShadButton.outline(
+                            OutlinedButton.icon(
                               onPressed: store.canUndo
                                   ? () => store.undo()
                                   : null,
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.undo, size: 18),
-                                  SizedBox(width: 6),
-                                  Text('UNDO'),
-                                ],
+                              icon: const Icon(Icons.undo,
+                                  size: 20),
+                              label: const Text('UNDO'),
+                            ),
+                            if (store.advancedExtras) ...[
+                              const SizedBox(width: 10),
+                              FilledButton.tonal(
+                                onPressed: () =>
+                                    _moreSheet(context),
+                                child: const Text('EXTRAS'),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            ShadButton.outline(
-                              onPressed: () =>
-                                  _moreSheet(context),
-                              child: const Text('EXTRAS'),
-                            ),
+                            ],
                           ],
                         ),
                       ],
@@ -289,16 +321,21 @@ class ScoringScreen extends StatelessWidget {
     );
   }
 
-  Widget _stat(String k, String v) => Column(
-        children: [
-          Text(k,
-              style:
-                  const TextStyle(fontSize: 10, letterSpacing: 1.2)),
-          Text(v,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w900)),
-        ],
-      );
+  Widget _stat(BuildContext ctx, String k, String v) {
+    final cs = Theme.of(ctx).colorScheme;
+    return Column(
+      children: [
+        Text(k,
+            style: TextStyle(
+                fontSize: 10,
+                letterSpacing: 1.2,
+                color: cs.onSurfaceVariant)),
+        Text(v,
+            style: const TextStyle(
+                fontSize: 17, fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
 
   void _tap(BuildContext ctx, String action, {int runs = 0}) {
     final err = store.score(action: action, runs: runs);
@@ -317,21 +354,24 @@ class ScoringScreen extends StatelessWidget {
       'Hit Wicket',
       'Run Out'
     ];
-    showShadDialog(
+    showDialog(
       context: context,
-      builder: (_) => ShadDialog.alert(
+      builder: (_) => AlertDialog(
         title: const Text('Wicket type'),
-        description:
-            const Text('Free-hit protects all but Run Out.'),
+        content: const SizedBox(
+          width: 320,
+          child: Text('Free-hit protects all but Run Out.'),
+        ),
         actions: [
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               for (final t in types)
-                ShadButton.outline(
-                  size: ShadButtonSize.sm,
-                  onPressed: () {
+                FilterChip(
+                  label: Text(t),
+                  selected: false,
+                  onSelected: (_) {
                     Navigator.pop(context);
                     if (t == 'Run Out') {
                       _runOutDialog(context);
@@ -339,7 +379,6 @@ class ScoringScreen extends StatelessWidget {
                       store.score(action: 'WICKET', wicketType: t);
                     }
                   },
-                  child: Text(t),
                 ),
             ],
           ),
@@ -349,29 +388,22 @@ class ScoringScreen extends StatelessWidget {
   }
 
   void _runOutDialog(BuildContext context) {
-    showShadDialog(
+    showDialog(
       context: context,
-      builder: (_) => ShadDialog.alert(
+      builder: (_) => AlertDialog(
         title: const Text('Run-out + runs?'),
-        description: const Text('Runs completed before the run-out.'),
+        content: const Text('Runs completed before the run-out.'),
         actions: [
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final r in [0, 1, 2, 3])
-                ShadButton.outline(
-                  size: ShadButtonSize.sm,
-                  onPressed: () {
-                    Navigator.pop(context);
-                    store.score(
-                        action: 'WICKET',
-                        runs: r,
-                        wicketType: 'Run Out');
-                  },
-                  child: Text('+$r'),
-                ),
-            ],
-          ),
+          for (final r in [0, 1, 2, 3])
+            TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  store.score(
+                      action: 'WICKET',
+                      runs: r,
+                      wicketType: 'Run Out');
+                },
+                child: Text('+$r')),
         ],
       ),
     );
@@ -430,13 +462,13 @@ class ScoringScreen extends StatelessWidget {
       context: context,
       showDragHandle: true,
       builder: (_) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('EXTRAS',
+              const Text('ADVANCED EXTRAS',
                   style: TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 10),
               const Text('Byes / leg-byes',
@@ -451,8 +483,7 @@ class ScoringScreen extends StatelessWidget {
                   ['LB2', 'LEGBYE', 2],
                   ['LB4', 'LEGBYE', 4],
                 ])
-                  ShadButton.outline(
-                      size: ShadButtonSize.sm,
+                  FilledButton.tonal(
                       onPressed: () {
                         Navigator.pop(context);
                         store.score(
@@ -467,8 +498,7 @@ class ScoringScreen extends StatelessWidget {
               const SizedBox(height: 6),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final r in [0, 1, 2, 4])
-                  ShadButton.outline(
-                      size: ShadButtonSize.sm,
+                  FilledButton.tonal(
                       onPressed: () {
                         Navigator.pop(context);
                         store.score(
@@ -482,8 +512,7 @@ class ScoringScreen extends StatelessWidget {
               const SizedBox(height: 6),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final r in [0, 1, 2, 4, 6])
-                  ShadButton.outline(
-                      size: ShadButtonSize.sm,
+                  FilledButton.tonal(
                       onPressed: () {
                         Navigator.pop(context);
                         store.score(
@@ -531,7 +560,6 @@ class ScoringScreen extends StatelessWidget {
                     max: 50,
                     onChanged: (v) =>
                         setSheet(() => overs = v)),
-                const SizedBox(height: 8),
                 StepperRow(
                     label: 'Players / side',
                     value: players,
@@ -539,15 +567,20 @@ class ScoringScreen extends StatelessWidget {
                     max: 15,
                     onChanged: (v) =>
                         setSheet(() => players = v)),
-                const SizedBox(height: 8),
-                StepperRow(
-                    label: 'Common (both sides)',
-                    value: common,
-                    min: 0,
-                    max: 2,
-                    onChanged: (v) =>
-                        setSheet(() => common = v)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
+                const Text('Common player',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700)),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('None')),
+                    ButtonSegment(value: 1, label: Text('+1')),
+                    ButtonSegment(value: 2, label: Text('+2')),
+                  ],
+                  selected: {common},
+                  onSelectionChanged: (s) =>
+                      setSheet(() => common = s.first),
+                ),
                 StepperRow(
                     label: 'Wide penalty',
                     value: wide,
@@ -555,7 +588,6 @@ class ScoringScreen extends StatelessWidget {
                     max: 2,
                     onChanged: (v) =>
                         setSheet(() => wide = v)),
-                const SizedBox(height: 8),
                 StepperRow(
                     label: 'No-ball penalty',
                     value: noball,
@@ -563,30 +595,33 @@ class ScoringScreen extends StatelessWidget {
                     max: 2,
                     onChanged: (v) =>
                         setSheet(() => noball = v)),
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Free hit'),
-                    ShadSwitch(
-                        value: freeHit,
-                        onChanged: (v) =>
-                            setSheet(() => freeHit = v)),
-                  ],
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Free hit'),
+                  value: freeHit,
+                  onChanged: (v) =>
+                      setSheet(() => freeHit = v),
                 ),
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Last man standing'),
-                    ShadSwitch(
-                        value: lms,
-                        onChanged: (v) =>
-                            setSheet(() => lms = v)),
-                  ],
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Last man standing'),
+                  value: lms,
+                  onChanged: (v) => setSheet(() => lms = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Advanced extras keys'),
+                  value: store.advancedExtras,
+                  onChanged: (v) => store.setAdvancedExtras(v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Arcade sounds'),
+                  value: store.soundOn,
+                  onChanged: (v) => store.setSound(v),
                 ),
                 const SizedBox(height: 8),
-                ShadButton(
+                FilledButton(
                   onPressed: () {
                     final err = store.applyMidMatch(
                       totalOvers: overs,
@@ -612,7 +647,7 @@ class ScoringScreen extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: ShadButton.outline(
+                      child: OutlinedButton(
                         onPressed: () =>
                             _declare(context, cfg.teamA),
                         child: Row(
@@ -633,7 +668,7 @@ class ScoringScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: ShadButton.outline(
+                      child: OutlinedButton(
                         onPressed: () =>
                             _declare(context, cfg.teamB),
                         child: Row(
@@ -655,7 +690,10 @@ class ScoringScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                ShadButton.destructive(
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.error),
                   onPressed: () {
                     Navigator.pop(sheetCtx);
                     _confirmAbandon(context);
@@ -673,18 +711,18 @@ class ScoringScreen extends StatelessWidget {
 
   void _declare(BuildContext context, String team) {
     Navigator.pop(context);
-    showShadDialog(
+    showDialog(
       context: context,
-      builder: (_) => ShadDialog.alert(
+      builder: (_) => AlertDialog(
         title: Text('Declare $team winner?'),
-        description:
+        content:
             const Text('Ends the match now and archives it.'),
         actions: [
-          ShadButton.outline(
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ShadButton(
+          FilledButton(
             onPressed: () {
               store.declareWinner(team);
               Navigator.pop(context);
@@ -698,18 +736,21 @@ class ScoringScreen extends StatelessWidget {
   }
 
   void _confirmAbandon(BuildContext context) {
-    showShadDialog(
+    showDialog(
       context: context,
-      builder: (_) => ShadDialog.alert(
+      builder: (_) => AlertDialog(
         title: const Text('Abandon match?'),
-        description:
+        content:
             const Text('Live progress is discarded. Archives stay.'),
         actions: [
-          ShadButton.outline(
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Keep scoring'),
           ),
-          ShadButton.destructive(
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor:
+                    Theme.of(context).colorScheme.error),
             onPressed: () {
               store.abandon();
               Navigator.pop(context);
@@ -724,8 +765,7 @@ class ScoringScreen extends StatelessWidget {
   }
 }
 
-/// Over strip: auto-scrolls smoothly to the latest ball, shows the last
-/// over window, scrollable back for history.
+/// Over strip: smooth auto-scroll to the latest ball, scrollable history.
 class OverStrip extends StatefulWidget {
   final List balls;
   const OverStrip({required this.balls, super.key});
