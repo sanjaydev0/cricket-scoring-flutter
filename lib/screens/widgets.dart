@@ -85,8 +85,7 @@ class StepperRow extends StatelessWidget {
 /// Ordered by impact: W > 6 > 4 > extras > routine > dot.
 class BallBadge extends StatelessWidget {
   final Ball ball;
-  final bool isLatest;
-  const BallBadge(this.ball, {this.isLatest = false, super.key});
+  const BallBadge(this.ball, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +126,8 @@ class BallBadge extends StatelessWidget {
       bg = const Color(0xFF334155);
       fg = Colors.white;
     }
-    final badge = Container(
+    // Every badge identical — no borders, glow, scale or markers.
+    return Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
@@ -139,9 +139,6 @@ class BallBadge extends StatelessWidget {
           style: TextStyle(
               color: fg, fontWeight: FontWeight.w900, fontSize: 12)),
     );
-    // Latest ball reads via static scale only — no glow, no animation.
-    if (!isLatest) return badge;
-    return Transform.scale(scale: 1.12, child: badge);
   }
 }
 

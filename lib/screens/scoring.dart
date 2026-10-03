@@ -450,17 +450,24 @@ class OverStrip extends StatefulWidget {
 
 class _OverStripState extends State<OverStrip> {
   final ScrollController _ctrl = ScrollController();
+  int _swapGen = 0; // bumped on new-over rollover for a soft fade
 
   @override
   void didUpdateWidget(OverStrip old) {
     super.didUpdateWidget(old);
-    if (widget.balls.length != old.balls.length && _ctrl.hasClients) {
+    if (!_ctrl.hasClients) return;
+    if (widget.balls.length < old.balls.length) {
+      // New over started: gentle cross-fade instead of a hard cut.
+      setState(() => _swapGen++);
+      return;
+    }
+    if (widget.balls.length != old.balls.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_ctrl.hasClients) return;
-        // Slow, smooth glide to the newest ball — never abrupt.
+        // Slow glide to the latest six — never abrupt.
         _ctrl.animateTo(
           _ctrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 600),
+          duration: const Duration(milliseconds: 900),
           curve: Curves.easeInOutCubic,
         );
       });
@@ -476,13 +483,15 @@ class _OverStripState extends State<OverStrip> {
   @override
   Widget build(BuildContext context) {
     final balls = widget.balls;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_ctrl.hasClients &&
-          _ctrl.position.pixels < _ctrl.position.maxScrollExtent) {
+    if (_ctrl.hasClients &&
+        _ctrl.position.pixels > _ctrl.position.maxScrollExtent) {
+      // Clamp only — no visible snap (position already beyond content).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_ctrl.hasClients) return;
         _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
-      }
-    });
-    return SingleChildScrollView(
+      });
+    }
+    final row = SingleChildScrollView(
       controller: _ctrl,
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -492,14 +501,20 @@ class _OverStripState extends State<OverStrip> {
             Padding(
               padding: EdgeInsets.only(
                   right: i == balls.length - 1 ? 0 : 6),
-              child:
-                  BallBadge(balls[i], isLatest: i == balls.length - 1),
+              child: BallBadge(balls[i]),
             ),
           if (balls.isEmpty)
             const Text('Over 1 • tap to bowl',
                 style: TextStyle(fontSize: 12)),
         ],
       ),
+    );
+    if (_swapGen == 0) return row;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(_swapGen),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 300),
+      builder: (_, v, __) => Opacity(opacity: v, child: row),
     );
   }
 }
