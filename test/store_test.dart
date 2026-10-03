@@ -73,10 +73,11 @@ void main() {
 
   test('ball list identity changes so the strip animates', () {
     final s = freshStore();
-    // 6 legal + 1 wide = 7 entries, strip must see 6 -> 7 growth.
-    for (var i = 0; i < 6; i++) {
+    // 5 legal + wides: entries grow 6 -> 7 without rollover.
+    for (var i = 0; i < 5; i++) {
       s.score(action: 'RUNS', runs: 1);
     }
+    s.score(action: 'WIDE');
     final before = s.innings!.currentOverBalls;
     expect(before.length, 6);
     s.score(action: 'WIDE');
