@@ -234,7 +234,11 @@ class MatchStore extends ChangeNotifier {
       inn.overs.add(Over(overNumber: inn.overs.length + 1));
       inn.currentOverNumber = inn.overs.length;
     }
-    inn.overs.last.balls.add(b);
+    // Immutable append: the strip's old/new widgets must hold different
+    // list objects, otherwise length comparison sees no change and the
+    // glide animation never fires.
+    final last = inn.overs.last;
+    last.balls = [...last.balls, b];
     inn.runs += b.totalRuns;
     if (b.isLegal) inn.legalDeliveries++;
     if (b.isWicket) inn.wickets++;

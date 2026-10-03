@@ -71,6 +71,20 @@ void main() {
     expect(inn.currentOverBalls.length, 1);
   });
 
+  test('ball list identity changes so the strip animates', () {
+    final s = freshStore();
+    // 6 legal + 1 wide = 7 entries, strip must see 6 -> 7 growth.
+    for (var i = 0; i < 6; i++) {
+      s.score(action: 'RUNS', runs: 1);
+    }
+    final before = s.innings!.currentOverBalls;
+    expect(before.length, 6);
+    s.score(action: 'WIDE');
+    final after = s.innings!.currentOverBalls;
+    expect(after.length, 7);
+    expect(identical(before, after), false);
+  });
+
   test('mid-match overs below balls bowled is rejected', () {
     final s = freshStore();
     s.score(action: 'RUNS', runs: 1);
