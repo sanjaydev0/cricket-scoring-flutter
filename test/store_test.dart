@@ -32,6 +32,14 @@ void main() {
     expect(s.match!.config.sidesLabel, '5 + 5 + 1');
   });
 
+  test('style + font persist', () async {
+    final s = freshStore();
+    s.setStyle('led');
+    s.setFont('ledger');
+    expect(s.styleId, 'led');
+    expect(s.fontId, 'ledger');
+  });
+
   test('over strip defers rollover until next ball', () {
     final s = freshStore();
     for (var i = 0; i < 6; i++) {

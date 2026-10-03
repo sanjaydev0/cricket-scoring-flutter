@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../store.dart';
+import '../theme.dart';
 import 'widgets.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -13,7 +14,7 @@ class HomeScreen extends StatelessWidget {
         final hasLive = store.match != null;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('GULLY CRICKET SCORER',
+            title: const Text('CRICSCORE',
                 style: TextStyle(fontWeight: FontWeight.w900)),
             actions: [
               IconButton(
@@ -92,29 +93,93 @@ class HomeScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (_) => ListenableBuilder(
         listenable: store,
         builder: (_, __) => SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('SETTINGS',
                     style: TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                const Text('Style',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final id in StylePreset.ids)
+                      ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: StylePreset.of(id)
+                                    .heroBg,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: Colors.black26),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(StylePreset.of(id).name),
+                          ],
+                        ),
+                        selected: store.styleId == id,
+                        onSelected: (_) => store.setStyle(id),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text('Score font',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final id in ScoreFonts.ids)
+                      ChoiceChip(
+                        label: Text('142/7',
+                            style: TextStyle(
+                                fontFamily:
+                                    ScoreFonts.family(id),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16)),
+                        selected: store.fontId == id,
+                        onSelected: (_) => store.setFont(id),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Arcade sounds'),
-                  subtitle: const Text('Bleeps for keys & wickets'),
+                  subtitle: const Text('Single bleeps for keys'),
                   value: store.soundOn,
                   onChanged: (v) => store.setSound(v),
                 ),
                 SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Advanced extras'),
-                  subtitle: const Text('WD+overthrows, byes, NB+runs keys'),
+                  subtitle:
+                      const Text('WD+overthrows, byes, NB+runs'),
                   value: store.advancedExtras,
-                  onChanged: (v) => store.setAdvancedExtras(v),
+                  onChanged: (v) =>
+                      store.setAdvancedExtras(v),
                 ),
                 SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Dark mode'),
                   value: store.themeId == 'dark',
                   onChanged: (v) =>

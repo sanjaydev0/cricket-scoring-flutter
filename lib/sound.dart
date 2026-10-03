@@ -10,6 +10,7 @@ class SoundService extends ChangeNotifier {
 
   AudioPlayer? _fx;
   bool enabled = true;
+  int _lastMs = 0;
 
   Future<void> init({required bool enabled}) async {
     this.enabled = enabled;
@@ -23,6 +24,10 @@ class SoundService extends ChangeNotifier {
 
   Future<void> _play(String file, {double volume = 1}) async {
     if (!enabled) return;
+    // Debounce: rapid keying never stacks audio. One shot only.
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastMs < 150) return;
+    _lastMs = now;
     try {
       _fx ??= AudioPlayer();
       await _fx!.play(AssetSource(file), volume: volume);

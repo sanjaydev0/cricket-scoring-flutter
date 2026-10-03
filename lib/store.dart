@@ -14,6 +14,8 @@ class MatchStore extends ChangeNotifier {
   static const kTheme = 'cricket_app_theme';
   static const kSound = 'cricket_sound_on';
   static const kAdvExtras = 'cricket_adv_extras';
+  static const kStyle = 'cricket_style';
+  static const kFont = 'cricket_score_font';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -25,6 +27,8 @@ class MatchStore extends ChangeNotifier {
   String themeId = 'light'; // 'light' | 'dark'
   bool soundOn = true; // master arcade SFX toggle
   bool advancedExtras = true; // master extra-detail buttons toggle
+  String styleId = 'umpire'; // keypad/strip/hero style preset
+  String fontId = 'stadium'; // score numeral font
   List<String> _undo = [];
   List<String> _redo = [];
   bool loaded = false;
@@ -38,11 +42,14 @@ class MatchStore extends ChangeNotifier {
     themeId = _migrateTheme(p.getString(kTheme));
     soundOn = p.getBool(kSound) ?? true;
     advancedExtras = p.getBool(kAdvExtras) ?? true;
+    styleId = p.getString(kStyle) ?? 'umpire';
+    fontId = p.getString(kFont) ?? 'stadium';
     SoundService.instance.init(enabled: soundOn);
     final raw = p.getString(kActive);
     if (raw != null) {
       try {
         final m = Match.decode(raw);
+        if (m.config.commonPlayers > 1) m.config.commonPlayers = 1;
         if (_isActive(m)) match = m;
       } catch (_) {}
     }
@@ -96,6 +103,8 @@ class MatchStore extends ChangeNotifier {
     await p.setString(kTheme, themeId);
     await p.setBool(kSound, soundOn);
     await p.setBool(kAdvExtras, advancedExtras);
+    await p.setString(kStyle, styleId);
+    await p.setString(kFont, fontId);
   }
 
   void setTheme(String id) {
@@ -115,6 +124,18 @@ class MatchStore extends ChangeNotifier {
 
   void setAdvancedExtras(bool v) {
     advancedExtras = v;
+    _persist();
+    notifyListeners();
+  }
+
+  void setStyle(String id) {
+    styleId = id;
+    _persist();
+    notifyListeners();
+  }
+
+  void setFont(String id) {
+    fontId = id;
     _persist();
     notifyListeners();
   }
@@ -365,7 +386,7 @@ class MatchStore extends ChangeNotifier {
     cfg.totalOvers = newOvers.clamp(1, 50);
     cfg.playersPerSide = newPlayers.clamp(2, 15);
     if (commonPlayers != null) {
-      cfg.commonPlayers = commonPlayers.clamp(0, 2);
+      cfg.commonPlayers = commonPlayers.clamp(0, 1);
     }
     if (widePenalty != null) cfg.rules.widePenalty = widePenalty.clamp(0, 2);
     if (noBallPenalty != null) {

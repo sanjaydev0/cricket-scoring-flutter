@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../math.dart';
+import '../theme.dart';
 import '../store.dart';
 import 'widgets.dart';
 
@@ -51,6 +52,8 @@ class BreakScreen extends StatelessWidget {
                                 fontSize: 11)),
                         Text('${m.target}',
                             style: TextStyle(
+                                fontFamily: ScoreFonts.family(
+                                    store.fontId),
                                 fontSize: 52,
                                 fontWeight: FontWeight.w900,
                                 color: Theme.of(context)
@@ -189,7 +192,9 @@ class ResultScreen extends StatelessWidget {
                   style: const TextStyle(
                       fontWeight: FontWeight.w800))),
           Text('$r/$w (${CricketMath.ballsToOvers(balls)})',
-              style: const TextStyle(fontWeight: FontWeight.w900)),
+              style: TextStyle(
+                  fontFamily: ScoreFonts.family(store.fontId),
+                  fontWeight: FontWeight.w900)),
         ],
       ),
     );

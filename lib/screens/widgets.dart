@@ -149,6 +149,7 @@ class KeyBtn extends StatelessWidget {
   final Color? color;
   final Color? fg;
   final bool armed;
+  final double radius;
   const KeyBtn({
     required this.label,
     required this.sub,
@@ -156,6 +157,7 @@ class KeyBtn extends StatelessWidget {
     this.color,
     this.fg,
     this.armed = false,
+    this.radius = 14,
     super.key,
   });
   @override
@@ -171,6 +173,8 @@ class KeyBtn extends StatelessWidget {
           foregroundColor: onFg,
           padding: EdgeInsets.zero,
           side: const BorderSide(color: Colors.black38, width: 1.5),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radius)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

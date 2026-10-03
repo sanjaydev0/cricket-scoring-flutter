@@ -133,8 +133,6 @@ class _SetupScreenState extends State<SetupScreen> {
                             value: 0, label: Text('None')),
                         ButtonSegment(
                             value: 1, label: Text('+1 common')),
-                        ButtonSegment(
-                            value: 2, label: Text('+2 common')),
                       ],
                       selected: {cfg.commonPlayers},
                       onSelectionChanged: (s) => setState(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../math.dart';
 import '../store.dart';
+import '../theme.dart';
 import 'widgets.dart';
 
 class ScoringScreen extends StatelessWidget {
@@ -51,7 +52,8 @@ class ScoringScreen extends StatelessWidget {
               need <= 0 ? 'WON' : 'Need $need off $ballsLeft • RRR $rrr';
         }
         final isTeamA = inn.battingTeam == m.config.teamA;
-        final cs = Theme.of(context).colorScheme;
+        final preset = StylePreset.of(store.styleId);
+        final scoreFamily = ScoreFonts.family(store.fontId);
 
         return Scaffold(
           appBar: AppBar(
@@ -81,7 +83,7 @@ class ScoringScreen extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               children: [
                 Card(
-                  color: cs.primaryContainer,
+                  color: preset.heroBg,
                   child: Padding(
                     padding:
                         const EdgeInsets.symmetric(vertical: 16),
@@ -99,15 +101,16 @@ class ScoringScreen extends StatelessWidget {
                                     fontSize: 12,
                                     letterSpacing: 1.2,
                                     fontWeight: FontWeight.w800,
-                                    color: cs.onPrimaryContainer)),
+                                    color: preset.heroFg)),
                           ],
                         ),
                         Text('${inn.runs}/${inn.wickets}',
                             style: TextStyle(
+                                fontFamily: scoreFamily,
                                 fontSize: 68,
                                 fontWeight: FontWeight.w900,
                                 height: 1.05,
-                                color: cs.onPrimaryContainer,
+                                color: preset.heroFg,
                                 fontFeatures: const [
                                   FontFeature.tabularFigures()
                                 ])),
@@ -123,19 +126,26 @@ class ScoringScreen extends StatelessWidget {
                         if (targetLine != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: FilledButton.tonal(
-                              style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 4),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize:
-                                      MaterialTapTargetSize
-                                          .shrinkWrap),
-                              onPressed: null,
-                              child: Text('TARGET $targetLine',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 12)),
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 6),
+                              decoration: BoxDecoration(
+                                color: preset.heroFg.withValues(
+                                    alpha: 0.18),
+                                borderRadius:
+                                    BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: preset.heroFg),
+                              ),
+                              child: Text(
+                                  'TARGET $targetLine',
+                                  style: TextStyle(
+                                      fontWeight:
+                                          FontWeight.w800,
+                                      fontSize: 12,
+                                      color: preset.heroFg)),
                             ),
                           ),
                         const SizedBox(height: 10),
@@ -159,11 +169,12 @@ class ScoringScreen extends StatelessWidget {
                               MainAxisAlignment.spaceEvenly,
                           children: [
                             _stat(context, 'OVERS',
-                                '$oversFmt/$totalOvers'),
-                            _stat(context, 'CRR', crr),
-                            _stat(context, 'PROJ', '~$proj'),
+                                '$oversFmt/$totalOvers', preset.heroFg),
+                            _stat(context, 'CRR', crr, preset.heroFg),
+                            _stat(context, 'PROJ', '~$proj',
+                                preset.heroFg),
                             _stat(context, 'EXTRAS',
-                                '${inn.extrasTotal}'),
+                                '${inn.extrasTotal}', preset.heroFg),
                           ],
                         ),
                       ],
@@ -172,6 +183,7 @@ class ScoringScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Card(
+                  color: preset.stripBg,
                   child: Padding(
                     padding: const EdgeInsets.all(10),
                     child: Row(
@@ -223,24 +235,36 @@ class ScoringScreen extends StatelessWidget {
                                 label: '0',
                                 sub: nb ? 'NB' : 'DOT',
                                 armed: nb,
+                                radius: preset.keyRadius,
+                                color: preset.keyDefault,
+                                fg: preset.keyFg,
                                 onTap: () =>
                                     _tap(context, 'DOT')),
                             KeyBtn(
                                 label: '1',
                                 sub: nb ? 'N1' : 'RUN',
                                 armed: nb,
+                                radius: preset.keyRadius,
+                                color: preset.keyDefault,
+                                fg: preset.keyFg,
                                 onTap: () => _tap(context, 'RUNS',
                                     runs: 1)),
                             KeyBtn(
                                 label: '2',
                                 sub: nb ? 'N2' : 'RUNS',
                                 armed: nb,
+                                radius: preset.keyRadius,
+                                color: preset.keyDefault,
+                                fg: preset.keyFg,
                                 onTap: () => _tap(context, 'RUNS',
                                     runs: 2)),
                             KeyBtn(
                                 label: '3',
                                 sub: nb ? 'N3' : 'RUNS',
                                 armed: nb,
+                                radius: preset.keyRadius,
+                                color: preset.keyDefault,
+                                fg: preset.keyFg,
                                 onTap: () => _tap(context, 'RUNS',
                                     runs: 3)),
                             KeyBtn(
@@ -249,6 +273,7 @@ class ScoringScreen extends StatelessWidget {
                                 color: const Color(0xFF2DC653),
                                 fg: Colors.black,
                                 armed: nb,
+                                radius: preset.keyRadius,
                                 onTap: () =>
                                     _tap(context, 'FOUR')),
                             KeyBtn(
@@ -257,6 +282,7 @@ class ScoringScreen extends StatelessWidget {
                                 color: const Color(0xFFF48C06),
                                 fg: Colors.black,
                                 armed: nb,
+                                radius: preset.keyRadius,
                                 onTap: () =>
                                     _tap(context, 'SIX')),
                             KeyBtn(
@@ -265,6 +291,7 @@ class ScoringScreen extends StatelessWidget {
                                     '+${m.config.rules.widePenalty}',
                                 color: const Color(0xFFFFBA08),
                                 fg: Colors.black,
+                                radius: preset.keyRadius,
                                 onTap: () =>
                                     _tap(context, 'WIDE')),
                             KeyBtn(
@@ -275,6 +302,7 @@ class ScoringScreen extends StatelessWidget {
                                 color: const Color(0xFF7B2CBF),
                                 fg: Colors.white,
                                 armed: nb,
+                                radius: preset.keyRadius,
                                 onTap: () =>
                                     store.toggleNb()),
                             KeyBtn(
@@ -282,6 +310,7 @@ class ScoringScreen extends StatelessWidget {
                                 sub: 'WICKET',
                                 color: const Color(0xFFE5383B),
                                 fg: Colors.white,
+                                radius: preset.keyRadius,
                                 onTap: () =>
                                     _wicketDialog(context)),
                           ],
@@ -321,18 +350,15 @@ class ScoringScreen extends StatelessWidget {
     );
   }
 
-  Widget _stat(BuildContext ctx, String k, String v) {
-    final cs = Theme.of(ctx).colorScheme;
+  Widget _stat(BuildContext ctx, String k, String v, Color fg) {
     return Column(
       children: [
         Text(k,
             style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.2,
-                color: cs.onSurfaceVariant)),
+                fontSize: 10, letterSpacing: 1.2, color: fg.withValues(alpha: 0.85))),
         Text(v,
-            style: const TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w900)),
+            style: TextStyle(
+                fontSize: 17, fontWeight: FontWeight.w900, color: fg)),
       ],
     );
   }
@@ -575,7 +601,6 @@ class ScoringScreen extends StatelessWidget {
                   segments: const [
                     ButtonSegment(value: 0, label: Text('None')),
                     ButtonSegment(value: 1, label: Text('+1')),
-                    ButtonSegment(value: 2, label: Text('+2')),
                   ],
                   selected: {common},
                   onSelectionChanged: (s) =>
@@ -782,10 +807,11 @@ class _OverStripState extends State<OverStrip> {
     if (widget.balls.length != old.balls.length && _ctrl.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_ctrl.hasClients) return;
+        // Slow, smooth glide to the newest ball — never abrupt.
         _ctrl.animateTo(
           _ctrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOut,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutCubic,
         );
       });
     }
@@ -814,13 +840,37 @@ class _OverStripState extends State<OverStrip> {
           for (int i = 0; i < balls.length; i++)
             Padding(
               padding: const EdgeInsets.only(right: 6),
-              child:
-                  BallBadge(balls[i], isLatest: i == balls.length - 1),
+              child: i == balls.length - 1
+                  ? _PopBadge(
+                          key: ValueKey(
+                              '${balls.length}-${(balls[i] as dynamic).badge}'),
+                          child: BallBadge(balls[i],
+                              isLatest: true))
+                  : BallBadge(balls[i]),
             ),
           if (balls.isEmpty)
             const Text('Over 1 • tap to bowl',
                 style: TextStyle(fontSize: 12)),
         ],
+      ),
+    );
+  }
+}
+
+/// Latest ball fades + scales in slowly instead of popping abruptly.
+class _PopBadge extends StatelessWidget {
+  final Widget child;
+  const _PopBadge({required super.key, required this.child});
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 550),
+      curve: Curves.easeInOutCubic,
+      builder: (_, v, __) => Opacity(
+        opacity: v,
+        child: Transform.scale(
+            scale: 0.5 + 0.5 * v, child: child),
       ),
     );
   }

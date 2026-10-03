@@ -28,3 +28,7 @@ flutter build apk --release
 ## Speed notes
 - `const` widgets, `ListView.builder`, single `ChangeNotifier`, capped undo JSON
 - No codegen, no network fonts/images, minimal dep (shared_preferences only)
+
+## Credits
+- Arcade SFX: Kenney.nl Interface Sounds + Digital Audio (CC0, bundled in `assets/audio/`)
+- Score fonts: Anton, Archivo Black, IBM Plex Mono, Chakra Petch (SIL OFL, bundled in `assets/fonts/`)

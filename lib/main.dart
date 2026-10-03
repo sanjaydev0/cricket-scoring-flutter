@@ -28,7 +28,7 @@ class CricketApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: store,
       builder: (_, __) => MaterialApp(
-        title: 'Gully Cricket Scorer',
+        title: 'CricScore',
         debugShowCheckedModeBanner: false,
         theme: UmpireTheme.light(),
         darkTheme: UmpireTheme.dark(),
