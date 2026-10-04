@@ -9,6 +9,11 @@ import 'widgets.dart';
 /// Decorative text purged — titles, values and actions only.
 
 void showWicketDialog(BuildContext context, MatchStore store) {
+  // Armed no-ball: Laws allow only a run-out — skip the grid entirely.
+  if (store.nbArmed) {
+    showRunOutDialog(context, store);
+    return;
+  }
   final simple = !store.complexWickets;
   showDialog(
     context: context,

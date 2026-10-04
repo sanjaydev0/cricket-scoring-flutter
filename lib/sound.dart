@@ -16,8 +16,11 @@ class SoundService extends ChangeNotifier {
 
   static const _files = [
     'tap',
-    'boundary',
+    'four',
+    'six',
     'wicket',
+    'wide',
+    'nb',
     'extra',
     'undo',
     'confirm',
@@ -58,13 +61,18 @@ class SoundService extends ChangeNotifier {
     final p = _players[name];
     if (p == null) return;
     try {
+      // Rewind first: resume() alone replays nothing once a clip finished.
+      await p.seek(Duration.zero);
       await p.resume();
     } catch (_) {}
   }
 
   Future<void> run() => _play('tap');
-  Future<void> boundary() => _play('boundary');
+  Future<void> four() => _play('four');
+  Future<void> six() => _play('six');
   Future<void> wicket() => _play('wicket');
+  Future<void> wide() => _play('wide');
+  Future<void> noball() => _play('nb');
   Future<void> extra() => _play('extra');
   Future<void> undo() => _play('undo');
   Future<void> confirm() => _play('confirm');

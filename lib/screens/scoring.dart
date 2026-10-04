@@ -20,14 +20,12 @@ class ScoringScreen extends StatelessWidget {
           return const Scaffold(body: Center(child: Text('No live match')));
         }
         if (m.completed) {
-          WidgetsBinding.instance.addPostFrameCallback(
-              (_) => Navigator.pushReplacementNamed(context, '/result'));
+          goOnce(context, '/result');
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
         }
         if (m.currentInnings == 1 && m.innings1.completed) {
-          WidgetsBinding.instance.addPostFrameCallback(
-              (_) => Navigator.pushReplacementNamed(context, '/break'));
+          goOnce(context, '/break');
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
         }
@@ -82,7 +80,8 @@ class ScoringScreen extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.all(12),
                     children: [
-                      Card(
+                      RepaintBoundary(
+                          child: Card(
                         color: preset.heroBg,
                         child: Stack(
                           children: [
@@ -254,9 +253,10 @@ class ScoringScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ),
+                      )),
                       const SizedBox(height: 10),
-                      Card(
+                      RepaintBoundary(
+                          child: Card(
                         color: preset.stripBg,
                         child: Padding(
                           padding: const EdgeInsets.all(10),
@@ -277,9 +277,10 @@ class ScoringScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                      ),
+                      )),
                       const SizedBox(height: 10),
-                      Card(
+                      RepaintBoundary(
+                          child: Card(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
@@ -444,7 +445,7 @@ class ScoringScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                      ),
+                      )),
                     ],
                   ))),
         );
@@ -521,18 +522,19 @@ class _OverStripState extends State<OverStrip> {
       setState(() => _swapGen++);
       return;
     }
-    if (widget.balls.length != old.balls.length) {
+    final shift = (widget.balls.length - old.balls.length).abs();
+    if (shift > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_ctrl.hasClients) return;
         if (MediaQuery.disableAnimationsOf(context)) {
           _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
           return;
         }
-        // Slow glide to the latest six — never abrupt.
+        // Distance-based glide to the latest balls — never abrupt.
         _ctrl.animateTo(
           _ctrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 900),
-          curve: Curves.easeInOutCubic,
+          duration: Motion.glide(shift),
+          curve: Motion.curve,
         );
       });
     }

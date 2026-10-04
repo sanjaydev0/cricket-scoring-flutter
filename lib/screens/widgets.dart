@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' show sin;
 import '../models.dart';
 import '../store.dart';
+import '../theme.dart';
 
 /// Carbon-black rectangular buttons (8px corners, white text) for all
 /// dialogs, sheets and primary actions. Secondary = surface fill with
@@ -234,8 +235,7 @@ class KeyBtn extends StatelessWidget {
 }
 
 /// Centers content with a max width for responsive phone/desktop layouts.
-class ResponsiveCenter extends StatelessWidget {
-  final Widget child;
+class ResponsiveCenter extends StatelessWidget {  final Widget child;
   final double maxWidth;
   const ResponsiveCenter({required this.child, this.maxWidth = 560, super.key});
   @override
@@ -248,6 +248,18 @@ class ResponsiveCenter extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One-shot route guard: pushes [dest] exactly once — repeated rebuilds
+/// (undo, celebration frames, stream ticks) can never queue duplicate
+/// navigations, which was the post-innings flashing bug.
+void goOnce(BuildContext context, String dest) {
+  if (ModalRoute.of(context)?.settings.name == dest) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!context.mounted) return;
+    if (ModalRoute.of(context)?.settings.name == dest) return;
+    Navigator.pushReplacementNamed(context, dest);
+  });
 }
 
 /// One-shot numeral-only celebration on boundary/wicket.
@@ -275,8 +287,8 @@ class Celebrate extends StatefulWidget {
 
 class _CelebrateState extends State<Celebrate>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 700));
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: Motion.celebrate);
   String _last = '';
 
   @override

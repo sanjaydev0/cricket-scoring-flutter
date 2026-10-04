@@ -15,14 +15,12 @@ class BreakScreen extends StatelessWidget {
         final m = store.match!;
         // Undo-safety: state may no longer be an innings break.
         if (m.completed) {
-          WidgetsBinding.instance.addPostFrameCallback(
-              (_) => Navigator.pushReplacementNamed(context, '/result'));
+          goOnce(context, '/result');
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
         }
         if (m.currentInnings != 1 || !m.innings1.completed) {
-          WidgetsBinding.instance.addPostFrameCallback(
-              (_) => Navigator.pushReplacementNamed(context, '/scoring'));
+          goOnce(context, '/scoring');
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
         }
@@ -109,8 +107,7 @@ class ResultScreen extends StatelessWidget {
           final dest = (m.currentInnings == 1 && m.innings1.completed)
               ? '/break'
               : '/scoring';
-          WidgetsBinding.instance.addPostFrameCallback(
-              (_) => Navigator.pushReplacementNamed(context, dest));
+          goOnce(context, dest);
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
         }

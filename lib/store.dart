@@ -18,6 +18,7 @@ class MatchStore extends ChangeNotifier {
   static const kFont = 'cricket_score_font';
   static const kCeleb = 'cricket_celebration';
   static const kComplexWkts = 'cricket_complex_wkts';
+  static const kHaptics = 'cricket_haptics';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -33,6 +34,7 @@ class MatchStore extends ChangeNotifier {
   String fontId = 'stadium'; // score numeral font
   String celebId = 'pulse'; // hero celebration: off + 10 styles
   bool complexWickets = true; // full wicket-type grid vs Wicket/RunOut
+  bool hapticsOn = true; // master vibration toggle
   List<String> _undo = [];
   List<String> _redo = [];
   bool loaded = false;
@@ -50,6 +52,7 @@ class MatchStore extends ChangeNotifier {
     fontId = p.getString(kFont) ?? 'stadium';
     celebId = MatchStore.migrateCeleb(p.getString(kCeleb));
     complexWickets = p.getBool(kComplexWkts) ?? true;
+    hapticsOn = p.getBool(kHaptics) ?? true;
     SoundService.instance.init(enabled: soundOn);
     final raw = p.getString(kActive);
     if (raw != null) {
@@ -113,6 +116,7 @@ class MatchStore extends ChangeNotifier {
     await p.setString(kFont, fontId);
     await p.setString(kCeleb, celebId);
     await p.setBool(kComplexWkts, complexWickets);
+    await p.setBool(kHaptics, hapticsOn);
   }
 
   void setTheme(String id) {
@@ -204,6 +208,19 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setHaptics(bool v) {
+    hapticsOn = v;
+    _persist();
+    notifyListeners();
+  }
+
+  void _buzz(Future<void> Function() fn) {
+    if (!hapticsOn) return;
+    try {
+      fn();
+    } catch (_) {}
+  }
+
   void pushSnapshot() {
     if (match == null) return;
     _undo.add(match!.encode());
@@ -221,7 +238,7 @@ class MatchStore extends ChangeNotifier {
     if (match!.innings2 != null && match!.currentInnings == 2) {
       match!.innings2!.completed = false;
     }
-    HapticFeedback.lightImpact();
+    _buzz(HapticFeedback.lightImpact);
     SoundService.instance.undo();
     await _persist();
     notifyListeners();
@@ -365,8 +382,26 @@ class MatchStore extends ChangeNotifier {
         break;
       case 'WICKET':
         // Wickets are recorded as standalone legal balls (a run-out on a
-        // wide is tapped as WD then W — totals match reality). Only the
-        // free-hit rule can downgrade a wicket to runs-only here.
+        // wide is tapped as WD then W — totals match reality), except when
+        // resolving an armed no-ball: Laws allow only a run-out there, and
+        // the ball stays illegal.
+        if (nbArmed) {
+          nbArmed = false;
+          if (wicketType != 'Run Out') {
+            _undo.removeLast();
+            return 'Only run-out possible on no-ball';
+          }
+          b = Ball(
+              runs: runs,
+              extra: 'NB',
+              extraRuns: rules.noBallPenalty,
+              isLegal: false,
+              isWicket: true,
+              wicketType: wicketType,
+              badge: runs > 0 ? 'W+$runs' : 'W');
+          if (rules.freeHit) inn.isFreeHitActive = true;
+          break;
+        }
         if (inn.isFreeHitActive && wicketType != 'Run Out') {
           b = Ball(runs: runs, badge: runs == 0 ? '0' : '$runs');
         } else {
@@ -400,23 +435,31 @@ class MatchStore extends ChangeNotifier {
 
   /// Haptics + arcade SFX by impact tier. Decoration only — scoring
   /// never depends on it.
+  /// Haptics + arcade SFX by impact tier. Decoration only — scoring
+  /// never depends on it.
   void _feedback(Ball b) {
     final sfx = SoundService.instance;
     try {
       if (b.isWicket) {
-        HapticFeedback.heavyImpact();
+        _buzz(HapticFeedback.heavyImpact);
         sfx.wicket();
-      } else if (b.badge == '4' ||
-          b.badge == '6' ||
-          b.badge.startsWith('N4') ||
-          b.badge.startsWith('N6')) {
-        HapticFeedback.mediumImpact();
-        sfx.boundary();
+      } else if (b.badge == '4' || b.badge.startsWith('N4')) {
+        _buzz(HapticFeedback.heavyImpact);
+        sfx.four();
+      } else if (b.badge == '6' || b.badge.startsWith('N6')) {
+        _buzz(HapticFeedback.heavyImpact);
+        sfx.six();
+      } else if (b.extra == 'WD') {
+        _buzz(HapticFeedback.mediumImpact);
+        sfx.wide();
+      } else if (b.extra == 'NB') {
+        _buzz(HapticFeedback.mediumImpact);
+        sfx.noball();
       } else if (b.extra != 'none') {
-        HapticFeedback.selectionClick();
+        _buzz(HapticFeedback.selectionClick);
         sfx.extra();
       } else {
-        HapticFeedback.lightImpact();
+        _buzz(HapticFeedback.lightImpact);
         sfx.run();
       }
     } catch (_) {}
@@ -424,7 +467,7 @@ class MatchStore extends ChangeNotifier {
 
   void toggleNb() {
     nbArmed = !nbArmed;
-    HapticFeedback.selectionClick();
+    _buzz(HapticFeedback.selectionClick);
     SoundService.instance.extra();
     notifyListeners();
   }
@@ -469,7 +512,8 @@ class MatchStore extends ChangeNotifier {
       if (!freeHit) inn.isFreeHitActive = false;
     }
     if (lastManStanding != null) cfg.rules.lastManStanding = lastManStanding;
-    HapticFeedback.selectionClick();
+    _buzz(HapticFeedback.selectionClick);
+    SoundService.instance.confirm();
     _checkEnd();
     _persist();
     notifyListeners();
@@ -486,7 +530,7 @@ class MatchStore extends ChangeNotifier {
     m.completed = true;
     m.winner = team;
     m.winMargin = margin ?? 'Declared winner';
-    HapticFeedback.heavyImpact();
+    _buzz(HapticFeedback.heavyImpact);
     SoundService.instance.fanfare();
     _archive();
     _persist();
@@ -513,7 +557,7 @@ class MatchStore extends ChangeNotifier {
         m.winner = inn.battingTeam;
         final wktsLeft = maxW - inn.wickets;
         m.winMargin = 'Won by $wktsLeft wicket${wktsLeft == 1 ? '' : 's'}';
-        HapticFeedback.heavyImpact();
+        _buzz(HapticFeedback.heavyImpact);
         SoundService.instance.fanfare();
         _archive();
       } else if (inn.legalDeliveries >= maxBalls || inn.wickets >= maxW) {

@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
 
+/// Shared motion tokens: one timing language app-wide.
+/// Press 150ms, overlays 300ms ease-out, celebrations 700ms,
+/// strip glide scales with distance (200 + 80/ball, max 900ms).
+class Motion {
+  static const press = Duration(milliseconds: 150);
+  static const overlay = Duration(milliseconds: 300);
+  static const celebrate = Duration(milliseconds: 700);
+  static const curve = Curves.easeOutCubic;
+  static Duration glide(int ballsShifted) {
+    final ms = 200 + 80 * ballsShifted.clamp(0, 8);
+    return Duration(milliseconds: ms > 900 ? 900 : ms);
+  }
+}
+
 /// Score numeral fonts (bundled OFL, 100% offline). '' = system default.
 class ScoreFonts {
   static const ids = [
@@ -80,13 +94,7 @@ class StylePreset {
     'solar',
     'purewhite',
     'crimson',
-    'ios',
     'nothing',
-    'vercel',
-    'openrouter',
-    'linear',
-    'crt',
-    'neon',
     'gameboy',
     'prored',
   ];
@@ -128,14 +136,6 @@ class StylePreset {
       keyRadius: 12,
       stripBg: Color(0xFFFDECEC),
     ),
-    'ios': StylePreset(
-      id: 'ios',
-      name: 'iOS Frost',
-      heroBg: Color(0xFF007AFF),
-      heroFg: Colors.white,
-      keyRadius: 16,
-      stripBg: Color(0xFFEAF2FF),
-    ),
     'nothing': StylePreset(
       id: 'nothing',
       name: 'Nothing Mono',
@@ -145,54 +145,6 @@ class StylePreset {
       keyFg: Colors.white,
       keyRadius: 12,
       stripBg: Color(0xFFF5F5F5),
-    ),
-    'vercel': StylePreset(
-      id: 'vercel',
-      name: 'Vercel Ink',
-      heroBg: Colors.white,
-      heroFg: Colors.black,
-      keyDefault: Colors.black,
-      keyFg: Colors.white,
-      keyRadius: 8,
-      stripBg: Color(0xFFF5F5F5),
-    ),
-    'openrouter': StylePreset(
-      id: 'openrouter',
-      name: 'Router Paper',
-      heroBg: Color(0xFFF5F0E8),
-      heroFg: Color(0xFF3E2F25),
-      keyRadius: 10,
-      stripBg: Color(0xFFEFE7D8),
-    ),
-    'linear': StylePreset(
-      id: 'linear',
-      name: 'Linear Dusk',
-      heroBg: Color(0xFF08090A),
-      heroFg: Color(0xFF8A9CFF),
-      keyDefault: Color(0xFF1B1E2E),
-      keyFg: Color(0xFFC7D2FE),
-      keyRadius: 10,
-      stripBg: Color(0xFF101223),
-    ),
-    'crt': StylePreset(
-      id: 'crt',
-      name: 'CRT Phosphor',
-      heroBg: Color(0xFF000000),
-      heroFg: Color(0xFF33FF66),
-      keyDefault: Color(0xFF0A0F0A),
-      keyFg: Color(0xFF33FF66),
-      keyRadius: 8,
-      stripBg: Color(0xFF0A0F0A),
-    ),
-    'neon': StylePreset(
-      id: 'neon',
-      name: 'Neon Cabinet',
-      heroBg: Color(0xFF0D0221),
-      heroFg: Color(0xFFFF2EA6),
-      keyDefault: Color(0xFF1A0533),
-      keyFg: Color(0xFF00F0FF),
-      keyRadius: 12,
-      stripBg: Color(0xFF150826),
     ),
     'gameboy': StylePreset(
       id: 'gameboy',

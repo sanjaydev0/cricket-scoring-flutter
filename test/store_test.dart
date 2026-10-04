@@ -50,8 +50,8 @@ void main() {
     expect(s.fontId, 'ledger');
   });
 
-  test('thirteen glare-proof presets exist', () {
-    expect(StylePreset.ids.length, 13);
+  test('seven glare-proof presets exist', () {
+    expect(StylePreset.ids.length, 7);
     for (final id in StylePreset.ids) {
       expect(StylePreset.of(id).name.isNotEmpty, true);
     }
@@ -125,5 +125,65 @@ void main() {
 
   test('complex wickets defaults on', () {
     expect(freshStore().complexWickets, true);
+  });
+
+  test('armed no-ball allows only run-out', () {
+    final s = freshStore();
+    s.toggleNb();
+    expect(s.nbArmed, true);
+    // Other dismissals rejected, state untouched.
+    expect(
+        s.score(action: 'WICKET', wicketType: 'Bowled'), isNotNull);
+    expect(s.innings!.wickets, 0);
+    expect(s.innings!.legalDeliveries, 0);
+    // Run-out on the armed NB records an illegal wicket ball.
+    s.toggleNb();
+    expect(
+        s.score(
+            action: 'WICKET', runs: 1, wicketType: 'Run Out'),
+        isNull);
+    final last = s.innings!.currentOverBalls.last;
+    expect(last.isWicket, true);
+    expect(last.isLegal, false);
+    expect(last.extra, 'NB');
+    expect(s.innings!.legalDeliveries, 0);
+    expect(s.nbArmed, false);
+  });
+
+  test('rapid mixed 20-ball scenario stays correct', () {
+    final s = freshStore();
+    final seq = [
+      ['RUNS', 1],
+      ['RUNS', 2],
+      ['FOUR', 0],
+      ['WIDE', 0],
+      ['DOT', 0],
+      ['SIX', 0],
+      ['BYE', 2],
+      ['RUNS', 3],
+      ['LEGBYE', 1],
+      ['WIDE', 2],
+      ['RUNS', 1],
+      ['RUNS', 1],
+      ['FOUR', 0],
+      ['DOT', 0],
+      ['NB_DIRECT', 1],
+      ['RUNS', 2],
+      ['SIX', 0],
+      ['WIDE', 0],
+      ['RUNS', 1],
+      ['RUNS', 1],
+    ];
+    for (final a in seq) {
+      expect(s.score(action: a[0] as String, runs: a[1] as int),
+          isNull);
+    }
+    final inn = s.innings!;
+    // legals: all but 3 wides + 1 NB = 16 across 3 overs.
+    expect(inn.legalDeliveries, 16);
+    expect(inn.overs.length, 3);
+    expect(inn.runs, 41);
+    s.undo();
+    expect(s.innings!.runs, 40);
   });
 }
