@@ -111,7 +111,16 @@ supabase/       migrations/*.sql + README.md (the setup steps a human must do)
    awaiting and swallows the rejection on the *future* (a `try` around the call cannot
    see an async throw). A dead backend may cost the live room and nothing else — never a
    ball, never an undo, never persistence. Test that with `FakeSync.publishError`.
-9. **Write access is the database's job, not the app's:** there are no INSERT/UPDATE/
+9. **Release builds need INTERNET declared in `android/app/src/main/AndroidManifest.xml`.**
+   Flutter only adds it to the debug and profile manifests, so a release APK is
+   network-dead while `flutter run` works — which hid the live-rooms failure for
+   several releases. If a network feature ever stops working only in release,
+   dump the merged manifest (`aapt2 dump permissions`) before anything else.
+10. **Never pre-encode a jsonb payload.** `p_payload` takes the Dart Map
+   directly; sending `jsonEncode(...)` makes PostgREST store a jsonb *string*
+   scalar, and readers must then guess whether a payload is a map or a string.
+   `RoomSnapshot.fromPayload` tolerates both because that bug shipped once.
+11. **Write access is the database's job, not the app's:** there are no INSERT/UPDATE/
    DELETE policies on `rooms`, so RLS rejects direct writes outright (verified: anon PATCH
    returns 204 with zero rows affected). A leaked 5-character code grants read and nothing
    else.

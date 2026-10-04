@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/domain/room_code.dart';
 import 'package:cricket_scoring/domain/room_snapshot.dart';
@@ -80,6 +82,37 @@ void main() {
       expect(back, isNotNull);
       expect(back!.seq, 7);
       expect(back.match['innings1']['runs'], 42);
+    });
+
+    test('decodes a payload that was stored as a JSON string', () {
+      // An early build sent the payload pre-encoded, so Postgres stored it as a
+      // jsonb *string* scalar (jsonb_typeof = 'string'). Those rooms must still
+      // decode: otherwise a viewer that joins mid-match shows nothing at all.
+      final s = RoomSnapshot(
+        seq: 4,
+        match: _match(runs: 54),
+        updatedAt: DateTime.utc(2026, 10, 4),
+      );
+      final doubleEncoded = jsonEncode(s.toPayload());
+      final back = RoomSnapshot.fromPayload(doubleEncoded);
+      expect(back, isNotNull);
+      expect(back!.seq, 4);
+      expect(back.match['innings1']['runs'], 54);
+    });
+
+    test('a row whose payload is a string still decodes', () {
+      final s = RoomSnapshot(
+          seq: 2, match: _match(runs: 7), updatedAt: DateTime.now());
+      final row = {'payload': jsonEncode(s.toPayload()), 'seq': 9};
+      final back = RoomSnapshot.fromRow(row);
+      expect(back, isNotNull);
+      // The payload's own seq wins over the column, so ordering stays honest.
+      expect(back!.seq, 2);
+    });
+
+    test('refuses a payload that is not JSON at all', () {
+      expect(RoomSnapshot.fromPayload('not json'), isNull);
+      expect(RoomSnapshot.fromPayload(42), isNull);
     });
 
     test('refuses a payload from a different wire version', () {

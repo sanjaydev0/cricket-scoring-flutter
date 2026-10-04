@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -201,8 +200,11 @@ class SupabaseSync implements SyncPort {
         'p_code': code,
         'p_secret': secret,
         'p_seq': snapshot.seq,
-        // Supabase maps jsonb from a JSON string.
-        'p_payload': jsonEncode(snapshot.toPayload()),
+        // The payload must go as a JSON OBJECT, not a pre-encoded string.
+        // Sending jsonEncode(...) made PostgREST store it as a jsonb *string
+        // scalar (jsonb_typeof = 'string'), so a viewer reading the row could
+        // not decode it and would sit on "waiting" forever.
+        'p_payload': snapshot.toPayload(),
       });
     } catch (e) {
       // Never surfaced to scoring: the ball is already recorded locally.

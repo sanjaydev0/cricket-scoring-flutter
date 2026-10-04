@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// One published state of a live room: the whole match, plus the ordering
 /// metadata a viewer needs to stay consistent.
 ///
@@ -39,8 +41,20 @@ class RoomSnapshot {
   /// Decodes a payload written by [toPayload]. Returns null for a payload this
   /// build cannot read, so callers fall back to "waiting for a newer score"
   /// instead of crashing on a missing field.
-  static RoomSnapshot? fromPayload(Map<String, dynamic>? payload) {
-    if (payload == null) return null;
+  ///
+  /// Accepts a JSON *string* as well as a map. An early build sent the payload
+  /// pre-encoded, so Postgres stored it as a jsonb string scalar; rooms written
+  /// that way must still decode rather than showing a viewer nothing.
+  static RoomSnapshot? fromPayload(dynamic payload) {
+    if (payload is String) {
+      try {
+        payload = jsonDecode(payload);
+      } catch (_) {
+        return null;
+      }
+    }
+    if (payload is! Map) return null;
+    payload = Map<String, dynamic>.from(payload);
     final v = payload['v'];
     if (v is! int || v != version) return null;
     final seq = payload['seq'];
@@ -58,8 +72,8 @@ class RoomSnapshot {
   /// falls back to `seq`/`updated_at` on the row itself.
   static RoomSnapshot? fromRow(Map<String, dynamic> row) {
     final payload = row['payload'];
-    if (payload is Map) {
-      final decoded = fromPayload(Map<String, dynamic>.from(payload));
+    if (payload is Map || payload is String) {
+      final decoded = fromPayload(payload);
       if (decoded != null) return decoded;
     }
     final seq = row['seq'];
