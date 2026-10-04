@@ -20,6 +20,54 @@ enum SyncState {
   error,
 }
 
+/// Why sharing could not start.
+///
+/// These are kept distinct on purpose. The first cut of this returned a bare
+/// `String?` code, and the UI reported every failure as "no backend configured
+/// in this build" — so a network failure or a rejected RPC was indistinguishable
+/// from a missing build flag, and a real bug shipped with a message that pointed
+/// at the wrong thing entirely.
+enum ShareFailure {
+  /// This build has no Supabase URL/key: sharing is off by design.
+  noBackend,
+
+  /// Tried to share with no live match.
+  noMatch,
+
+  /// Configured, but the backend could not be reached.
+  offline,
+
+  /// Reached the backend, which refused. [ShareAttempt.detail] says why.
+  failed,
+}
+
+/// The outcome of trying to open a room: a code, or a reason.
+class ShareAttempt {
+  final String? code;
+  final ShareFailure? failure;
+
+  /// The backend's own message, when there is one.
+  final String? detail;
+
+  const ShareAttempt.ok(this.code)
+      : failure = null,
+        detail = null;
+
+  const ShareAttempt.failed(this.failure, [this.detail]) : code = null;
+
+  bool get ok => code != null;
+
+  /// One sentence for the scorer. Names the actual cause instead of guessing.
+  String get message => switch (failure) {
+        null => 'Live — code $code',
+        ShareFailure.noBackend =>
+          'Live sharing is off in this build (no backend configured)',
+        ShareFailure.noMatch => 'Start a match before sharing',
+        ShareFailure.offline => 'Cannot reach the live server — $detail',
+        ShareFailure.failed => 'Could not open a room — $detail',
+      };
+}
+
 /// The seam between scoring and the internet.
 ///
 /// Everything online lives behind this: the scorer publishes snapshots, a
@@ -41,11 +89,14 @@ abstract interface class SyncPort {
   /// Number of viewers currently connected to the watched room, best effort.
   int get viewerCount;
 
-  /// Signs in and opens connections. Must be safe to call when unconfigured.
+  /// Connects and opens the client. Must be safe to call when unconfigured,
+  /// and safe to call concurrently — implementations single-flight it, because
+  /// two overlapping connects left the client half-built and permanently
+  /// unavailable.
   Future<void> init();
 
-  /// Opens a room and returns its join code, or null when unavailable.
-  Future<String?> createRoom();
+  /// Opens a room and returns its join code, or why it could not.
+  Future<ShareAttempt> createRoom();
 
   /// Publishes the newest state of [code]. Fire-and-forget from scoring.
   Future<void> publish(String code, RoomSnapshot snapshot);

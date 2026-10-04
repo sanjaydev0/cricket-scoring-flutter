@@ -320,16 +320,14 @@ class ScoringScreen extends StatelessWidget {
   /// pretending, and the match is untouched either way.
   Future<void> _shareSheet(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final code = await store.startSharing();
+    final result = await store.startSharing();
     if (!context.mounted) return;
-    if (code == null) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text(
-              'Live sharing unavailable — no backend configured in this build')));
-      return;
-    }
+    // Names the actual cause. The first version reported every failure as
+    // "no backend configured in this build", which sent the diagnosis after
+    // the build flags instead of the real error.
     messenger.showSnackBar(SnackBar(
-      content: Text('Live — anyone with the code $code can watch (read-only)'),
+      content:
+          Text(result.ok ? '${result.message} (read-only)' : result.message),
       duration: const Duration(seconds: 6),
     ));
   }

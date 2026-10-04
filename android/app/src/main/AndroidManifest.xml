@@ -1,4 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for the optional live-rooms feature (a scoring phone that
+         shares its score, and a viewer that watches one).
+
+         Flutter only adds INTERNET to the DEBUG and PROFILE manifests, so every
+         RELEASE build was silently network-dead: rooms failed with
+         "Failed host lookup ... errno = 7" while `flutter run` and profile
+         builds worked fine, which is why it survived several releases.
+
+         This breaks nothing offline. INTERNET is an install-time normal
+         permission with no runtime prompt, and scoring never touches the
+         network unless you tap Share. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Realtime push: the viewer keeps receiving score updates when the phone
+         is not in the foreground. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:label="CricScore"
         android:name="${applicationName}"

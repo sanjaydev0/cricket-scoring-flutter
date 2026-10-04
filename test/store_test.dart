@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/domain/room_snapshot.dart';
 import 'package:cricket_scoring/models.dart';
+import 'package:cricket_scoring/ports/sync_port.dart';
 import 'package:cricket_scoring/store.dart';
 import 'package:cricket_scoring/theme.dart';
 
@@ -34,7 +35,9 @@ void main() {
   test('a scored ball publishes the whole match to the room', () async {
     final fake = FakeSync();
     final s = freshStore(sync: fake);
-    expect(await s.startSharing(), 'TEST1');
+    final opened = await s.startSharing();
+    expect(opened.ok, isTrue);
+    expect(opened.code, 'TEST1');
     expect(s.roomCode, 'TEST1');
     // Opening the room publishes once, at seq 1, with nothing scored yet.
     expect(fake.published.length, 1);
@@ -84,7 +87,11 @@ void main() {
   test('a backend that cannot open a room leaves scoring untouched', () async {
     final fake = FakeSync()..failCreate = true;
     final s = freshStore(sync: fake);
-    expect(await s.startSharing(), isNull);
+    final opened = await s.startSharing();
+    expect(opened.ok, isFalse);
+    // The reason is carried, not collapsed into a bare null.
+    expect(opened.failure, ShareFailure.failed);
+    expect(opened.detail, isNotNull);
     expect(s.roomCode, isNull);
     // And the match still scores normally.
     expect(s.score(action: 'RUNS', runs: 4), isNull);
@@ -128,8 +135,9 @@ void main() {
   test('starting sharing twice keeps one room', () async {
     final fake = FakeSync();
     final s = freshStore(sync: fake);
-    await s.startSharing();
-    await s.startSharing();
+    final a = await s.startSharing();
+    final b = await s.startSharing();
+    expect(a.code, b.code);
     expect(fake.created.length, 1);
   });
 

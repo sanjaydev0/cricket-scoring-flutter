@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -79,12 +80,32 @@ class SupabaseSync implements SyncPort {
   void _set(SyncState s, [String? error]) {
     _state = s;
     _lastError = error;
+    // debugPrint survives release builds, so a field failure is visible in
+    // logcat instead of vanishing. The first cut of this swallowed every error
+    // into lastError, which nothing displayed, and the app reported a network
+    // error as "no backend configured in this build".
+    if (error != null) {
+      // ignore: avoid_print
+      print('[CricScore sync] $s: $error');
+    }
   }
 
+  /// The in-flight connect, so concurrent callers share one attempt.
+  Future<void>? _connecting;
+
   @override
-  Future<void> init() async {
+  Future<void> init() {
+    final inFlight = _connecting;
+    if (inFlight != null) return inFlight;
+    final attempt = _connect();
+    _connecting = attempt;
+    // Clear the slot when it settles, so a later failure can be retried.
+    return attempt.whenComplete(() => _connecting = null);
+  }
+
+  Future<void> _connect() async {
     if (url.isEmpty || publishableKey.isEmpty) {
-      _set(SyncState.unconfigured, 'No Supabase URL/key configured');
+      _set(SyncState.unconfigured, 'No Supabase URL/key in this build');
       return;
     }
     _set(SyncState.connecting);
@@ -92,13 +113,15 @@ class SupabaseSync implements SyncPort {
       final supabase = await Supabase.initialize(
         url: url,
         publishableKey: publishableKey,
-        debug: false,
+        // Supabase's own logger is noisy; enable it for debug builds only and
+        // rely on _set() for release visibility.
+        debug: kDebugMode,
       );
       _db = supabase.client;
       _set(SyncState.ready);
     } catch (e) {
       _db = null;
-      _set(SyncState.error, 'Backend unreachable: $e');
+      _set(SyncState.error, 'connect failed: $e');
     }
   }
 
@@ -132,10 +155,17 @@ class SupabaseSync implements SyncPort {
   }
 
   @override
-  Future<String?> createRoom() async {
+  Future<ShareAttempt> createRoom() async {
     await _ensureReady();
+    if (_state == SyncState.unconfigured) {
+      return const ShareAttempt.failed(
+          ShareFailure.noBackend, 'no URL/key at build time');
+    }
     final db = _db;
-    if (db == null || _state != SyncState.ready) return null;
+    if (db == null || _state != SyncState.ready) {
+      return ShareAttempt.failed(
+          ShareFailure.offline, _lastError ?? 'not connected');
+    }
 
     for (var attempt = 0; attempt < 5; attempt++) {
       final code = RoomCode.generate();
@@ -147,16 +177,17 @@ class SupabaseSync implements SyncPort {
         );
         if (created == true) {
           await _rememberSecret(code, secret);
-          return code;
+          return ShareAttempt.ok(code);
         }
         // Code already taken (astronomically unlikely): draw another.
       } catch (e) {
-        _set(SyncState.error, 'Could not open room: $e');
-        return null;
+        _set(SyncState.error, 'room_create failed: $e');
+        return ShareAttempt.failed(ShareFailure.failed, '$e');
       }
     }
-    _set(SyncState.error, 'Could not find a free room code');
-    return null;
+    _set(SyncState.error, 'no free room code after 5 tries');
+    return const ShareAttempt.failed(
+        ShareFailure.failed, 'could not find a free room code');
   }
 
   @override

@@ -28,7 +28,8 @@ class LocalOnlySync implements SyncPort {
   Future<void> init() async {}
 
   @override
-  Future<String?> createRoom() async => null;
+  Future<ShareAttempt> createRoom() async =>
+      const ShareAttempt.failed(ShareFailure.noBackend, 'local-only build');
 
   @override
   Future<void> publish(String code, RoomSnapshot snapshot) async {}
@@ -87,11 +88,13 @@ class FakeSync implements SyncPort {
   }
 
   @override
-  Future<String?> createRoom() async {
-    if (failCreate) return null;
+  Future<ShareAttempt> createRoom() async {
+    if (failCreate) {
+      return const ShareAttempt.failed(ShareFailure.failed, 'fake refused');
+    }
     const code = 'TEST1';
     created.add(code);
-    return code;
+    return const ShareAttempt.ok(code);
   }
 
   @override

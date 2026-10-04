@@ -53,6 +53,22 @@ void main() {
     });
   });
 
+  group('share attempt messages', () {
+    test('each failure names its own cause', () {
+      // The whole point: a single "unavailable" string for four failures is
+      // what made a network error look like a missing build flag.
+      expect(const ShareAttempt.failed(ShareFailure.noBackend, 'x').message,
+          contains('off in this build'));
+      expect(const ShareAttempt.failed(ShareFailure.noMatch).message,
+          contains('Start a match'));
+      expect(const ShareAttempt.failed(ShareFailure.offline, 'timeout').message,
+          contains('timeout'));
+      expect(const ShareAttempt.failed(ShareFailure.failed, 'rpc 400').message,
+          contains('rpc 400'));
+      expect(const ShareAttempt.ok('ABCDE').message, contains('ABCDE'));
+    });
+  });
+
   group('room snapshot', () {
     test('round-trips a match payload', () {
       final s = RoomSnapshot(
@@ -114,7 +130,10 @@ void main() {
       final s = LocalOnlySync();
       expect(s.state, SyncState.unconfigured);
       await s.init();
-      expect(await s.createRoom(), isNull);
+      final opened = await s.createRoom();
+      expect(opened.ok, isFalse);
+      // It must say WHY, not return a bare null.
+      expect(opened.failure, ShareFailure.noBackend);
       await s.publish('ABCDE',
           RoomSnapshot(seq: 1, match: _match(), updatedAt: DateTime.now()));
       await s.watchRoom('ABCDE');

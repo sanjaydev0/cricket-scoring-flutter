@@ -46,18 +46,22 @@ class MatchStore extends ChangeNotifier {
         .catchError((Object _) {}));
   }
 
-  /// Opens a live room for the current match. Returns the join code, or null
-  /// when sharing is unavailable (no backend configured, or offline).
-  Future<String?> startSharing() async {
-    if (match == null) return null;
-    if (roomCode != null) return roomCode;
-    final code = await sync.createRoom();
-    if (code == null) return null;
-    roomCode = code;
+  /// Opens a live room for the current match. Returns the code, or the reason it
+  /// could not — never a bare null, because a single "unavailable" message for
+  /// four different failures is how a network error gets misreported as a
+  /// missing build flag.
+  Future<ShareAttempt> startSharing() async {
+    if (match == null) {
+      return const ShareAttempt.failed(ShareFailure.noMatch);
+    }
+    if (roomCode != null) return ShareAttempt.ok(roomCode!);
+    final result = await sync.createRoom();
+    if (!result.ok) return result;
+    roomCode = result.code;
     _roomSeq = 0;
     _publishRoom();
     notifyListeners();
-    return code;
+    return result;
   }
 
   /// Closes the room and deletes it server-side. The match stays untouched
@@ -72,6 +76,12 @@ class MatchStore extends ChangeNotifier {
 
   /// Best-effort viewer count for the share banner.
   int get viewerCount => sync.viewerCount;
+
+  /// Live-backend status, surfaced verbatim in Settings so a failure on a gully
+  /// ground is diagnosable without a laptop.
+  SyncState get onlineState => sync.state;
+
+  String? get onlineError => sync.lastError;
   static const kActive = 'cricket_active_match_v4';
   static const kHistory = 'cricket_history_vault_v4';
   static const kUndo = 'cricket_undo_stack_v4';
