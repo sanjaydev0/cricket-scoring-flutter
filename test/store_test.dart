@@ -127,6 +127,19 @@ void main() {
     expect(freshStore().complexWickets, true);
   });
 
+  test('innings completion starts 10s break countdown', () {
+    final s = freshStore();
+    // freshStore: 5 overs; bowl 30 legal balls to finish innings 1.
+    for (var i = 0; i < 30; i++) {
+      expect(s.score(action: 'DOT'), isNull);
+    }
+    expect(s.innings!.completed, true);
+    expect(s.breakDest, '/break');
+    expect(s.breakWait, 10);
+    s.skipBreakWait();
+    expect(s.breakDest, isNull);
+  });
+
   test('ball generation advances on score, never on undo', () {
     final s = freshStore();
     expect(s.ballGen, 0);

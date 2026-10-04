@@ -19,12 +19,14 @@ class ScoringScreen extends StatelessWidget {
         if (m == null) {
           return const Scaffold(body: Center(child: Text('No live match')));
         }
-        if (m.completed) {
+        if (m.completed && store.breakDest == null) {
           goOnce(context, '/result');
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
         }
-        if (m.currentInnings == 1 && m.innings1.completed) {
+        if (m.currentInnings == 1 &&
+            m.innings1.completed &&
+            store.breakDest == null) {
           goOnce(context, '/break');
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
@@ -251,6 +253,36 @@ class ScoringScreen extends StatelessWidget {
                           ],
                         ),
                       )),
+                      if (store.breakDest != null) ...[
+                        const SizedBox(height: 10),
+                        Card(
+                          color: const Color(0xFF131316),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    store.breakDest == '/break'
+                                        ? 'INNINGS COMPLETE — BREAK IN ${store.breakWait}s'
+                                        : 'MATCH OVER — RESULT IN ${store.breakWait}s',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1),
+                                  ),
+                                ),
+                                RectBtn(
+                                  onTap: () =>
+                                      store.skipBreakWait(),
+                                  child: const Text('NEXT →'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       RepaintBoundary(
                           child: Card(

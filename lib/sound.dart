@@ -71,7 +71,8 @@ class SoundService extends ChangeNotifier {
     try {
       final p = pool[_next[name]! % pool.length];
       _next[name] = _next[name]! + 1;
-      await p.stop();
+      // NOTE: no stop() here — resume() after stop() is a documented no-op
+      // and was silencing every replay. Rewind + resume replays reliably.
       await p.seek(Duration.zero);
       await p.resume();
     } catch (_) {}

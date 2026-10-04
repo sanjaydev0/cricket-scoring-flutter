@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'math.dart';
 import 'models.dart';
@@ -36,6 +37,9 @@ class MatchStore extends ChangeNotifier {
   bool complexWickets = true; // full wicket-type grid vs Wicket/RunOut
   bool hapticsOn = true; // master vibration toggle
   int ballGen = 0; // advances on score() only — strip motion key
+  int breakWait = 0; // countdown seconds before break/result handoff
+  String? breakDest; // '/break' | '/result' while counting down
+  Timer? _breakTimer;
   List<String> _undo = [];
   List<String> _redo = [];
   bool loaded = false;
@@ -550,6 +554,7 @@ class MatchStore extends ChangeNotifier {
         inn.completed = true;
         m.target = inn.runs + 1;
         SoundService.instance.confirm();
+        _startBreakCountdown('/break');
       }
     } else {
       final tgt = m.target ?? (m.innings1.runs + 1);
@@ -562,6 +567,7 @@ class MatchStore extends ChangeNotifier {
         _buzz(HapticFeedback.heavyImpact);
         SoundService.instance.fanfare();
         _archive();
+        _startBreakCountdown('/result');
       } else if (inn.legalDeliveries >= maxBalls || inn.wickets >= maxW) {
         inn.completed = true;
         m.completed = true;
@@ -574,6 +580,7 @@ class MatchStore extends ChangeNotifier {
           m.winMargin = 'Won by $diff run${diff == 1 ? '' : 's'}';
         }
         _archive();
+        _startBreakCountdown('/result');
       }
     }
   }
@@ -630,7 +637,42 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 10-second viewing pause before break/result handoffs, with NEXT.
+  void _startBreakCountdown(String dest) {
+    _breakTimer?.cancel();
+    breakDest = dest;
+    breakWait = 10;
+    notifyListeners();
+    _breakTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      breakWait--;
+      if (breakWait <= 0) {
+        t.cancel();
+        _breakTimer = null;
+        breakDest = null;
+        breakWait = 0;
+      }
+      notifyListeners();
+    });
+  }
+
+  /// NEXT button: skip the wait, handoff immediately.
+  void skipBreakWait() {
+    _breakTimer?.cancel();
+    _breakTimer = null;
+    breakDest = null;
+    breakWait = 0;
+    notifyListeners();
+  }
+
+  void _cancelBreak() {
+    _breakTimer?.cancel();
+    _breakTimer = null;
+    breakDest = null;
+    breakWait = 0;
+  }
+
   void abandon() {
+    _cancelBreak();
     match = null;
     _undo.clear();
     _redo.clear();
@@ -639,6 +681,7 @@ class MatchStore extends ChangeNotifier {
   }
 
   void newMatch() {
+    _cancelBreak();
     match = null;
     _undo.clear();
     _redo.clear();
