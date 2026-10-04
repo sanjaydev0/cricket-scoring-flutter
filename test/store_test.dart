@@ -100,4 +100,18 @@ void main() {
     final h = await s.history();
     expect(h.length, 1);
   });
+
+  test('run-out badge reads W+runs', () {
+    final s = freshStore();
+    s.score(action: 'WICKET', runs: 2, wicketType: 'Run Out');
+    final last = s.innings!.currentOverBalls.last;
+    expect(last.isWicket, true);
+    expect(last.badge, 'W+2');
+    expect(s.innings!.runs, 2);
+    expect(s.innings!.wickets, 1);
+  });
+
+  test('complex wickets defaults on', () {
+    expect(freshStore().complexWickets, true);
+  });
 }

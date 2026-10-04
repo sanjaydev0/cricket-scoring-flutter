@@ -121,11 +121,9 @@ class _SetupScreenState extends State<SetupScreen> {
                         onChanged: (v) => setState(
                             () => cfg.playersPerSide = v)),
                     const SizedBox(height: 4),
-                    const Text('Common player (odd-man)',
+                    const Text('Double-side player',
                         style: TextStyle(
                             fontWeight: FontWeight.w700)),
-                    const Text('One player turns out for both sides',
-                        style: TextStyle(fontSize: 11)),
                     const SizedBox(height: 6),
                     SegmentedButton<int>(
                       segments: const [

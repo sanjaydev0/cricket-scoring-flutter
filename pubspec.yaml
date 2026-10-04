@@ -10,6 +10,7 @@ dependencies:
   audioplayers: ^6.7.1
   flutter:
     sdk: flutter
+  intl: ^0.20.3
   shared_preferences: ^2.2.3
 
 dev_dependencies:

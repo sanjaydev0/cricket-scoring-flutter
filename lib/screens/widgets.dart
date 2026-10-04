@@ -92,7 +92,8 @@ class BallBadge extends StatelessWidget {
     final t = ball.badge;
     late Color bg;
     late Color fg;
-    if (t == 'W') {
+    final isWicketBadge = t == 'W' || RegExp(r'^W\+\d+$').hasMatch(t);
+    if (isWicketBadge) {
       bg = const Color(0xFFDC143C); // crimson
       fg = Colors.white;
     } else if (t == '6' || t.startsWith('N6')) {
@@ -137,7 +138,10 @@ class BallBadge extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(t,
           style: TextStyle(
-              color: fg, fontWeight: FontWeight.w900, fontSize: 12)),
+              color: fg,
+              fontWeight: FontWeight.w900,
+              // W+2 style badges get a smaller numeral to hold the circle.
+              fontSize: t.length > 2 ? 10 : 12)),
     );
   }
 }

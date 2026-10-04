@@ -17,6 +17,7 @@ class MatchStore extends ChangeNotifier {
   static const kStyle = 'cricket_style';
   static const kFont = 'cricket_score_font';
   static const kCeleb = 'cricket_celebration';
+  static const kComplexWkts = 'cricket_complex_wkts';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -30,7 +31,8 @@ class MatchStore extends ChangeNotifier {
   bool advancedExtras = true; // master extra-detail buttons toggle
   String styleId = 'umpire'; // keypad/strip/hero style preset
   String fontId = 'stadium'; // score numeral font
-  String celebId = 'pulse'; // hero celebration: off/pulse/glow/shimmer
+  String celebId = 'pulse'; // hero celebration: off + 10 styles
+  bool complexWickets = true; // full wicket-type grid vs Wicket/RunOut
   List<String> _undo = [];
   List<String> _redo = [];
   bool loaded = false;
@@ -47,6 +49,7 @@ class MatchStore extends ChangeNotifier {
     styleId = p.getString(kStyle) ?? 'umpire';
     fontId = p.getString(kFont) ?? 'stadium';
     celebId = MatchStore.migrateCeleb(p.getString(kCeleb));
+    complexWickets = p.getBool(kComplexWkts) ?? true;
     SoundService.instance.init(enabled: soundOn);
     final raw = p.getString(kActive);
     if (raw != null) {
@@ -109,6 +112,7 @@ class MatchStore extends ChangeNotifier {
     await p.setString(kStyle, styleId);
     await p.setString(kFont, fontId);
     await p.setString(kCeleb, celebId);
+    await p.setBool(kComplexWkts, complexWickets);
   }
 
   void setTheme(String id) {
@@ -187,6 +191,12 @@ class MatchStore extends ChangeNotifier {
 
   void setCeleb(String id) {
     celebId = MatchStore.migrateCeleb(id);
+    _persist();
+    notifyListeners();
+  }
+
+  void setComplexWickets(bool v) {
+    complexWickets = v;
     _persist();
     notifyListeners();
   }
@@ -354,11 +364,12 @@ class MatchStore extends ChangeNotifier {
         if (inn.isFreeHitActive && wicketType != 'Run Out') {
           b = Ball(runs: runs, badge: runs == 0 ? '0' : '$runs');
         } else {
+          // Run-outs with completed runs read W+1 / W+2 on the strip.
           b = Ball(
               runs: runs,
               isWicket: true,
               wicketType: wicketType,
-              badge: 'W');
+              badge: runs > 0 ? 'W+$runs' : 'W');
         }
         inn.isFreeHitActive = false;
         break;

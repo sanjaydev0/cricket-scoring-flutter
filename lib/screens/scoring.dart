@@ -86,32 +86,60 @@ class ScoringScreen extends StatelessWidget {
               children: [
                 Card(
                   color: preset.heroBg,
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 16),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                          top: 8, left: 12,
+                          child: _CornerMark(preset.heroFg)),
+                      Positioned(
+                          top: 8, right: 12,
+                          child: _CornerMark(preset.heroFg)),
+                      Positioned(
+                          bottom: 8, left: 12,
+                          child: _CornerMark(preset.heroFg)),
+                      Positioned(
+                          bottom: 8, right: 12,
+                          child: _CornerMark(preset.heroFg)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 16, horizontal: 20),
+                        child: Column(
                           children: [
-                            TeamDot(isTeamA
-                                ? MatchStore.teamAColor
-                                : MatchStore.teamBColor),
-                            const SizedBox(width: 8),
-                            Text('BATTING: ${inn.battingTeam}',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    letterSpacing: 1.2,
-                                    fontWeight: FontWeight.w800,
-                                    color: preset.heroFg)),
-                          ],
-                        ),
-                        Builder(builder: (_) {
+                            Container(
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 6),
+                              decoration: BoxDecoration(
+                                color: preset.heroFg
+                                    .withValues(alpha: 0.14),
+                                borderRadius:
+                                    BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TeamDot(isTeamA
+                                      ? MatchStore.teamAColor
+                                      : MatchStore.teamBColor),
+                                  const SizedBox(width: 8),
+                                  Text(inn.battingTeam,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          letterSpacing: 1.5,
+                                          fontWeight:
+                                              FontWeight.w800,
+                                          color:
+                                              preset.heroFg)),
+                                ],
+                              ),
+                            ),
+                            Builder(builder: (_) {
                           final lastBadge = cur.isNotEmpty
                               ? cur.last.badge
                               : '';
-                          final isW =
-                              lastBadge == 'W';
+                          final isW = lastBadge == 'W' ||
+                              lastBadge.startsWith('W+');
                           final isFour = lastBadge == '4' ||
                               lastBadge.startsWith('N4');
                           final isSix = lastBadge == '6' ||
@@ -204,20 +232,22 @@ class ScoringScreen extends StatelessWidget {
                             ),
                           ),
                         const SizedBox(height: 10),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(99),
-                            child: LinearProgressIndicator(
-                              value: totalOvers == 0
-                                  ? 0
-                                  : inn.legalDeliveries /
-                                      (totalOvers * 6),
-                              minHeight: 8,
-                            ),
+                        ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(99),
+                          child: LinearProgressIndicator(
+                            value: totalOvers == 0
+                                ? 0
+                                : inn.legalDeliveries /
+                                    (totalOvers * 6),
+                            minHeight: 8,
                           ),
                         ),
+                        const SizedBox(height: 10),
+                        Divider(
+                            height: 1,
+                            color: preset.heroFg
+                                .withValues(alpha: 0.25)),
                         const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment:
@@ -234,6 +264,8 @@ class ScoringScreen extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -267,20 +299,21 @@ class ScoringScreen extends StatelessWidget {
                       crossAxisAlignment:
                           CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                            nb
-                                ? 'NO-BALL ARMED — CHOOSE RUNS'
-                                : 'KEYPAD',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                                color: nb
-                                    ? const Color(0xFF7B2CBF)
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant)),
-                        const SizedBox(height: 10),
+                        if (nb)
+                          const Padding(
+                            padding:
+                                EdgeInsets.only(bottom: 8),
+                            child: Center(
+                              child: Text('NB ARMED',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight:
+                                          FontWeight.w900,
+                                      letterSpacing: 2,
+                                      color: Color(
+                                          0xFF7B2CBF))),
+                            ),
+                          ),
                         GridView.count(
                           crossAxisCount: 3,
                           shrinkWrap: true,
@@ -374,27 +407,86 @@ class ScoringScreen extends StatelessWidget {
                                     _wicketDialog(context)),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
+                        const SizedBox(height: 12),
+                        Stack(
+                          alignment: Alignment.center,
                           children: [
-                            OutlinedButton.icon(
-                              onPressed: store.canUndo
-                                  ? () => store.undo()
-                                  : null,
-                              icon: const Icon(Icons.undo,
-                                  size: 20),
-                              label: const Text('UNDO'),
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 72,
+                                  height: 72,
+                                  child: FilledButton(
+                                    style: FilledButton
+                                        .styleFrom(
+                                      backgroundColor:
+                                          const Color(
+                                              0xFF0A0A0A),
+                                      foregroundColor:
+                                          Colors.white,
+                                      padding:
+                                          EdgeInsets.zero,
+                                      shape:
+                                          RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius
+                                                      .circular(
+                                                          20)),
+                                    ),
+                                    onPressed:
+                                        store.canUndo
+                                            ? () =>
+                                                store.undo()
+                                            : null,
+                                    child: const Icon(
+                                        Icons.undo,
+                                        size: 28),
+                                  ),
+                                ),
+                                if (store
+                                    .advancedExtras) ...[
+                                  const SizedBox(
+                                      width: 10),
+                                  FilledButton.tonal(
+                                    onPressed: () =>
+                                        _moreSheet(
+                                            context),
+                                    child: const Text(
+                                        'EXTRAS'),
+                                  ),
+                                ],
+                              ],
                             ),
-                            if (store.advancedExtras) ...[
-                              const SizedBox(width: 10),
-                              FilledButton.tonal(
-                                onPressed: () =>
-                                    _moreSheet(context),
-                                child: const Text('EXTRAS'),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: OutlinedButton(
+                                  style:
+                                      OutlinedButton.styleFrom(
+                                    padding:
+                                        EdgeInsets.zero,
+                                    shape:
+                                        RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(
+                                                        14)),
+                                  ),
+                                  onPressed: () =>
+                                      _settingsSheet(
+                                          context),
+                                  child: const Icon(
+                                      Icons
+                                          .settings_outlined,
+                                      size: 22),
+                                ),
                               ),
-                            ],
+                            ),
                           ],
                         ),
                       ],
@@ -414,10 +506,13 @@ class ScoringScreen extends StatelessWidget {
       children: [
         Text(k,
             style: TextStyle(
-                fontSize: 10, letterSpacing: 1.2, color: fg.withValues(alpha: 0.85))),
+                fontSize: 10, letterSpacing: 1.5, color: fg.withValues(alpha: 0.85))),
         Text(v,
             style: TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w900, color: fg)),
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: fg,
+                fontFeatures: const [FontFeature.tabularFigures()])),
       ],
     );
   }
@@ -438,6 +533,21 @@ class ScoringScreen extends StatelessWidget {
       showExtrasSheet(context, store);
   void _settingsSheet(BuildContext context) =>
       showSettingsSheet(context, store);
+}
+
+/// Tiny corner registration mark, like the reference scoreboard tile.
+class _CornerMark extends StatelessWidget {
+  final Color color;
+  const _CornerMark(this.color);
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: 0.45,
+      child: Text('+',
+          style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+    );
+  }
 }
 
 /// Over strip: smooth auto-scroll to the latest ball, scrollable history.

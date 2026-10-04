@@ -216,9 +216,18 @@ class HomeScreen extends StatelessWidget {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title:
+                          const Text('Complex wickets'),
+                      subtitle: const Text('Full type grid'),
+                      value: store.complexWickets,
+                      onChanged: (v) =>
+                          store.setComplexWickets(v),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title:
                           const Text('Advanced extras'),
-                      subtitle: const Text(
-                          'WD+overthrows, byes, NB+runs'),
+                      subtitle:
+                          const Text('Extra detail keys'),
                       value: store.advancedExtras,
                       onChanged: (v) =>
                           store.setAdvancedExtras(v),

@@ -1,67 +1,135 @@
 import 'package:flutter/material.dart';
+import '../math.dart';
 import '../store.dart';
 import 'widgets.dart';
 
-/// Scoring dialogs & sheets, kept out of the screen for readability.
+/// Scoring dialogs & sheets in the reference layout:
+/// pill headers, 2-col grids, segmented pills, dark SAVE/CLOSE.
+/// Decorative text purged — titles, values and actions only.
+
 void showWicketDialog(BuildContext context, MatchStore store) {
-  const types = [
-    'Bowled',
-    'Caught',
-    'LBW',
-    'Stumped',
-    'Hit Wicket',
-    'Run Out'
-  ];
+  final simple = !store.complexWickets;
   showDialog(
     context: context,
     builder: (_) => AlertDialog(
-      title: const Text('Wicket type'),
-      content: const SizedBox(
-        width: 320,
-        child: Text('Free-hit protects all but Run Out.'),
+      title: const Text('RECORD DISMISSAL'),
+      content: SizedBox(
+        width: 340,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('SELECT WICKET TYPE',
+                style:
+                    TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 2.4,
+              children: [
+                _wicketKey(context, store, 'BOWLED', 'Bowled'),
+                if (!simple)
+                  _wicketKey(context, store, 'CAUGHT', 'Caught'),
+                _wicketKey(context, store, 'RUN OUT ›', null,
+                    runOut: true),
+                if (!simple) ...[
+                  _wicketKey(context, store, 'LBW', 'LBW'),
+                  _wicketKey(context, store, 'STUMPED', 'Stumped'),
+                  _wicketKey(
+                      context, store, 'HIT WICKET', 'Hit Wicket'),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
       actions: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final t in types)
-              FilterChip(
-                label: Text(t),
-                selected: false,
-                onSelected: (_) {
-                  Navigator.pop(context);
-                  if (t == 'Run Out') {
-                    showRunOutDialog(context, store);
-                  } else {
-                    store.score(action: 'WICKET', wicketType: t);
-                  }
-                },
-              ),
-          ],
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('✕'),
         ),
       ],
     ),
   );
 }
 
+Widget _wicketKey(
+    BuildContext context, MatchStore store, String label, String? type,
+    {bool runOut = false}) {
+  return OutlinedButton(
+    onPressed: () {
+      Navigator.pop(context);
+      if (runOut) {
+        showRunOutDialog(context, store);
+      } else {
+        store.score(action: 'WICKET', wicketType: type!);
+      }
+    },
+    child: Text(label,
+        style: const TextStyle(fontWeight: FontWeight.w800)),
+  );
+}
+
 void showRunOutDialog(BuildContext context, MatchStore store) {
+  const opts = [
+    ['0 + W', 'DIRECT (0)'],
+    ['1 + W', '1 COMPLETED'],
+    ['2 + W', '2 COMPLETED'],
+    ['3 + W', '3 COMPLETED'],
+  ];
   showDialog(
     context: context,
     builder: (_) => AlertDialog(
-      title: const Text('Run-out + runs?'),
-      content: const Text('Runs completed before the run-out.'),
+      title: const Text('RUN OUT (1+W, 2+W)'),
+      content: SizedBox(
+        width: 340,
+        child: GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 1.7,
+          children: [
+            for (var i = 0; i < 4; i++)
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  store.score(
+                      action: 'WICKET',
+                      runs: i,
+                      wicketType: 'Run Out');
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(opts[i][0],
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .error)),
+                    Text(opts[i][1],
+                        style: const TextStyle(fontSize: 9)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
       actions: [
-        for (final r in [0, 1, 2, 3])
-          TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                store.score(
-                    action: 'WICKET',
-                    runs: r,
-                    wicketType: 'Run Out');
-              },
-              child: Text('+$r')),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            showWicketDialog(context, store);
+          },
+          child: const Text('← BACK'),
+        ),
       ],
     ),
   );
@@ -69,6 +137,8 @@ void showRunOutDialog(BuildContext context, MatchStore store) {
 
 void showOversSheet(BuildContext context, MatchStore store) {
   final inn = store.innings!;
+  final m = store.match!;
+  final innIdx = m.currentInnings;
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
@@ -77,27 +147,47 @@ void showOversSheet(BuildContext context, MatchStore store) {
         shrinkWrap: true,
         padding: const EdgeInsets.all(16),
         children: [
-          Text('${inn.battingTeam} • ${inn.runs}/${inn.wickets}',
-              style:
-                  const TextStyle(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('OVERS HISTORY // INNINGS $innIdx',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1)),
+                    Text(
+                        '${inn.battingTeam}: ${inn.runs}/${inn.wickets} (${CricketMath.ballsToOvers(inn.legalDeliveries)} ov)',
+                        style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor:
+                        const Color(0xFF0A0A0A)),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('✕ CLOSE'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           for (final o in inn.overs)
             if (o.balls.isNotEmpty)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                        width: 36,
-                        child: Text('O${o.overNumber}',
-                            style: const TextStyle(
-                                fontWeight:
-                                    FontWeight.w800))),
-                    Expanded(
-                      child: Wrap(
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          'OVER ${o.overNumber.toString().padLeft(2, '0')} // ${o.balls.fold<int>(0, (s, b) => s + b.totalRuns)} RUNS • ${o.balls.where((b) => b.isWicket).length} WKT',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12)),
+                      const SizedBox(height: 8),
+                      Wrap(
                         spacing: 6,
                         runSpacing: 6,
                         children: [
@@ -105,8 +195,8 @@ void showOversSheet(BuildContext context, MatchStore store) {
                             BallBadge(b)
                         ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
         ],
@@ -126,62 +216,64 @@ void showExtrasSheet(BuildContext context, MatchStore store) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('ADVANCED EXTRAS',
-                style: TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 10),
-            const Text('Byes / leg-byes',
-                style: TextStyle(fontSize: 12)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final e in [
-                ['B1', 'BYE', 1],
-                ['B2', 'BYE', 2],
-                ['B4', 'BYE', 4],
-                ['LB1', 'LEGBYE', 1],
-                ['LB2', 'LEGBYE', 2],
-                ['LB4', 'LEGBYE', 4],
-              ])
-                FilledButton.tonal(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      store.score(
-                          action: e[1] as String,
-                          runs: e[2] as int);
-                    },
-                    child: Text(e[0] as String)),
-            ]),
-            const SizedBox(height: 12),
-            const Text('Wide + overthrows',
-                style: TextStyle(fontSize: 12)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final r in [0, 1, 2, 4])
-                FilledButton.tonal(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      store.score(
-                          action: 'WIDE', runs: r);
-                    },
-                    child: Text(r == 0 ? 'WD' : 'WD+$r')),
-            ]),
-            const SizedBox(height: 12),
-            const Text('No-ball + bat runs',
-                style: TextStyle(fontSize: 12)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final r in [0, 1, 2, 4, 6])
-                FilledButton.tonal(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      store.score(
-                          action: 'NB_DIRECT', runs: r);
-                    },
-                    child: Text(r == 0 ? 'NB' : 'NB+$r')),
-            ]),
-            const SizedBox(height: 12),
+            _pillGroup('BYES', ['B1', 'B2', 'B4'], (label) {
+              final runs =
+                  int.parse(label.substring(1));
+              Navigator.pop(context);
+              store.score(action: 'BYE', runs: runs);
+            }),
+            _pillGroup('LEG-BYES', ['LB1', 'LB2', 'LB4'],
+                (label) {
+              final runs =
+                  int.parse(label.substring(2));
+              Navigator.pop(context);
+              store.score(action: 'LEGBYE', runs: runs);
+            }),
+            _pillGroup('WIDE +', ['WD', 'WD+1', 'WD+2', 'WD+4'],
+                (label) {
+              final runs = label == 'WD'
+                  ? 0
+                  : int.parse(label.substring(3));
+              Navigator.pop(context);
+              store.score(action: 'WIDE', runs: runs);
+            }),
+            _pillGroup(
+                'NO-BALL +', ['NB', 'NB+1', 'NB+2', 'NB+4', 'NB+6'],
+                (label) {
+              final runs = label == 'NB'
+                  ? 0
+                  : int.parse(label.substring(3));
+              Navigator.pop(context);
+              store.score(action: 'NB_DIRECT', runs: runs);
+            }),
+            const SizedBox(height: 4),
           ],
         ),
       ),
+    ),
+  );
+}
+
+Widget _pillGroup(String title, List<String> opts,
+    ValueChanged<String> onPick) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(
+                fontWeight: FontWeight.w900, fontSize: 12)),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final o in opts)
+              FilledButton.tonal(
+                  onPressed: () => onPick(o), child: Text(o)),
+          ],
+        ),
+      ],
     ),
   );
 }
@@ -208,105 +300,182 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('MATCH SETTINGS',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
-              StepperRow(
-                  label: 'Total overs',
-                  value: overs,
-                  min: 1,
-                  max: 50,
-                  onChanged: (v) =>
-                      setSheet(() => overs = v)),
-              StepperRow(
-                  label: 'Players / side',
-                  value: players,
-                  min: 2,
-                  max: 15,
-                  onChanged: (v) =>
-                      setSheet(() => players = v)),
-              const SizedBox(height: 4),
-              const Text('Common player',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w700)),
-              SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('None')),
-                  ButtonSegment(value: 1, label: Text('+1')),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('MID-MATCH CONFIG',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(sheetCtx),
+                  ),
                 ],
-                selected: {common},
-                onSelectionChanged: (s) =>
-                    setSheet(() => common = s.first),
               ),
-              StepperRow(
-                  label: 'Wide penalty',
-                  value: wide,
-                  min: 0,
-                  max: 2,
-                  onChanged: (v) =>
-                      setSheet(() => wide = v)),
-              StepperRow(
-                  label: 'No-ball penalty',
-                  value: noball,
-                  min: 0,
-                  max: 2,
-                  onChanged: (v) =>
-                      setSheet(() => noball = v)),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Free hit'),
-                value: freeHit,
-                onChanged: (v) =>
-                    setSheet(() => freeHit = v),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: StepperRow(
+                      label:
+                          'MATCH OVERS (min ${(CricketMath.ballsToOvers(store.innings!.legalDeliveries))} bowled)',
+                      value: overs,
+                      min: 1,
+                      max: 50,
+                      onChanged: (v) =>
+                          setSheet(() => overs = v)),
+                ),
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Last man standing'),
-                value: lms,
-                onChanged: (v) => setSheet(() => lms = v),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: StepperRow(
+                      label: 'PLAYERS PER SIDE',
+                      value: players,
+                      min: 2,
+                      max: 15,
+                      onChanged: (v) =>
+                          setSheet(() => players = v)),
+                ),
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Advanced extras keys'),
-                value: store.advancedExtras,
-                onChanged: (v) => store.setAdvancedExtras(v),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      const Text('DOUBLE-SIDE PLAYER',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12)),
+                      const SizedBox(height: 6),
+                      SegmentedButton<int>(
+                        segments: const [
+                          ButtonSegment(
+                              value: 0,
+                              label: Text('None')),
+                          ButtonSegment(
+                              value: 1, label: Text('One')),
+                        ],
+                        selected: {common},
+                        onSelectionChanged: (s) => setSheet(
+                            () => common = s.first),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Arcade sounds'),
-                value: store.soundOn,
-                onChanged: (v) => store.setSound(v),
+              Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _segPills<int>(
+                            'WIDE',
+                            [0, 1, 2],
+                            wide,
+                            (v) =>
+                                setSheet(() => wide = v),
+                            (v) => v == 0 ? '0' : '+$v'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _segPills<int>(
+                            'NO-BALL',
+                            [0, 1, 2],
+                            noball,
+                            (v) =>
+                                setSheet(() => noball = v),
+                            (v) => v == 0 ? '0' : '+$v'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () {
-                  final err = store.applyMidMatch(
-                    totalOvers: overs,
-                    playersPerSide: players,
-                    commonPlayers: common,
-                    widePenalty: wide,
-                    noBallPenalty: noball,
-                    freeHit: freeHit,
-                    lastManStanding: lms,
-                  );
-                  Navigator.pop(sheetCtx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(err ??
-                              'Match settings updated')));
-                },
-                child: const Text('APPLY'),
+              Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _segPills<bool>(
+                            'FREE HIT',
+                            [false, true],
+                            freeHit,
+                            (v) =>
+                                setSheet(() => freeHit = v),
+                            (v) => v ? 'ON' : 'OFF'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _segPills<bool>(
+                            'LAST MAN',
+                            [false, true],
+                            lms,
+                            (v) =>
+                                setSheet(() => lms = v),
+                            (v) => v ? 'ON' : 'OFF'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              const Text('DECLARE WINNER',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () =>
-                          _declareWinner(context, store, cfg.teamA),
+                          Navigator.pop(sheetCtx),
+                      child: const Text('CANCEL'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xFF0A0A0A)),
+                      onPressed: () {
+                        final err = store.applyMidMatch(
+                          totalOvers: overs,
+                          playersPerSide: players,
+                          commonPlayers: common,
+                          widePenalty: wide,
+                          noBallPenalty: noball,
+                          freeHit: freeHit,
+                          lastManStanding: lms,
+                        );
+                        Navigator.pop(sheetCtx);
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(
+                                content: Text(err ??
+                                    'Saved')));
+                      },
+                      child: const Text('✓ SAVE'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _declareWinner(
+                          context, store, cfg.teamA),
                       child: Row(
                         mainAxisAlignment:
                             MainAxisAlignment.center,
@@ -317,8 +486,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                           const SizedBox(width: 6),
                           Flexible(
                               child: Text(cfg.teamA,
-                                  overflow:
-                                      TextOverflow.ellipsis)),
+                                  overflow: TextOverflow
+                                      .ellipsis)),
                         ],
                       ),
                     ),
@@ -326,8 +495,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () =>
-                          _declareWinner(context, store, cfg.teamB),
+                      onPressed: () => _declareWinner(
+                          context, store, cfg.teamB),
                       child: Row(
                         mainAxisAlignment:
                             MainAxisAlignment.center,
@@ -338,8 +507,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                           const SizedBox(width: 6),
                           Flexible(
                               child: Text(cfg.teamB,
-                                  overflow:
-                                      TextOverflow.ellipsis)),
+                                  overflow: TextOverflow
+                                      .ellipsis)),
                         ],
                       ),
                     ),
@@ -366,14 +535,39 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
   );
 }
 
-void _declareWinner(BuildContext context, MatchStore store, String team) {
+Widget _segPills<T>(String title, List<T> opts, T value,
+    ValueChanged<T> onPick, String Function(T) label) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title,
+          style: const TextStyle(
+              fontWeight: FontWeight.w800, fontSize: 12)),
+      const SizedBox(height: 6),
+      Wrap(
+        spacing: 6,
+        children: [
+          for (final o in opts)
+            ChoiceChip(
+              label: Text(label(o),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800)),
+              selected: o == value,
+              onSelected: (_) => onPick(o),
+            ),
+        ],
+      ),
+    ],
+  );
+}
+
+void _declareWinner(
+    BuildContext context, MatchStore store, String team) {
   Navigator.pop(context);
   showDialog(
     context: context,
     builder: (_) => AlertDialog(
       title: Text('Declare $team winner?'),
-      content:
-          const Text('Ends the match now and archives it.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -397,8 +591,6 @@ void _confirmAbandon(BuildContext context, MatchStore store) {
     context: context,
     builder: (_) => AlertDialog(
       title: const Text('Abandon match?'),
-      content:
-          const Text('Live progress is discarded. Archives stay.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
