@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "space-bunny",
+  "default_agent": "build",
+  "formatter": {
+    "command": "dart format ."
+  },
+  "linter": {
+    "command": "flutter analyze"
+  },
+  "watcher": {
+    "ignore": [
+      ".dart_tool/**",
+      "build/**",
+      "android/**",
+      "ios/**",
+      "linux/**",
+      "macos/**",
+      "windows/**",
+      ".git/**"
+    ]
+  },
+  "permissions": [
+    {
+      "action": "shell",
+      "resource": "flutter pub get",
+      "effect": "allow"
+    },
+    {
+      "action": "shell",
+      "resource": "dart run build_runner build*",
+      "effect": "allow"
+    },
+    {
+      "action": "shell",
+      "resource": "rm -rf *",
+      "effect": "deny"
+    }
+  ]
+}
