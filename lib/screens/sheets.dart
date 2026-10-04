@@ -21,8 +21,7 @@ void showWicketDialog(BuildContext context, MatchStore store) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('SELECT WICKET TYPE',
-                style:
-                    TextStyle(fontWeight: FontWeight.w900)),
+                style: TextStyle(fontWeight: FontWeight.w900)),
             const SizedBox(height: 12),
             GridView.count(
               crossAxisCount: 2,
@@ -33,15 +32,12 @@ void showWicketDialog(BuildContext context, MatchStore store) {
               childAspectRatio: 2.4,
               children: [
                 _wicketKey(context, store, 'BOWLED', 'Bowled'),
-                if (!simple)
-                  _wicketKey(context, store, 'CAUGHT', 'Caught'),
-                _wicketKey(context, store, 'RUN OUT ›', null,
-                    runOut: true),
+                if (!simple) _wicketKey(context, store, 'CAUGHT', 'Caught'),
+                _wicketKey(context, store, 'RUN OUT ›', null, runOut: true),
                 if (!simple) ...[
                   _wicketKey(context, store, 'LBW', 'LBW'),
                   _wicketKey(context, store, 'STUMPED', 'Stumped'),
-                  _wicketKey(
-                      context, store, 'HIT WICKET', 'Hit Wicket'),
+                  _wicketKey(context, store, 'HIT WICKET', 'Hit Wicket'),
                 ],
               ],
             ),
@@ -101,10 +97,7 @@ void showRunOutDialog(BuildContext context, MatchStore store) {
                 primary: false,
                 onTap: () {
                   Navigator.pop(context);
-                  store.score(
-                      action: 'WICKET',
-                      runs: i,
-                      wicketType: 'Run Out');
+                  store.score(action: 'WICKET', runs: i, wicketType: 'Run Out');
                 },
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -113,11 +106,8 @@ void showRunOutDialog(BuildContext context, MatchStore store) {
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w900,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .error)),
-                    Text(opts[i][1],
-                        style: const TextStyle(fontSize: 9)),
+                            color: Theme.of(context).colorScheme.error)),
+                    Text(opts[i][1], style: const TextStyle(fontSize: 9)),
                   ],
                 ),
               ),
@@ -157,8 +147,7 @@ void showOversSheet(BuildContext context, MatchStore store) {
                   children: [
                     Text('OVERS HISTORY // INNINGS $innIdx',
                         style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1)),
+                            fontWeight: FontWeight.w900, letterSpacing: 1)),
                     Text(
                         '${inn.battingTeam}: ${inn.runs}/${inn.wickets} (${CricketMath.ballsToOvers(inn.legalDeliveries)} ov)',
                         style: const TextStyle(fontSize: 12)),
@@ -183,16 +172,12 @@ void showOversSheet(BuildContext context, MatchStore store) {
                       Text(
                           'OVER ${o.overNumber.toString().padLeft(2, '0')} // ${o.balls.fold<int>(0, (s, b) => s + b.totalRuns)} RUNS • ${o.balls.where((b) => b.isWicket).length} WKT',
                           style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12)),
+                              fontWeight: FontWeight.w800, fontSize: 12)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: [
-                          for (final b in o.balls)
-                            BallBadge(b)
-                        ],
+                        children: [for (final b in o.balls) BallBadge(b)],
                       ),
                     ],
                   ),
@@ -216,32 +201,23 @@ void showExtrasSheet(BuildContext context, MatchStore store) {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _pillGroup('BYES', ['B1', 'B2', 'B4'], (label) {
-              final runs =
-                  int.parse(label.substring(1));
+              final runs = int.parse(label.substring(1));
               Navigator.pop(context);
               store.score(action: 'BYE', runs: runs);
             }),
-            _pillGroup('LEG-BYES', ['LB1', 'LB2', 'LB4'],
-                (label) {
-              final runs =
-                  int.parse(label.substring(2));
+            _pillGroup('LEG-BYES', ['LB1', 'LB2', 'LB4'], (label) {
+              final runs = int.parse(label.substring(2));
               Navigator.pop(context);
               store.score(action: 'LEGBYE', runs: runs);
             }),
-            _pillGroup('WIDE +', ['WD', 'WD+1', 'WD+2', 'WD+4'],
-                (label) {
-              final runs = label == 'WD'
-                  ? 0
-                  : int.parse(label.substring(3));
+            _pillGroup('WIDE +', ['WD', 'WD+1', 'WD+2', 'WD+4'], (label) {
+              final runs = label == 'WD' ? 0 : int.parse(label.substring(3));
               Navigator.pop(context);
               store.score(action: 'WIDE', runs: runs);
             }),
-            _pillGroup(
-                'NO-BALL +', ['NB', 'NB+1', 'NB+2', 'NB+4', 'NB+6'],
+            _pillGroup('NO-BALL +', ['NB', 'NB+1', 'NB+2', 'NB+4', 'NB+6'],
                 (label) {
-              final runs = label == 'NB'
-                  ? 0
-                  : int.parse(label.substring(3));
+              final runs = label == 'NB' ? 0 : int.parse(label.substring(3));
               Navigator.pop(context);
               store.score(action: 'NB_DIRECT', runs: runs);
             }),
@@ -253,25 +229,21 @@ void showExtrasSheet(BuildContext context, MatchStore store) {
   );
 }
 
-Widget _pillGroup(String title, List<String> opts,
-    ValueChanged<String> onPick) {
+Widget _pillGroup(
+    String title, List<String> opts, ValueChanged<String> onPick) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title,
-            style: const TextStyle(
-                fontWeight: FontWeight.w900, fontSize: 12)),
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 8,
           children: [
             for (final o in opts)
-              RectBtn(
-                  primary: false,
-                  onTap: () => onPick(o),
-                  child: Text(o)),
+              RectBtn(primary: false, onTap: () => onPick(o), child: Text(o)),
           ],
         ),
       ],
@@ -306,8 +278,7 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   const Expanded(
                     child: Text('MID-MATCH CONFIG',
                         style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1)),
+                            fontWeight: FontWeight.w900, letterSpacing: 1)),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -323,8 +294,7 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                     value: overs,
                     min: 1,
                     max: 50,
-                    onChanged: (v) =>
-                        setSheet(() => overs = v)),
+                    onChanged: (v) => setSheet(() => overs = v)),
               ),
               _flatRow(
                 'PLAYERS / SIDE',
@@ -333,77 +303,61 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                     value: players,
                     min: 2,
                     max: 15,
-                    onChanged: (v) =>
-                        setSheet(() => players = v)),
+                    onChanged: (v) => setSheet(() => players = v)),
               ),
               _flatRow(
                 'DOUBLE-SIDE',
                 SegmentedButton<int>(
                   segments: const [
-                    ButtonSegment(
-                        value: 0, label: Text('None')),
-                    ButtonSegment(
-                        value: 1, label: Text('One')),
+                    ButtonSegment(value: 0, label: Text('None')),
+                    ButtonSegment(value: 1, label: Text('One')),
                   ],
                   selected: {common},
-                  onSelectionChanged: (s) =>
-                      setSheet(() => common = s.first),
+                  onSelectionChanged: (s) => setSheet(() => common = s.first),
                 ),
               ),
               _flatRow(
                 'WIDE',
                 SegmentedButton<int>(
                   segments: const [
-                    ButtonSegment(
-                        value: 0, label: Text('0')),
-                    ButtonSegment(
-                        value: 1, label: Text('+1')),
+                    ButtonSegment(value: 0, label: Text('0')),
+                    ButtonSegment(value: 1, label: Text('+1')),
                   ],
                   selected: {wide},
-                  onSelectionChanged: (s) =>
-                      setSheet(() => wide = s.first),
+                  onSelectionChanged: (s) => setSheet(() => wide = s.first),
                 ),
               ),
               _flatRow(
                 'NO-BALL',
                 SegmentedButton<int>(
                   segments: const [
-                    ButtonSegment(
-                        value: 0, label: Text('0')),
-                    ButtonSegment(
-                        value: 1, label: Text('+1')),
+                    ButtonSegment(value: 0, label: Text('0')),
+                    ButtonSegment(value: 1, label: Text('+1')),
                   ],
                   selected: {noball},
-                  onSelectionChanged: (s) =>
-                      setSheet(() => noball = s.first),
+                  onSelectionChanged: (s) => setSheet(() => noball = s.first),
                 ),
               ),
               _flatRow(
                 'FREE HIT',
                 SegmentedButton<bool>(
                   segments: const [
-                    ButtonSegment(
-                        value: false, label: Text('OFF')),
-                    ButtonSegment(
-                        value: true, label: Text('ON')),
+                    ButtonSegment(value: false, label: Text('OFF')),
+                    ButtonSegment(value: true, label: Text('ON')),
                   ],
                   selected: {freeHit},
-                  onSelectionChanged: (s) =>
-                      setSheet(() => freeHit = s.first),
+                  onSelectionChanged: (s) => setSheet(() => freeHit = s.first),
                 ),
               ),
               _flatRow(
                 'LAST MAN',
                 SegmentedButton<bool>(
                   segments: const [
-                    ButtonSegment(
-                        value: false, label: Text('OFF')),
-                    ButtonSegment(
-                        value: true, label: Text('ON')),
+                    ButtonSegment(value: false, label: Text('OFF')),
+                    ButtonSegment(value: true, label: Text('ON')),
                   ],
                   selected: {lms},
-                  onSelectionChanged: (s) =>
-                      setSheet(() => lms = s.first),
+                  onSelectionChanged: (s) => setSheet(() => lms = s.first),
                 ),
               ),
               const Divider(height: 24),
@@ -412,8 +366,7 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   Expanded(
                     child: RectBtn(
                       primary: false,
-                      onTap: () =>
-                          Navigator.pop(sheetCtx),
+                      onTap: () => Navigator.pop(sheetCtx),
                       child: const Text('CANCEL'),
                     ),
                   ),
@@ -431,10 +384,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                           lastManStanding: lms,
                         );
                         Navigator.pop(sheetCtx);
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(
-                                content: Text(err ??
-                                    'Saved')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(err ?? 'Saved')));
                       },
                       child: const Text('✓ SAVE'),
                     ),
@@ -447,20 +398,15 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   Expanded(
                     child: RectBtn(
                       primary: false,
-                      onTap: () => _declareWinner(
-                          context, store, cfg.teamA),
+                      onTap: () => _declareWinner(context, store, cfg.teamA),
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const TeamDot(
-                              MatchStore.teamAColor,
-                              size: 10),
+                          const TeamDot(MatchStore.teamAColor, size: 10),
                           const SizedBox(width: 6),
                           Flexible(
                               child: Text(cfg.teamA,
-                                  overflow: TextOverflow
-                                      .ellipsis)),
+                                  overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ),
@@ -469,20 +415,15 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   Expanded(
                     child: RectBtn(
                       primary: false,
-                      onTap: () => _declareWinner(
-                          context, store, cfg.teamB),
+                      onTap: () => _declareWinner(context, store, cfg.teamB),
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const TeamDot(
-                              MatchStore.teamBColor,
-                              size: 10),
+                          const TeamDot(MatchStore.teamBColor, size: 10),
                           const SizedBox(width: 6),
                           Flexible(
                               child: Text(cfg.teamB,
-                                  overflow: TextOverflow
-                                      .ellipsis)),
+                                  overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ),
@@ -516,8 +457,8 @@ Widget _flatRow(String title, Widget control) {
         SizedBox(
           width: 110,
           child: Text(title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800, fontSize: 12)),
+              style:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
         ),
         Expanded(child: control),
       ],
@@ -525,8 +466,7 @@ Widget _flatRow(String title, Widget control) {
   );
 }
 
-void _declareWinner(
-    BuildContext context, MatchStore store, String team) {
+void _declareWinner(BuildContext context, MatchStore store, String team) {
   Navigator.pop(context);
   showDialog(
     context: context,
@@ -567,8 +507,7 @@ void _confirmAbandon(BuildContext context, MatchStore store) {
           onTap: () {
             store.abandon();
             Navigator.pop(context);
-            Navigator.pushNamedAndRemoveUntil(
-                context, '/', (r) => false);
+            Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
           },
           child: const Text('Abandon'),
         ),
@@ -618,8 +557,7 @@ void showLookSheet(BuildContext context, MatchStore store) {
                     ChoiceChip(
                       label: Text('142/7',
                           style: TextStyle(
-                              fontFamily:
-                                  ScoreFonts.family(id),
+                              fontFamily: ScoreFonts.family(id),
                               fontWeight: FontWeight.w900,
                               fontSize: 15)),
                       selected: store.fontId == id,
@@ -636,8 +574,7 @@ void showLookSheet(BuildContext context, MatchStore store) {
                 children: [
                   for (final id in MatchStore.celebIds)
                     ChoiceChip(
-                      label:
-                          Text(MatchStore.celebNames[id]!),
+                      label: Text(MatchStore.celebNames[id]!),
                       selected: store.celebId == id,
                       onSelected: (_) => store.setCeleb(id),
                     ),

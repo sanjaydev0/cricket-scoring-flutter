@@ -88,6 +88,7 @@ class StylePreset {
     'crt',
     'neon',
     'gameboy',
+    'prored',
   ];
 
   static const presets = {
@@ -203,6 +204,14 @@ class StylePreset {
       keyRadius: 6,
       stripBg: Color(0xFF9BBC0F),
     ),
+    'prored': StylePreset(
+      id: 'prored',
+      name: 'Pro Red',
+      heroBg: Color(0xFFDC2626),
+      heroFg: Colors.white,
+      keyRadius: 12,
+      stripBg: Color(0xFFFEF2F2),
+    ),
   };
 
   static StylePreset of(String id) => presets[id] ?? presets['umpire']!;
@@ -216,6 +225,10 @@ class UmpireTheme {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8)),
         showCheckmark: false,
+        // 44px+ touch targets per platform guidance.
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         selectedColor: const Color(0xFF131316),
         labelStyle: TextStyle(
             fontWeight: FontWeight.w800, color: scheme.onSurface),
@@ -230,6 +243,9 @@ class UmpireTheme {
           shape: WidgetStatePropertyAll(
               RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8))),
+          // 44px+ touch targets per platform guidance.
+          minimumSize: const WidgetStatePropertyAll(
+              Size(48, 44)),
           backgroundColor:
               WidgetStateProperty.resolveWith((s) =>
                   s.contains(WidgetState.selected)

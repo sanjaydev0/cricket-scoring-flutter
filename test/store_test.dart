@@ -50,8 +50,8 @@ void main() {
     expect(s.fontId, 'ledger');
   });
 
-  test('twelve glare-proof presets exist', () {
-    expect(StylePreset.ids.length, 12);
+  test('thirteen glare-proof presets exist', () {
+    expect(StylePreset.ids.length, 13);
     for (final id in StylePreset.ids) {
       expect(StylePreset.of(id).name.isNotEmpty, true);
     }

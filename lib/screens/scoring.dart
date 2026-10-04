@@ -17,8 +17,7 @@ class ScoringScreen extends StatelessWidget {
       builder: (_, __) {
         final m = store.match;
         if (m == null) {
-          return const Scaffold(
-              body: Center(child: Text('No live match')));
+          return const Scaffold(body: Center(child: Text('No live match')));
         }
         if (m.completed) {
           WidgetsBinding.instance.addPostFrameCallback(
@@ -59,16 +58,14 @@ class ScoringScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(
-                'INN ${m.currentInnings} • ${inn.battingTeam}',
+            title: Text('INN ${m.currentInnings} • ${inn.battingTeam}',
                 style:
                     const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
             actions: [
               IconButton(
                   icon: const Icon(Icons.volume_up_outlined),
                   tooltip: store.soundOn ? 'Mute sounds' : 'Unmute',
-                  onPressed: () =>
-                      store.setSound(!store.soundOn)),
+                  onPressed: () => store.setSound(!store.soundOn)),
               IconButton(
                   icon: const Icon(Icons.list_alt),
                   tooltip: 'Overs',
@@ -76,432 +73,380 @@ class ScoringScreen extends StatelessWidget {
               IconButton(
                   icon: const Icon(Icons.palette_outlined),
                   tooltip: 'Style & font',
-                  onPressed: () =>
-                      showLookSheet(context, store)),
+                  onPressed: () => showLookSheet(context, store)),
             ],
           ),
-          body: ResponsiveCenter(
-            maxWidth: 640,
-            child: ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                Card(
-                  color: preset.heroBg,
-                  child: Stack(
+          body: SafeArea(
+              child: ResponsiveCenter(
+                  maxWidth: 640,
+                  child: ListView(
+                    padding: const EdgeInsets.all(12),
                     children: [
-                      Positioned(
-                          top: 8, left: 12,
-                          child: _CornerMark(preset.heroFg)),
-                      Positioned(
-                          top: 8, right: 12,
-                          child: _CornerMark(preset.heroFg)),
-                      Positioned(
-                          bottom: 8, left: 12,
-                          child: _CornerMark(preset.heroFg)),
-                      Positioned(
-                          bottom: 8, right: 12,
-                          child: _CornerMark(preset.heroFg)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 20),
-                        child: Column(
+                      Card(
+                        color: preset.heroBg,
+                        child: Stack(
                           children: [
-                            Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 6),
-                              decoration: BoxDecoration(
-                                color: preset.heroFg
-                                    .withValues(alpha: 0.14),
-                                borderRadius:
-                                    BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                            Positioned(
+                                top: 8,
+                                left: 12,
+                                child: _CornerMark(preset.heroFg)),
+                            Positioned(
+                                top: 8,
+                                right: 12,
+                                child: _CornerMark(preset.heroFg)),
+                            Positioned(
+                                bottom: 8,
+                                left: 12,
+                                child: _CornerMark(preset.heroFg)),
+                            Positioned(
+                                bottom: 8,
+                                right: 12,
+                                child: _CornerMark(preset.heroFg)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 16, horizontal: 20),
+                              child: Column(
                                 children: [
-                                  TeamDot(isTeamA
-                                      ? MatchStore.teamAColor
-                                      : MatchStore.teamBColor),
-                                  const SizedBox(width: 8),
-                                  Text(inn.battingTeam,
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          letterSpacing: 1.5,
-                                          fontWeight:
-                                              FontWeight.w800,
-                                          color:
-                                              preset.heroFg)),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          preset.heroFg.withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        TeamDot(isTeamA
+                                            ? MatchStore.teamAColor
+                                            : MatchStore.teamBColor),
+                                        const SizedBox(width: 8),
+                                        Text(inn.battingTeam,
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                letterSpacing: 1.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: preset.heroFg)),
+                                      ],
+                                    ),
+                                  ),
+                                  Builder(builder: (_) {
+                                    final lastBadge =
+                                        cur.isNotEmpty ? cur.last.badge : '';
+                                    final isW = lastBadge == 'W' ||
+                                        lastBadge.startsWith('W+');
+                                    final isFour = lastBadge == '4' ||
+                                        lastBadge.startsWith('N4');
+                                    final isSix = lastBadge == '6' ||
+                                        lastBadge.startsWith('N6');
+                                    final numStyle = TextStyle(
+                                        fontFamily: scoreFamily,
+                                        fontSize: 68,
+                                        fontWeight: FontWeight.w900,
+                                        height: 1.05,
+                                        color: preset.heroFg,
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures()
+                                        ]);
+                                    // Runs and wickets celebrate independently —
+                                    // a boundary never shakes the wicket digit.
+                                    // Balls that finish an innings stay calm: no
+                                    // celebration fights the route transition.
+                                    final calm = inn.completed || m.completed;
+                                    return Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.baseline,
+                                      textBaseline: TextBaseline.alphabetic,
+                                      children: [
+                                        Celebrate(
+                                          mode: store.celebId,
+                                          valueKey: '${inn.runs}',
+                                          fire: (isFour || isSix) && !calm,
+                                          tint: isFour
+                                              ? const Color(0xFF2DC653)
+                                              : const Color(0xFFEC008C),
+                                          text: '${inn.runs}',
+                                          style: numStyle,
+                                        ),
+                                        Text('/',
+                                            style: numStyle.copyWith(
+                                                color: preset.heroFg
+                                                    .withValues(alpha: 0.55))),
+                                        Celebrate(
+                                          mode: store.celebId,
+                                          valueKey: '${inn.wickets}',
+                                          fire: isW && !calm,
+                                          tint: const Color(0xFFDC143C),
+                                          text: '${inn.wickets}',
+                                          style: numStyle,
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                  if (inn.isFreeHitActive)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 4),
+                                      child: Badge(
+                                          label: Text('FREE HIT',
+                                              style: TextStyle(
+                                                  fontWeight:
+                                                      FontWeight.w900))),
+                                    ),
+                                  if (targetLine != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: preset.heroFg
+                                              .withValues(alpha: 0.18),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          border:
+                                              Border.all(color: preset.heroFg),
+                                        ),
+                                        child: Text('TARGET $targetLine',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 12,
+                                                color: preset.heroFg)),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 10),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(99),
+                                    child: LinearProgressIndicator(
+                                      value: totalOvers == 0
+                                          ? 0
+                                          : inn.legalDeliveries /
+                                              (totalOvers * 6),
+                                      minHeight: 8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Divider(
+                                      height: 1,
+                                      color: preset.heroFg
+                                          .withValues(alpha: 0.25)),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      _stat(
+                                          context,
+                                          'OVERS',
+                                          '$oversFmt/$totalOvers',
+                                          preset.heroFg),
+                                      _stat(context, 'CRR', crr, preset.heroFg),
+                                      _stat(context, 'PROJ', '~$proj',
+                                          preset.heroFg),
+                                      _stat(context, 'EXTRAS',
+                                          '${inn.extrasTotal}', preset.heroFg),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
-                            Builder(builder: (_) {
-                          final lastBadge = cur.isNotEmpty
-                              ? cur.last.badge
-                              : '';
-                          final isW = lastBadge == 'W' ||
-                              lastBadge.startsWith('W+');
-                          final isFour = lastBadge == '4' ||
-                              lastBadge.startsWith('N4');
-                          final isSix = lastBadge == '6' ||
-                              lastBadge.startsWith('N6');
-                          final numStyle = TextStyle(
-                              fontFamily: scoreFamily,
-                              fontSize: 68,
-                              fontWeight: FontWeight.w900,
-                              height: 1.05,
-                              color: preset.heroFg,
-                              fontFeatures: const [
-                                FontFeature
-                                    .tabularFigures()
-                              ]);
-                          // Runs and wickets celebrate independently —
-                          // a boundary never shakes the wicket digit.
-                          // Balls that finish an innings stay calm: no
-                          // celebration fights the route transition.
-                          final calm =
-                              inn.completed || m.completed;
-                          return Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
-                            crossAxisAlignment:
-                                CrossAxisAlignment.baseline,
-                            textBaseline:
-                                TextBaseline.alphabetic,
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Card(
+                        color: preset.stripBg,
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Row(
                             children: [
-                              Celebrate(
-                                mode: store.celebId,
-                                valueKey: '${inn.runs}',
-                                fire: (isFour || isSix) && !calm,
-                                tint: isFour
-                                    ? const Color(
-                                        0xFF2DC653)
-                                    : const Color(
-                                        0xFFEC008C),
-                                text: '${inn.runs}',
-                                style: numStyle,
+                              // Fixed 6-ball window — never a half-peeking
+                              // 7th ball; older balls scroll left.
+                              SizedBox(
+                                  width: 246,
+                                  child: OverStrip(
+                                      balls: cur,
+                                      overNumber: inn.currentOverNumber)),
+                              TextButton(
+                                  onPressed: () => _oversSheet(context),
+                                  child: Text('${overRuns}r • ${overWkts}w ›',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w800))),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (nb)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 8),
+                                  child: Center(
+                                    child: Text('NB ARMED',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 2,
+                                            color: Color(0xFF7B2CBF))),
+                                  ),
+                                ),
+                              GridView.count(
+                                crossAxisCount: 3,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: 1.5,
+                                children: [
+                                  KeyBtn(
+                                      label: '0',
+                                      sub: nb ? 'NB' : 'DOT',
+                                      armed: nb,
+                                      radius: preset.keyRadius,
+                                      color: Colors.white,
+                                      fg: Colors.black,
+                                      onTap: () => _tap(context, 'DOT')),
+                                  KeyBtn(
+                                      label: '1',
+                                      sub: nb ? 'N1' : 'RUN',
+                                      armed: nb,
+                                      radius: preset.keyRadius,
+                                      color: Colors.white,
+                                      fg: Colors.black,
+                                      onTap: () =>
+                                          _tap(context, 'RUNS', runs: 1)),
+                                  KeyBtn(
+                                      label: '2',
+                                      sub: nb ? 'N2' : 'RUNS',
+                                      armed: nb,
+                                      radius: preset.keyRadius,
+                                      color: Colors.white,
+                                      fg: Colors.black,
+                                      onTap: () =>
+                                          _tap(context, 'RUNS', runs: 2)),
+                                  KeyBtn(
+                                      label: '3',
+                                      sub: nb ? 'N3' : 'RUNS',
+                                      armed: nb,
+                                      radius: preset.keyRadius,
+                                      color: Colors.white,
+                                      fg: Colors.black,
+                                      onTap: () =>
+                                          _tap(context, 'RUNS', runs: 3)),
+                                  KeyBtn(
+                                      label: '4',
+                                      sub: nb ? 'N4' : 'FOUR',
+                                      color: const Color(0xFF15803D),
+                                      fg: Colors.white,
+                                      armed: nb,
+                                      radius: preset.keyRadius,
+                                      onTap: () => _tap(context, 'FOUR')),
+                                  KeyBtn(
+                                      label: '6',
+                                      sub: nb ? 'N6' : 'SIX',
+                                      color: const Color(0xFFEC008C),
+                                      fg: Colors.white,
+                                      armed: nb,
+                                      radius: preset.keyRadius,
+                                      onTap: () => _tap(context, 'SIX')),
+                                  KeyBtn(
+                                      label: 'WD',
+                                      sub: '+${m.config.rules.widePenalty}',
+                                      color: const Color(0xFFFFBA08),
+                                      fg: Colors.black,
+                                      radius: preset.keyRadius,
+                                      onTap: () => _tap(context, 'WIDE')),
+                                  KeyBtn(
+                                      label: 'NB',
+                                      sub: nb
+                                          ? 'ARMED'
+                                          : '+${m.config.rules.noBallPenalty}',
+                                      color: const Color(0xFF7B2CBF),
+                                      fg: Colors.white,
+                                      armed: nb,
+                                      radius: preset.keyRadius,
+                                      onTap: () => store.toggleNb()),
+                                  KeyBtn(
+                                      label: 'W',
+                                      sub: 'WICKET',
+                                      color: const Color(0xFFDC143C),
+                                      fg: Colors.white,
+                                      radius: preset.keyRadius,
+                                      onTap: () => _wicketDialog(context)),
+                                ],
                               ),
-                              Text('/',
-                                  style: numStyle.copyWith(
-                                      color: preset.heroFg
-                                          .withValues(
-                                              alpha:
-                                                  0.55))),
-                              Celebrate(
-                                mode: store.celebId,
-                                valueKey:
-                                    '${inn.wickets}',
-                                fire: isW && !calm,
-                                tint: const Color(
-                                    0xFFDC143C),
-                                text: '${inn.wickets}',
-                                style: numStyle,
+                              const SizedBox(height: 12),
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 72,
+                                        height: 72,
+                                        child: FilledButton(
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFF0A0A0A),
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.zero,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(20)),
+                                          ),
+                                          onPressed: store.canUndo
+                                              ? () => store.undo()
+                                              : null,
+                                          child:
+                                              const Icon(Icons.undo, size: 28),
+                                        ),
+                                      ),
+                                      if (store.advancedExtras) ...[
+                                        const SizedBox(width: 10),
+                                        FilledButton.tonal(
+                                          onPressed: () => _moreSheet(context),
+                                          child: const Text('EXTRAS'),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: SizedBox(
+                                      width: 48,
+                                      height: 48,
+                                      child: OutlinedButton(
+                                        style: OutlinedButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(14)),
+                                        ),
+                                        onPressed: () =>
+                                            _settingsSheet(context),
+                                        child: const Icon(
+                                            Icons.settings_outlined,
+                                            size: 22),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
-                          );
-                        }),
-                        if (inn.isFreeHitActive)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4),
-                            child: Badge(
-                                label: Text('FREE HIT',
-                                    style: TextStyle(
-                                        fontWeight:
-                                            FontWeight.w900))),
-                          ),
-                        if (targetLine != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 6),
-                              decoration: BoxDecoration(
-                                color: preset.heroFg.withValues(
-                                    alpha: 0.18),
-                                borderRadius:
-                                    BorderRadius.circular(20),
-                                border: Border.all(
-                                    color: preset.heroFg),
-                              ),
-                              child: Text(
-                                  'TARGET $targetLine',
-                                  style: TextStyle(
-                                      fontWeight:
-                                          FontWeight.w800,
-                                      fontSize: 12,
-                                      color: preset.heroFg)),
-                            ),
-                          ),
-                        const SizedBox(height: 10),
-                        ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(99),
-                          child: LinearProgressIndicator(
-                            value: totalOvers == 0
-                                ? 0
-                                : inn.legalDeliveries /
-                                    (totalOvers * 6),
-                            minHeight: 8,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Divider(
-                            height: 1,
-                            color: preset.heroFg
-                                .withValues(alpha: 0.25)),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _stat(context, 'OVERS',
-                                '$oversFmt/$totalOvers', preset.heroFg),
-                            _stat(context, 'CRR', crr, preset.heroFg),
-                            _stat(context, 'PROJ', '~$proj',
-                                preset.heroFg),
-                            _stat(context, 'EXTRAS',
-                                '${inn.extrasTotal}', preset.heroFg),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Card(
-                  color: preset.stripBg,
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Row(
-                      children: [
-                        // Fixed 6-ball window — never a half-peeking
-                        // 7th ball; older balls scroll left.
-                        SizedBox(
-                            width: 246,
-                            child: OverStrip(
-                                balls: cur,
-                                overNumber:
-                                    inn.currentOverNumber)),
-                        TextButton(
-                            onPressed: () => _oversSheet(context),
-                            child: Text(
-                                '${overRuns}r • ${overWkts}w ›',
-                                style: const TextStyle(
-                                    fontWeight:
-                                        FontWeight.w800))),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.stretch,
-                      children: [
-                        if (nb)
-                          const Padding(
-                            padding:
-                                EdgeInsets.only(bottom: 8),
-                            child: Center(
-                              child: Text('NB ARMED',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight:
-                                          FontWeight.w900,
-                                      letterSpacing: 2,
-                                      color: Color(
-                                          0xFF7B2CBF))),
-                            ),
-                          ),
-                        GridView.count(
-                          crossAxisCount: 3,
-                          shrinkWrap: true,
-                          physics:
-                              const NeverScrollableScrollPhysics(),
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 1.5,
-                          children: [
-                            KeyBtn(
-                                label: '0',
-                                sub: nb ? 'NB' : 'DOT',
-                                armed: nb,
-                                radius: preset.keyRadius,
-                                color: Colors.white,
-                                fg: Colors.black,
-                                onTap: () =>
-                                    _tap(context, 'DOT')),
-                            KeyBtn(
-                                label: '1',
-                                sub: nb ? 'N1' : 'RUN',
-                                armed: nb,
-                                radius: preset.keyRadius,
-                                color: Colors.white,
-                                fg: Colors.black,
-                                onTap: () => _tap(context, 'RUNS',
-                                    runs: 1)),
-                            KeyBtn(
-                                label: '2',
-                                sub: nb ? 'N2' : 'RUNS',
-                                armed: nb,
-                                radius: preset.keyRadius,
-                                color: Colors.white,
-                                fg: Colors.black,
-                                onTap: () => _tap(context, 'RUNS',
-                                    runs: 2)),
-                            KeyBtn(
-                                label: '3',
-                                sub: nb ? 'N3' : 'RUNS',
-                                armed: nb,
-                                radius: preset.keyRadius,
-                                color: Colors.white,
-                                fg: Colors.black,
-                                onTap: () => _tap(context, 'RUNS',
-                                    runs: 3)),
-                            KeyBtn(
-                                label: '4',
-                                sub: nb ? 'N4' : 'FOUR',
-                                color: const Color(0xFF15803D),
-                                fg: Colors.white,
-                                armed: nb,
-                                radius: preset.keyRadius,
-                                onTap: () =>
-                                    _tap(context, 'FOUR')),
-                            KeyBtn(
-                                label: '6',
-                                sub: nb ? 'N6' : 'SIX',
-                                color: const Color(0xFFEC008C),
-                                fg: Colors.white,
-                                armed: nb,
-                                radius: preset.keyRadius,
-                                onTap: () =>
-                                    _tap(context, 'SIX')),
-                            KeyBtn(
-                                label: 'WD',
-                                sub:
-                                    '+${m.config.rules.widePenalty}',
-                                color: const Color(0xFFFFBA08),
-                                fg: Colors.black,
-                                radius: preset.keyRadius,
-                                onTap: () =>
-                                    _tap(context, 'WIDE')),
-                            KeyBtn(
-                                label: 'NB',
-                                sub: nb
-                                    ? 'ARMED'
-                                    : '+${m.config.rules.noBallPenalty}',
-                                color: const Color(0xFF7B2CBF),
-                                fg: Colors.white,
-                                armed: nb,
-                                radius: preset.keyRadius,
-                                onTap: () =>
-                                    store.toggleNb()),
-                            KeyBtn(
-                                label: 'W',
-                                sub: 'WICKET',
-                                color: const Color(0xFFDC143C),
-                                fg: Colors.white,
-                                radius: preset.keyRadius,
-                                onTap: () =>
-                                    _wicketDialog(context)),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 72,
-                                  height: 72,
-                                  child: FilledButton(
-                                    style: FilledButton
-                                        .styleFrom(
-                                      backgroundColor:
-                                          const Color(
-                                              0xFF0A0A0A),
-                                      foregroundColor:
-                                          Colors.white,
-                                      padding:
-                                          EdgeInsets.zero,
-                                      shape:
-                                          RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius
-                                                      .circular(
-                                                          20)),
-                                    ),
-                                    onPressed:
-                                        store.canUndo
-                                            ? () =>
-                                                store.undo()
-                                            : null,
-                                    child: const Icon(
-                                        Icons.undo,
-                                        size: 28),
-                                  ),
-                                ),
-                                if (store
-                                    .advancedExtras) ...[
-                                  const SizedBox(
-                                      width: 10),
-                                  FilledButton.tonal(
-                                    onPressed: () =>
-                                        _moreSheet(
-                                            context),
-                                    child: const Text(
-                                        'EXTRAS'),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: SizedBox(
-                                width: 48,
-                                height: 48,
-                                child: OutlinedButton(
-                                  style:
-                                      OutlinedButton.styleFrom(
-                                    padding:
-                                        EdgeInsets.zero,
-                                    shape:
-                                        RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius
-                                                    .circular(
-                                                        14)),
-                                  ),
-                                  onPressed: () =>
-                                      _settingsSheet(
-                                          context),
-                                  child: const Icon(
-                                      Icons
-                                          .settings_outlined,
-                                      size: 22),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+                  ))),
         );
       },
     );
@@ -512,7 +457,9 @@ class ScoringScreen extends StatelessWidget {
       children: [
         Text(k,
             style: TextStyle(
-                fontSize: 10, letterSpacing: 1.5, color: fg.withValues(alpha: 0.85))),
+                fontSize: 10,
+                letterSpacing: 1.5,
+                color: fg.withValues(alpha: 0.85))),
         Text(v,
             style: TextStyle(
                 fontSize: 17,
@@ -526,17 +473,13 @@ class ScoringScreen extends StatelessWidget {
   void _tap(BuildContext ctx, String action, {int runs = 0}) {
     final err = store.score(action: action, runs: runs);
     if (err != null) {
-      ScaffoldMessenger.of(ctx)
-          .showSnackBar(SnackBar(content: Text(err)));
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(err)));
     }
   }
 
-  void _wicketDialog(BuildContext context) =>
-      showWicketDialog(context, store);
-  void _oversSheet(BuildContext context) =>
-      showOversSheet(context, store);
-  void _moreSheet(BuildContext context) =>
-      showExtrasSheet(context, store);
+  void _wicketDialog(BuildContext context) => showWicketDialog(context, store);
+  void _oversSheet(BuildContext context) => showOversSheet(context, store);
+  void _moreSheet(BuildContext context) => showExtrasSheet(context, store);
   void _settingsSheet(BuildContext context) =>
       showSettingsSheet(context, store);
 }
@@ -560,8 +503,7 @@ class _CornerMark extends StatelessWidget {
 class OverStrip extends StatefulWidget {
   final List<Ball> balls;
   final int overNumber;
-  const OverStrip(
-      {required this.balls, required this.overNumber, super.key});
+  const OverStrip({required this.balls, required this.overNumber, super.key});
   @override
   State<OverStrip> createState() => _OverStripState();
 }
@@ -582,6 +524,10 @@ class _OverStripState extends State<OverStrip> {
     if (widget.balls.length != old.balls.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_ctrl.hasClients) return;
+        if (MediaQuery.disableAnimationsOf(context)) {
+          _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
+          return;
+        }
         // Slow glide to the latest six — never abrupt.
         _ctrl.animateTo(
           _ctrl.position.maxScrollExtent,
@@ -617,13 +563,11 @@ class _OverStripState extends State<OverStrip> {
           // Gaps between badges only — exactly 6 full balls per window.
           for (int i = 0; i < balls.length; i++)
             Padding(
-              padding: EdgeInsets.only(
-                  right: i == balls.length - 1 ? 0 : 6),
+              padding: EdgeInsets.only(right: i == balls.length - 1 ? 0 : 6),
               child: BallBadge(balls[i]),
             ),
           if (balls.isEmpty)
-            const Text('Over 1 • tap to bowl',
-                style: TextStyle(fontSize: 12)),
+            const Text('Over 1 • tap to bowl', style: TextStyle(fontSize: 12)),
         ],
       ),
     );

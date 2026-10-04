@@ -25,16 +25,12 @@ class RectBtn extends StatelessWidget {
       onPressed: onTap,
       style: FilledButton.styleFrom(
         minimumSize: const Size(64, 52),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         backgroundColor: danger
             ? cs.error
             : (primary ? const Color(0xFF131316) : cs.surface),
-        foregroundColor: (primary || danger)
-            ? Colors.white
-            : cs.onSurface,
+        foregroundColor: (primary || danger) ? Colors.white : cs.onSurface,
         side: (primary || danger)
             ? null
             : const BorderSide(color: Colors.black, width: 1.5),
@@ -94,12 +90,10 @@ class StepperRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
               if (hint != null)
                 Text(hint!,
-                    style: TextStyle(
-                        fontSize: 11, color: cs.onSurfaceVariant)),
+                    style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
             ],
           ),
         ),
@@ -111,8 +105,8 @@ class StepperRow extends StatelessWidget {
           width: 40,
           child: Text('$value',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w900)),
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
         ),
         IconButton.filledTonal(
           onPressed: value < max ? () => onChanged(value + 1) : null,
@@ -230,8 +224,8 @@ class KeyBtn extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 24, fontWeight: FontWeight.w900, height: 1)),
             Text(sub,
-                style: const TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.w800)),
+                style:
+                    const TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
           ],
         ),
       ),
@@ -243,8 +237,7 @@ class KeyBtn extends StatelessWidget {
 class ResponsiveCenter extends StatelessWidget {
   final Widget child;
   final double maxWidth;
-  const ResponsiveCenter(
-      {required this.child, this.maxWidth = 560, super.key});
+  const ResponsiveCenter({required this.child, this.maxWidth = 560, super.key});
   @override
   Widget build(BuildContext context) {
     return Align(
@@ -307,13 +300,18 @@ class _CelebrateState extends State<Celebrate>
     super.dispose();
   }
 
-  Text _text(Color color, {List<Shadow>? shadows}) =>
-      Text(widget.text, style: widget.style.copyWith(color: color, shadows: shadows));
+  Text _text(Color color, {List<Shadow>? shadows}) => Text(widget.text,
+      style: widget.style.copyWith(color: color, shadows: shadows));
 
   @override
   Widget build(BuildContext context) {
     final base = widget.style.color ?? Colors.black;
-    if (widget.mode == 'off' || !widget.fire) return _text(base);
+    // Reduced motion: static numerals, zero animation.
+    if (widget.mode == 'off' ||
+        !widget.fire ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return _text(base);
+    }
     final tint = widget.tint;
     return AnimatedBuilder(
       animation: _c,
@@ -324,32 +322,34 @@ class _CelebrateState extends State<Celebrate>
             final g = sin(t * 3.14159) * 4 * (1 - t * 0.3);
             return _text(base, shadows: [
               Shadow(
-                  color: const Color(0xFFFF004C)
-                      .withValues(alpha: 0.9 * (1 - t)),
+                  color:
+                      const Color(0xFFFF004C).withValues(alpha: 0.9 * (1 - t)),
                   offset: Offset(-g, 0),
                   blurRadius: 0),
               Shadow(
-                  color: const Color(0xFF00E5FF)
-                      .withValues(alpha: 0.9 * (1 - t)),
+                  color:
+                      const Color(0xFF00E5FF).withValues(alpha: 0.9 * (1 - t)),
                   offset: Offset(g, 0),
                   blurRadius: 0),
             ]);
           case 'crt': // faint CRT refresh flicker, settles clean
             final f = 0.9 + 0.1 * sin(t * 55);
-            return Opacity(
-                opacity: t > 0.9 ? 1.0 : f, child: _text(base));
+            return Opacity(opacity: t > 0.9 ? 1.0 : f, child: _text(base));
           case 'slowmo': // long swell to 1.15x, eases back exactly
             return Transform.scale(
-                scale: 1 + 0.15 * sin(t * 3.14159),
-                child: _text(base));
+                scale: 1 + 0.15 * sin(t * 3.14159), child: _text(base));
           case 'rise': // retired — falls to pop
           case 'flash': // numerals tint to event color, ease back
             final k = t < 0.35 ? t / 0.35 : 1 - (t - 0.35) / 0.65;
             return _text(Color.lerp(base, tint, k.clamp(0.0, 1.0))!);
           case 'glow': // soft bloom behind numerals, decays
             return _text(base, shadows: [
-              Shadow(color: tint.withValues(alpha: 0.85 * (1 - t)), blurRadius: 28 * (1 - t) + 2),
-              Shadow(color: tint.withValues(alpha: 0.5 * (1 - t)), blurRadius: 60 * (1 - t) + 4),
+              Shadow(
+                  color: tint.withValues(alpha: 0.85 * (1 - t)),
+                  blurRadius: 28 * (1 - t) + 2),
+              Shadow(
+                  color: tint.withValues(alpha: 0.5 * (1 - t)),
+                  blurRadius: 60 * (1 - t) + 4),
             ]);
           case 'roll': // retired — falls to pop
           case 'shake': // tiny decaying shiver, tile stays put
@@ -358,15 +358,13 @@ class _CelebrateState extends State<Celebrate>
                 offset: Offset(d, 0), child: _text(base));
           case 'blink': // two quick scoreboard dips
             final o = (t * 4) % 2 < 1 ? 0.35 : 1.0;
-            return Opacity(
-                opacity: t > 0.85 ? 1.0 : o, child: _text(base));
+            return Opacity(opacity: t > 0.85 ? 1.0 : o, child: _text(base));
           case 'sweep': // retired — falls to glow
           case 'ring': // retired (sized layout) — falls to glow
           case 'burst': // retired — falls to rise
           default: // pop — single gentle bump, settles exactly at 1x
             return Transform.scale(
-                scale: 1 + 0.07 * sin(t * 3.14159),
-                child: _text(base));
+                scale: 1 + 0.07 * sin(t * 3.14159), child: _text(base));
         }
       },
     );

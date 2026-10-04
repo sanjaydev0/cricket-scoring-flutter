@@ -29,72 +29,61 @@ class BreakScreen extends StatelessWidget {
         final inn1 = m.innings1;
         return Scaffold(
           appBar: AppBar(title: const Text('INNINGS BREAK')),
-          body: ResponsiveCenter(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
-                          children: [
-                            TeamDot(inn1.battingTeam ==
-                                    m.config.teamA
-                                ? MatchStore.teamAColor
-                                : MatchStore.teamBColor),
-                            const SizedBox(width: 8),
-                            Text(
-                                '${inn1.battingTeam}: ${inn1.runs}/${inn1.wickets}',
-                                style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight:
-                                        FontWeight.w900)),
-                          ],
-                        ),
-                        Text(
-                            'Overs ${CricketMath.ballsToOvers(inn1.legalDeliveries)}/${m.config.totalOvers} • CRR ${CricketMath.calcCRR(inn1.runs, inn1.legalDeliveries)}'),
-                        const SizedBox(height: 16),
-                        Text(
-                            'CHASE TARGET FOR ${inn1.bowlingTeam}',
-                            style: const TextStyle(
-                                letterSpacing: 1.2,
-                                fontSize: 11)),
-                        Text('${m.target}',
-                            style: TextStyle(
-                                fontFamily: ScoreFonts.family(
-                                    store.fontId),
-                                fontSize: 52,
-                                fontWeight: FontWeight.w900,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .error)),
-                        Text(
-                            'RRR ${CricketMath.calcRRR(m.target!, CricketMath.totalBalls(m.config.totalOvers))} RPO'),
-                        const SizedBox(height: 16),
-                        RectBtn(
-                            onTap: () {
-                              store.startSecondInnings();
-                              Navigator.pushReplacementNamed(
-                                  context, '/scoring');
-                            },
-                            child: const Text(
-                                'COMMENCE 2ND INNINGS')),
-                        const SizedBox(height: 8),
-                        RectBtn(
-                            primary: false,
-                            onTap: () => store.undo(),
-                            child: const Text('UNDO')),
-                      ],
-                    ),
+          body: SafeArea(
+              child: ResponsiveCenter(
+                  child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TeamDot(inn1.battingTeam == m.config.teamA
+                              ? MatchStore.teamAColor
+                              : MatchStore.teamBColor),
+                          const SizedBox(width: 8),
+                          Text(
+                              '${inn1.battingTeam}: ${inn1.runs}/${inn1.wickets}',
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.w900)),
+                        ],
+                      ),
+                      Text(
+                          'Overs ${CricketMath.ballsToOvers(inn1.legalDeliveries)}/${m.config.totalOvers} • CRR ${CricketMath.calcCRR(inn1.runs, inn1.legalDeliveries)}'),
+                      const SizedBox(height: 16),
+                      Text('CHASE TARGET FOR ${inn1.bowlingTeam}',
+                          style: const TextStyle(
+                              letterSpacing: 1.2, fontSize: 11)),
+                      Text('${m.target}',
+                          style: TextStyle(
+                              fontFamily: ScoreFonts.family(store.fontId),
+                              fontSize: 52,
+                              fontWeight: FontWeight.w900,
+                              color: Theme.of(context).colorScheme.error)),
+                      Text(
+                          'RRR ${CricketMath.calcRRR(m.target!, CricketMath.totalBalls(m.config.totalOvers))} RPO'),
+                      const SizedBox(height: 16),
+                      RectBtn(
+                          onTap: () {
+                            store.startSecondInnings();
+                            Navigator.pushReplacementNamed(context, '/scoring');
+                          },
+                          child: const Text('COMMENCE 2ND INNINGS')),
+                      const SizedBox(height: 8),
+                      RectBtn(
+                          primary: false,
+                          onTap: () => store.undo(),
+                          child: const Text('UNDO')),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+            ],
+          ))),
         );
       },
     );
@@ -129,83 +118,64 @@ class ResultScreen extends StatelessWidget {
         final inn2 = m.innings2;
         return Scaffold(
           appBar: AppBar(title: const Text('MATCH FINISHED')),
-          body: ResponsiveCenter(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Text(
-                            m.winner == 'TIE'
-                                ? 'MATCH TIED'
-                                : '${m.winner} WON',
-                            style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900)),
-                        Text(m.winMargin ?? '',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 12),
-                        _innCard(m, inn1.battingTeam,
-                            inn1.runs, inn1.wickets,
-                            inn1.legalDeliveries),
-                        if (inn2 != null)
-                          _innCard(
-                              m,
-                              inn2.battingTeam,
-                              inn2.runs,
-                              inn2.wickets,
-                              inn2.legalDeliveries),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                                child: RectBtn(
-                                    primary: false,
-                                    onTap: () {
-                                      store.newMatch();
-                                      Navigator
-                                          .pushNamedAndRemoveUntil(
-                                              context,
-                                              '/',
-                                              (r) => false);
-                                    },
-                                    child:
-                                        const Text('HOME'))),
-                            const SizedBox(width: 10),
-                            Expanded(
-                                child: RectBtn(
-                                    onTap: () {
-                                      store.newMatch();
-                                      Navigator
-                                          .pushNamedAndRemoveUntil(
-                                              context,
-                                              '/setup',
-                                              (r) => r.isFirst);
-                                    },
-                                    child: const Text(
-                                        'NEW MATCH'))),
-                          ],
-                        ),
-                      ],
-                    ),
+          body: SafeArea(
+              child: ResponsiveCenter(
+                  child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Text(m.winner == 'TIE' ? 'MATCH TIED' : '${m.winner} WON',
+                          style: const TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.w900)),
+                      Text(m.winMargin ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      _innCard(m, inn1.battingTeam, inn1.runs, inn1.wickets,
+                          inn1.legalDeliveries),
+                      if (inn2 != null)
+                        _innCard(m, inn2.battingTeam, inn2.runs, inn2.wickets,
+                            inn2.legalDeliveries),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: RectBtn(
+                                  primary: false,
+                                  onTap: () {
+                                    store.newMatch();
+                                    Navigator.pushNamedAndRemoveUntil(
+                                        context, '/', (r) => false);
+                                  },
+                                  child: const Text('HOME'))),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child: RectBtn(
+                                  onTap: () {
+                                    store.newMatch();
+                                    Navigator.pushNamedAndRemoveUntil(
+                                        context, '/setup', (r) => r.isFirst);
+                                  },
+                                  child: const Text('NEW MATCH'))),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+            ],
+          ))),
         );
       },
     );
   }
 
   Widget _innCard(dynamic m, String team, int r, int w, int balls) {
-    final dot = team == m.config.teamA
-        ? MatchStore.teamAColor
-        : MatchStore.teamBColor;
+    final dot =
+        team == m.config.teamA ? MatchStore.teamAColor : MatchStore.teamBColor;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -214,8 +184,7 @@ class ResultScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
               child: Text(team,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800))),
+                  style: const TextStyle(fontWeight: FontWeight.w800))),
           Text('$r/$w (${CricketMath.ballsToOvers(balls)})',
               style: TextStyle(
                   fontFamily: ScoreFonts.family(store.fontId),
