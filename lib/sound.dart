@@ -1,16 +1,15 @@
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
-import 'package:soundpool/soundpool.dart';
 
 /// Zero-latency arcade SFX (Kenney CC0, bundled) — fire-and-forget, never
 /// blocks scoring. 100% offline: all files ship in assets/audio/.
 ///
-/// Android/low-level targets use `soundpool` with all Sound IDs preloaded at
-/// startup. Web has no soundpool backend, so it keeps `audioplayers`.
-/// Everything is guarded: audio failure can never break the scorer, and the
-/// service constructs safely in unit tests (no platform channels there).
+/// One preloaded player per clip (`setSource` at startup, `resume()` to
+/// play) — the lowest-latency pattern `audioplayers` offers. (`soundpool`
+/// 2.4.1 was tried and dropped: it targets Android's removed v1 embedding
+/// and no longer compiles.) Debounced so rapid keying never stacks audio,
+/// and fully guarded: audio failure can never break the scorer, and the
+/// service constructs safely in unit tests.
 class SoundService extends ChangeNotifier {
   static final SoundService instance = SoundService._();
   SoundService._();
@@ -26,9 +25,7 @@ class SoundService extends ChangeNotifier {
     'fanfare',
   ];
 
-  Soundpool? _pool;
-  final Map<String, int> _ids = {};
-  AudioPlayer? _webPlayer; // web fallback only
+  final Map<String, AudioPlayer> _players = {};
   bool enabled = true;
   bool _ready = false;
   int _lastMs = 0;
@@ -37,22 +34,15 @@ class SoundService extends ChangeNotifier {
     this.enabled = enabled;
     if (_ready) return;
     try {
-      if (kIsWeb) {
-        _webPlayer ??= AudioPlayer();
-        await _webPlayer!.setVolume(1);
-      } else {
-        _pool ??= Soundpool.fromOptions(
-          options: const SoundpoolOptions(maxStreams: 8),
-        );
-        for (final name in _files) {
-          final data = await rootBundle.load('assets/audio/$name.ogg');
-          final id = await _pool!.load(data);
-          if (id > 0) _ids[name] = id;
-        }
+      for (final name in _files) {
+        final p = AudioPlayer();
+        await p.setSource(AssetSource('audio/$name.ogg'));
+        await p.setVolume(1);
+        _players[name] = p;
       }
       _ready = true;
     } catch (_) {
-      _pool = null; // audio unavailable — scorer works without it
+      _players.clear(); // audio unavailable — scorer works without it
     }
   }
 
@@ -63,17 +53,13 @@ class SoundService extends ChangeNotifier {
     if (now - _lastMs < 150) return;
     _lastMs = now;
     try {
-      if (kIsWeb) {
-        _webPlayer ??= AudioPlayer();
-        await _webPlayer!.play(AssetSource('audio/$name.ogg'));
-      } else {
-        final id = _ids[name];
-        if (id == null) return;
-        _pool ??= Soundpool.fromOptions(
-          options: const SoundpoolOptions(maxStreams: 8),
-        );
-        await _pool!.play(id);
+      var p = _players[name];
+      p ??= AudioPlayer();
+      if (!_players.containsKey(name)) {
+        await p.setSource(AssetSource('audio/$name.ogg'));
+        _players[name] = p;
       }
+      await p.resume();
     } catch (_) {}
   }
 
