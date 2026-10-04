@@ -290,13 +290,18 @@ class Celebrate extends StatefulWidget {
 
 class _CelebrateState extends State<Celebrate>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: Motion.celebrate);
+  // Created eagerly in initState, NOT as a lazy `late final`. With mode 'off'
+  // the build path returns before touching the controller, so a lazy field was
+  // first *created* inside dispose() — and creating a ticker there looks up
+  // TickerMode on an already-deactivated element, which throws. Selecting the
+  // "Off" celebration and then navigating away hit exactly that.
+  late final AnimationController _c;
   String _last = '';
 
   @override
   void initState() {
     super.initState();
+    _c = AnimationController(vsync: this, duration: Motion.celebrate);
     _last = widget.valueKey;
   }
 

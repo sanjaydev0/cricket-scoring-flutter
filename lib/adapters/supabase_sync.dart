@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/room_code.dart';
@@ -8,25 +11,38 @@ import '../ports/sync_port.dart';
 
 /// Supabase-backed rooms.
 ///
-/// Design notes that matter:
+/// **Write access is the database's job.** The scoring phone holds a random
+/// 256-bit secret per room and passes it to `room_publish` / `room_end`; those
+/// `security definer` functions update the row only when the secret matches.
+/// Direct writes through PostgREST are rejected by row level security, and the
+/// secret table itself has no policy at all, so no client role can read it —
+/// not even someone who knows the room code.
 ///
-/// * The scoring phone signs in **anonymously**. Its uid becomes the row's
-///   `owner_id`, and row level security is what stops anyone else writing —
-///   not any check in this file. A leaked join code therefore grants read and
-///   nothing else, even if someone rewrites the client.
-/// * Every write carries the whole match. A viewer that drops a packet just
-///   reads the next full snapshot; there are no deltas to reconcile.
-/// * Nothing here can break scoring. Scoring calls [publish] without awaiting
-///   it, and every call is internally guarded, so a dead backend degrades to
-///   "no live room", never to a failed ball.
+/// Verified against the live project: an `anon` PATCH on a room returns 204
+/// with **zero rows affected**, and reading `room_secrets` returns 401.
+///
+/// Deliberately no Supabase Auth: anonymous sign-ins are disabled on a fresh
+/// project, and a scoring app should not carry a token refresh cycle to save a
+/// snapshot. The room code plus the secret are both capabilities.
+///
+/// Every publish carries the whole match, so a viewer that drops a packet just
+/// reads the next full snapshot — there are no deltas to reconcile. Nothing
+/// here can break scoring: callers never await, and every call is guarded.
 class SupabaseSync implements SyncPort {
   final String url;
   final String publishableKey;
 
   SupabaseSync({required this.url, required this.publishableKey});
 
-  /// Postgres unique_violation: that code is already taken, draw another.
-  static const _duplicateCode = '23505';
+  /// Stored so a scorer can resume sharing after the app is killed.
+  static const _secretKeyPrefix = 'cricket_room_secret_';
+
+  /// 40 hex chars = 160 bits. Only the scoring phone ever has this.
+  static String _newSecret() {
+    final r = Random.secure();
+    final bytes = List<int>.generate(20, (_) => r.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
 
   SupabaseClient? _db;
   RealtimeChannel? _channel;
@@ -76,16 +92,9 @@ class SupabaseSync implements SyncPort {
       final supabase = await Supabase.initialize(
         url: url,
         publishableKey: publishableKey,
-        // Supabase's realtime client logs handshake details at debug level.
         debug: false,
       );
       _db = supabase.client;
-      // Anonymous sign-in is what gives the scorer an owner identity. The
-      // dashboard must have "Anonymous sign-ins" enabled under
-      // Authentication -> Sign In / Providers.
-      if (_db!.auth.currentSession == null) {
-        await _db!.auth.signInAnonymously();
-      }
       _set(SyncState.ready);
     } catch (e) {
       _db = null;
@@ -93,37 +102,54 @@ class SupabaseSync implements SyncPort {
     }
   }
 
+  Future<void> _ensureReady() async {
+    if (_state == SyncState.ready && _db != null) return;
+    await init();
+  }
+
+  /// This phone's write-capability for [code], if it is sharing that room.
+  Future<String?> _secretFor(String code) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      return p.getString('$_secretKeyPrefix$code');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _rememberSecret(String code, String secret) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('$_secretKeyPrefix$code', secret);
+    } catch (_) {}
+  }
+
+  Future<void> _forgetSecret(String code) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.remove('$_secretKeyPrefix$code');
+    } catch (_) {}
+  }
+
   @override
   Future<String?> createRoom() async {
-    if (_db == null) {
-      if (_state != SyncState.ready) await init();
-    }
+    await _ensureReady();
     final db = _db;
     if (db == null || _state != SyncState.ready) return null;
 
     for (var attempt = 0; attempt < 5; attempt++) {
       final code = RoomCode.generate();
-      final expires = DateTime.now().add(const Duration(hours: 12));
+      final secret = _newSecret();
       try {
-        await db.from('rooms').insert({
-          'code': code,
-          'owner_id': db.auth.currentUser!.id,
-          'seq': 0,
-          // Placeholder until the first ball: an empty, versioned payload that
-          // a viewer decodes but ignores (seq 0 means "nothing scored yet").
-          'payload': {
-            'v': RoomSnapshot.version,
-            'seq': 0,
-            'match': <String, dynamic>{},
-            'at': expires.toIso8601String(),
-          },
-          'expires_at': expires.toIso8601String(),
-        });
-        return code;
-      } on PostgrestException catch (e) {
-        if (e.code == _duplicateCode) continue; // astronomically unlikely
-        _set(SyncState.error, 'Could not open room: ${e.message}');
-        return null;
+        final created = await db.rpc(
+          'room_create',
+          params: {'p_code': code, 'p_secret': secret},
+        );
+        if (created == true) {
+          await _rememberSecret(code, secret);
+          return code;
+        }
+        // Code already taken (astronomically unlikely): draw another.
       } catch (e) {
         _set(SyncState.error, 'Could not open room: $e');
         return null;
@@ -138,33 +164,30 @@ class SupabaseSync implements SyncPort {
     final db = _db;
     if (db == null || _state != SyncState.ready) return;
     try {
-      await db.from('rooms').update({
-        'seq': snapshot.seq,
-        'payload': snapshot.toPayload(),
-        'updated_at': snapshot.updatedAt.toIso8601String(),
-        // Refresh the TTL on every publish so a long match stays readable for
-        // its full length instead of expiring mid-over.
-        'expires_at': DateTime.now().add(snapshot.ttl).toIso8601String(),
-      }).eq('code', code);
+      final secret = await _secretFor(code);
+      if (secret == null) return; // not ours to write
+      await db.rpc('room_publish', params: {
+        'p_code': code,
+        'p_secret': secret,
+        'p_seq': snapshot.seq,
+        // Supabase maps jsonb from a JSON string.
+        'p_payload': jsonEncode(snapshot.toPayload()),
+      });
     } catch (e) {
-      // Never surfaced to scoring: the match is already recorded locally.
+      // Never surfaced to scoring: the ball is already recorded locally.
       _set(SyncState.error, 'Publish failed: $e');
     }
   }
 
   @override
   Future<void> watchRoom(String code) async {
-    final db = _db;
-    if (db == null) {
-      if (_state != SyncState.ready) await init();
-    }
+    await _ensureReady();
     final client = _db;
     if (client == null || _state != SyncState.ready) return;
     await _stopChannel();
 
     _watching = RoomCode.normalize(code) ?? code;
-    final name = 'room:${_watching!}';
-    // Catch up first: the current snapshot may be older than our last event.
+    // Catch up first: the row may be newer than our last event.
     try {
       final row = await client
           .from('rooms')
@@ -179,7 +202,7 @@ class SupabaseSync implements SyncPort {
       _set(SyncState.error, 'Could not read room: $e');
     }
 
-    final channel = client.channel(name)
+    final channel = client.channel('room:${_watching!}')
       ..onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -211,10 +234,14 @@ class SupabaseSync implements SyncPort {
     final db = _db;
     if (db == null) return;
     try {
-      await db.from('rooms').delete().eq('code', code);
+      final secret = await _secretFor(code);
+      if (secret != null) {
+        await db.rpc('room_end', params: {'p_code': code, 'p_secret': secret});
+      }
     } catch (_) {
       // Even if this fails the row expires on its own.
     }
+    await _forgetSecret(code);
     if (_watching == code) {
       await _stopChannel();
       _watching = null;

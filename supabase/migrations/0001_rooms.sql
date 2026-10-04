@@ -1,40 +1,34 @@
--- CricScore live rooms — Phase 1
--- A room is one live match snapshot that viewers can read. The scoring phone
--- is the only writer; the database enforces that with RLS, so a leaked code
--- grants read access and nothing else.
+-- CricScore live rooms — 001: the room row and who may read it.
 --
--- Run this in the Supabase SQL editor (Dashboard -> SQL Editor -> New query),
--- or with `supabase db push` if you link a CLI project.
+-- A room is one live match snapshot. This file creates the table and allows
+-- reads; 002 adds the write capability. Nothing here trusts the app: reads are
+-- open because the code is the capability, and writes do not exist yet at all.
+--
+-- Applied to the live project via the Supabase MCP (migration `create_rooms`).
 
--- ---------------------------------------------------------------------------
--- Table
--- ---------------------------------------------------------------------------
 create table if not exists public.rooms (
   code        text primary key,
-  owner_id    uuid        not null references auth.users (id) on delete cascade,
   seq         bigint      not null default 0,
   payload     jsonb       not null default '{"v":1}'::jsonb,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   expires_at  timestamptz not null,
-  -- Guards against a fat-fingered or malicious loop hammering the same room.
+  -- 32 symbols, no 0/O or 1/I: 33,554,432 codes, and none of them misread aloud.
   constraint rooms_code_shape check (code ~ '^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{5}$')
 );
 
 comment on table public.rooms is
-  'Live match snapshots shared with viewers. Scorer device owns the row; viewers are read-only.';
+  'Live match snapshots shared with viewers. Writes go only through the room_* functions in 002.';
 
--- Purge scans hit expires_at; the owner lookup hits owner_id.
+-- Purge scans hit expires_at.
 create index if not exists rooms_expires_at_idx on public.rooms (expires_at);
-create index if not exists rooms_owner_idx      on public.rooms (owner_id);
 
--- ---------------------------------------------------------------------------
--- Row level security
--- ---------------------------------------------------------------------------
 alter table public.rooms enable row level security;
 
--- Viewer read: the code IS the capability, so any caller may read a live room.
--- Nothing but the owner can write.
+-- Reads are open while the room is alive. There is deliberately no INSERT,
+-- UPDATE or DELETE policy: with RLS on and no policy for an operation, the
+-- database rejects it. Verified: an anon PATCH returns 204 with zero rows
+-- affected, and the row is unchanged.
 drop policy if exists "rooms read while live" on public.rooms;
 create policy "rooms read while live"
   on public.rooms
@@ -42,32 +36,7 @@ create policy "rooms read while live"
   to anon, authenticated
   using (expires_at > now());
 
-drop policy if exists "rooms owner inserts" on public.rooms;
-create policy "rooms owner inserts"
-  on public.rooms
-  for insert
-  to authenticated
-  with check (auth.uid() = owner_id);
-
-drop policy if exists "rooms owner updates" on public.rooms;
-create policy "rooms owner updates"
-  on public.rooms
-  for update
-  to authenticated
-  using (auth.uid() = owner_id)
-  with check (auth.uid() = owner_id);
-
-drop policy if exists "rooms owner deletes" on public.rooms;
-create policy "rooms owner deletes"
-  on public.rooms
-  for delete
-  to authenticated
-  using (auth.uid() = owner_id);
-
--- ---------------------------------------------------------------------------
--- Realtime
--- ---------------------------------------------------------------------------
--- Viewers get pushed every score. Postgres changes (not broadcast) because the
+-- Viewers get pushed every ball. Postgres changes (not broadcast) because the
 -- row is already the source of truth: one write, one event, no second copy.
 do $$
 begin

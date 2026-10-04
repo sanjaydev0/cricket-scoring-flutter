@@ -68,7 +68,9 @@ lib/
   screens/
     home.dart       Start / Resume / Archives + settings sections
     setup.dart      Teams (+batting-first pills), format, rules
-    scoring.dart    Hero tile (split numeral celebrations), over strip, keypad
+    scoring.dart    Keypad + undo + extras; renders Scoreboard
+    scoreboard.dart Scoreboard (hero tile + over strip) + OverStrip — SHARED with viewer
+    viewer.dart     ViewerScreen (read-only live view), JoinRoomScreen (enter a code)
     sheets.dart     wicket/run-out dialogs, overs, extras, match settings, look sheet
     break_result.dart (undo-safe route guards), history.dart (dated archives + detail)
     widgets.dart    RectBtn, TeamDot, StepperRow, BallBadge, KeyBtn, Celebrate
@@ -98,13 +100,21 @@ lib/adapters/   the only files importing supabase_flutter — supabase_sync, loc
 supabase/       migrations/*.sql + README.md (the setup steps a human must do)
 ```
 
-7. **Sync is fire-and-forget:** `MatchStore._publishRoom()` calls `sync.publish` without
+7. **Live rooms use a secret capability, not Supabase Auth.** Anonymous
+   sign-ins are disabled by default on a fresh project, and a scoring app should
+   not carry a token refresh cycle to save a snapshot. The room code grants
+   reads; a 160-bit secret in `room_secrets` (RLS on, no policies, revoked from
+   anon/authenticated) grants writes via the `room_publish` / `room_end`
+   `security definer` functions. `room_secrets` must stay unreachable from any
+   client role — verified: 401.
+8. **Sync is fire-and-forget:** `MatchStore._publishRoom()` calls `sync.publish` without
    awaiting and swallows the rejection on the *future* (a `try` around the call cannot
    see an async throw). A dead backend may cost the live room and nothing else — never a
    ball, never an undo, never persistence. Test that with `FakeSync.publishError`.
-8. **Write access is the database's job, not the app's:** the scoring phone signs in
-   anonymously, its uid becomes `rooms.owner_id`, and RLS rejects any write that is not
-   the owner. A leaked 5-character code grants read and nothing else.
+9. **Write access is the database's job, not the app's:** there are no INSERT/UPDATE/
+   DELETE policies on `rooms`, so RLS rejects direct writes outright (verified: anon PATCH
+   returns 204 with zero rows affected). A leaked 5-character code grants read and nothing
+   else.
 
 ## Commands
 
@@ -142,7 +152,7 @@ adb devices -l           # confirm device (USB or wireless)
 - Innings scorecard with per-player and per-bowler figures.
   **Note:** these are one piece of work, not two — figures cannot be attributed to a
   player until the model knows who faced the ball and who bowled it.
-- Live-room viewer: in-app read-only screen, and a zero-install web page at `/r/CODE`.
+- Live-room web viewer page at `/r/CODE` (the in-app read-only screen ships in v2.7).
 - Club roster and career stats (needs the `DeliveryEvent` model first, plus a Postgres
   schema for `clubs` / `players` / `matches` / batting+bowling figures).
 

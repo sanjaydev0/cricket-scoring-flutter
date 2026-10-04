@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../math.dart';
-import '../models.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
+import 'scoreboard.dart';
 import 'sheets.dart';
 
 class ScoringScreen extends StatelessWidget {
@@ -32,24 +31,8 @@ class ScoringScreen extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()));
         }
         final inn = store.innings!;
-        final totalOvers = m.config.totalOvers;
-        final oversFmt = CricketMath.ballsToOvers(inn.legalDeliveries);
-        final crr = CricketMath.calcCRR(inn.runs, inn.legalDeliveries);
-        final ballsLeft =
-            CricketMath.totalBalls(totalOvers) - inn.legalDeliveries;
         final cur = inn.currentOverBalls;
-        final overRuns = cur.fold<int>(0, (s, b) => s + b.totalRuns);
-        final overWkts = cur.where((b) => b.isWicket).length;
         final nb = store.nbArmed;
-        final target = m.currentInnings == 2 ? m.target : null;
-        String? targetLine;
-        if (target != null) {
-          final need = target - inn.runs;
-          final rrr = CricketMath.calcRRR(need, ballsLeft);
-          targetLine =
-              need <= 0 ? 'WON' : 'Need $need off $ballsLeft • RRR $rrr';
-        }
-        final isTeamA = inn.battingTeam == m.config.teamA;
         final preset = StylePreset.of(store.styleId);
         final scoreFamily = ScoreFonts.family(store.fontId);
 
@@ -100,178 +83,21 @@ class ScoringScreen extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.all(12),
                     children: [
-                      RepaintBoundary(
-                          child: Card(
-                        color: preset.heroBg,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                                top: 8,
-                                left: 12,
-                                child: _CornerMark(preset.heroFg)),
-                            Positioned(
-                                top: 8,
-                                right: 12,
-                                child: _CornerMark(preset.heroFg)),
-                            Positioned(
-                                bottom: 8,
-                                left: 12,
-                                child: _CornerMark(preset.heroFg)),
-                            Positioned(
-                                bottom: 8,
-                                right: 12,
-                                child: _CornerMark(preset.heroFg)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 16, horizontal: 20),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          preset.heroFg.withValues(alpha: 0.14),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        TeamDot(isTeamA
-                                            ? MatchStore.teamAColor
-                                            : MatchStore.teamBColor),
-                                        const SizedBox(width: 8),
-                                        Text(inn.battingTeam,
-                                            style: TextStyle(
-                                                fontSize: 13,
-                                                letterSpacing: 1.5,
-                                                fontWeight: FontWeight.w800,
-                                                color: preset.heroFg)),
-                                      ],
-                                    ),
-                                  ),
-                                  Builder(builder: (_) {
-                                    final lastBadge =
-                                        cur.isNotEmpty ? cur.last.badge : '';
-                                    final isW = lastBadge == 'W' ||
-                                        lastBadge.startsWith('W+');
-                                    final isFour = lastBadge == '4' ||
-                                        lastBadge.startsWith('N4');
-                                    final isSix = lastBadge == '6' ||
-                                        lastBadge.startsWith('N6');
-                                    final numStyle = TextStyle(
-                                        fontFamily: scoreFamily,
-                                        fontSize: 68,
-                                        fontWeight: FontWeight.w900,
-                                        height: 1.05,
-                                        color: preset.heroFg,
-                                        fontFeatures: const [
-                                          FontFeature.tabularFigures()
-                                        ]);
-                                    // Runs and wickets celebrate independently —
-                                    // a boundary never shakes the wicket digit.
-                                    // Balls that finish an innings stay calm: no
-                                    // celebration fights the route transition.
-                                    final calm = inn.completed || m.completed;
-                                    return Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.baseline,
-                                      textBaseline: TextBaseline.alphabetic,
-                                      children: [
-                                        Celebrate(
-                                          mode: store.celebId,
-                                          valueKey: '${inn.runs}',
-                                          fire: (isFour || isSix) && !calm,
-                                          tint: isFour
-                                              ? const Color(0xFF2DC653)
-                                              : const Color(0xFFEC008C),
-                                          text: '${inn.runs}',
-                                          style: numStyle,
-                                        ),
-                                        Text('/',
-                                            style: numStyle.copyWith(
-                                                color: preset.heroFg
-                                                    .withValues(alpha: 0.55))),
-                                        Celebrate(
-                                          mode: store.celebId,
-                                          valueKey: '${inn.wickets}',
-                                          fire: isW && !calm,
-                                          tint: const Color(0xFFDC143C),
-                                          text: '${inn.wickets}',
-                                          style: numStyle,
-                                        ),
-                                      ],
-                                    );
-                                  }),
-                                  if (inn.isFreeHitActive)
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 4),
-                                      child: Badge(
-                                          label: Text('FREE HIT',
-                                              style: TextStyle(
-                                                  fontWeight:
-                                                      FontWeight.w900))),
-                                    ),
-                                  if (targetLine != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 6),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 14, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: preset.heroFg
-                                              .withValues(alpha: 0.18),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          border:
-                                              Border.all(color: preset.heroFg),
-                                        ),
-                                        child: Text('TARGET $targetLine',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 12,
-                                                color: preset.heroFg)),
-                                      ),
-                                    ),
-                                  const SizedBox(height: 10),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(99),
-                                    child: LinearProgressIndicator(
-                                      value: totalOvers == 0
-                                          ? 0
-                                          : inn.legalDeliveries /
-                                              (totalOvers * 6),
-                                      minHeight: 8,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Divider(
-                                      height: 1,
-                                      color: preset.heroFg
-                                          .withValues(alpha: 0.25)),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      _stat(
-                                          context,
-                                          'OVERS',
-                                          '$oversFmt/$totalOvers',
-                                          preset.heroFg),
-                                      _stat(context, 'CRR', crr, preset.heroFg),
-                                      _stat(context, 'EXTRAS',
-                                          '${inn.extrasTotal}', preset.heroFg),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                      Scoreboard(
+                        match: m,
+                        innings: inn,
+                        preset: preset,
+                        scoreFamily: scoreFamily,
+                        animationGen: store.ballGen,
+                        celebId: store.celebId,
+                        stripTrailing: TextButton(
+                          onPressed: () => _oversSheet(context),
+                          child: Text(
+                              '${cur.fold<int>(0, (s, b) => s + b.totalRuns)}r • ${cur.where((b) => b.isWicket).length}w ›',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
                         ),
-                      )),
+                      ),
                       if (store.breakDest != null) ...[
                         const SizedBox(height: 10),
                         Card(
@@ -301,32 +127,6 @@ class ScoringScreen extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      RepaintBoundary(
-                          child: Card(
-                        color: preset.stripBg,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Row(
-                            children: [
-                              // Fixed 6-ball window — never a half-peeking
-                              // 7th ball; older balls scroll left.
-                              SizedBox(
-                                  width: 246,
-                                  child: OverStrip(
-                                      balls: cur,
-                                      overNumber: inn.currentOverNumber,
-                                      gen: store.ballGen,
-                                      frozen: inn.completed)),
-                              TextButton(
-                                  onPressed: () => _oversSheet(context),
-                                  child: Text('${overRuns}r • ${overWkts}w ›',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w800))),
-                            ],
-                          ),
-                        ),
-                      )),
                       const SizedBox(height: 10),
                       RepaintBoundary(
                           child: Card(
@@ -502,24 +302,6 @@ class ScoringScreen extends StatelessWidget {
     );
   }
 
-  Widget _stat(BuildContext ctx, String k, String v, Color fg) {
-    return Column(
-      children: [
-        Text(k,
-            style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.5,
-                color: fg.withValues(alpha: 0.85))),
-        Text(v,
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-                color: fg,
-                fontFeatures: const [FontFeature.tabularFigures()])),
-      ],
-    );
-  }
-
   void _tap(BuildContext ctx, String action, {int runs = 0}) {
     final err = store.score(action: action, runs: runs);
     if (err != null) {
@@ -550,120 +332,5 @@ class ScoringScreen extends StatelessWidget {
       content: Text('Live — anyone with the code $code can watch (read-only)'),
       duration: const Duration(seconds: 6),
     ));
-  }
-}
-
-/// Tiny corner registration mark, like the reference scoreboard tile.
-class _CornerMark extends StatelessWidget {
-  final Color color;
-  const _CornerMark(this.color);
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.45,
-      child: Text('+',
-          style: TextStyle(
-              fontSize: 14, fontWeight: FontWeight.w700, color: color)),
-    );
-  }
-}
-
-/// Over strip: smooth auto-scroll to the latest ball, scrollable history.
-class OverStrip extends StatefulWidget {
-  final List<Ball> balls;
-  final int overNumber;
-  final int gen; // advances on score() only — undo never animates
-  final bool frozen; // completed innings: zero motion
-  const OverStrip(
-      {required this.balls,
-      required this.overNumber,
-      required this.gen,
-      this.frozen = false,
-      super.key});
-  @override
-  State<OverStrip> createState() => _OverStripState();
-}
-
-class _OverStripState extends State<OverStrip> {
-  final ScrollController _ctrl = ScrollController();
-  int _swapGen = 0; // bumped on new-over rollover for a soft fade
-
-  @override
-  void didUpdateWidget(OverStrip old) {
-    super.didUpdateWidget(old);
-    if (!_ctrl.hasClients) return;
-    // Frozen (completed innings) or undo (same generation): sync silently.
-    if (widget.frozen || widget.gen == old.gen) {
-      if (_ctrl.position.pixels > _ctrl.position.maxScrollExtent) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!_ctrl.hasClients) return;
-          _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
-        });
-      }
-      return;
-    }
-    // Fade ONLY on forward rollover into a new over — never on undo.
-    if (widget.overNumber > old.overNumber) {
-      setState(() => _swapGen++);
-      return;
-    }
-    final shift = (widget.balls.length - old.balls.length).abs();
-    if (shift > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_ctrl.hasClients) return;
-        if (MediaQuery.disableAnimationsOf(context)) {
-          _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
-          return;
-        }
-        // Distance-based glide to the latest balls — never abrupt.
-        _ctrl.animateTo(
-          _ctrl.position.maxScrollExtent,
-          duration: Motion.glide(shift),
-          curve: Motion.curve,
-        );
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final balls = widget.balls;
-    if (_ctrl.hasClients &&
-        _ctrl.position.pixels > _ctrl.position.maxScrollExtent) {
-      // Clamp only — no visible snap (position already beyond content).
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_ctrl.hasClients) return;
-        _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
-      });
-    }
-    final row = SingleChildScrollView(
-      controller: _ctrl,
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          // Gaps between badges only — exactly 6 full balls per window.
-          for (int i = 0; i < balls.length; i++)
-            Padding(
-              padding: EdgeInsets.only(right: i == balls.length - 1 ? 0 : 6),
-              child: BallBadge(balls[i]),
-            ),
-          if (balls.isEmpty)
-            const Text('Over 1 • tap to bowl', style: TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
-    if (_swapGen == 0) return row;
-    return TweenAnimationBuilder<double>(
-      key: ValueKey(_swapGen),
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 300),
-      builder: (_, v, __) => Opacity(opacity: v, child: row),
-    );
   }
 }

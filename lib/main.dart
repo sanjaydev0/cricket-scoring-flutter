@@ -10,6 +10,7 @@ import 'theme.dart';
 import 'screens/home.dart';
 import 'screens/setup.dart';
 import 'screens/scoring.dart';
+import 'screens/viewer.dart';
 import 'screens/break_result.dart';
 import 'screens/history.dart';
 
@@ -60,6 +61,7 @@ class CricketApp extends StatelessWidget {
           '/break': (_) => BreakScreen(store),
           '/result': (_) => ResultScreen(store),
           '/history': (_) => HistoryScreen(store),
+          '/join': (_) => JoinRoomScreen(store: store),
         },
       ),
     );

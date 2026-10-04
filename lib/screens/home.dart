@@ -75,6 +75,12 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 10),
                       RectBtn(
                         primary: false,
+                        onTap: () => Navigator.pushNamed(context, '/join'),
+                        child: const Text('WATCH LIVE SCORE'),
+                      ),
+                      const SizedBox(height: 10),
+                      RectBtn(
+                        primary: false,
                         onTap: () => Navigator.pushNamed(context, '/history'),
                         child: const Text('ARCHIVES'),
                       ),
