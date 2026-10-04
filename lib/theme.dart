@@ -190,7 +190,40 @@ class StylePreset {
 
 /// Material 3 umpire theme: maximum contrast for extreme sunlight glare.
 /// Solid saturated fills, near-black on bright / white on deep, no pastels.
+/// Chips + segmented controls are 8px rectangles, carbon when selected.
 class UmpireTheme {
+  static ChipThemeData _chips(ColorScheme scheme) => ChipThemeData(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8)),
+        showCheckmark: false,
+        selectedColor: const Color(0xFF131316),
+        labelStyle: TextStyle(
+            fontWeight: FontWeight.w800, color: scheme.onSurface),
+        secondaryLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w800, color: Colors.white),
+        side: BorderSide(color: scheme.outline),
+      );
+
+  static SegmentedButtonThemeData _segmented() =>
+      SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8))),
+          backgroundColor:
+              WidgetStateProperty.resolveWith((s) =>
+                  s.contains(WidgetState.selected)
+                      ? const Color(0xFF131316)
+                      : null),
+          foregroundColor:
+              WidgetStateProperty.resolveWith((s) =>
+                  s.contains(WidgetState.selected)
+                      ? Colors.white
+                      : null),
+          textStyle: const WidgetStatePropertyAll(
+              TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      );
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
       seedColor: const Color(0xFF1D4ED8),
@@ -212,6 +245,8 @@ class UmpireTheme {
           side: BorderSide(color: Color(0xFFE2E2E2)),
         ),
       ),
+      chipTheme: _chips(scheme),
+      segmentedButtonTheme: _segmented(),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           textStyle:
@@ -244,6 +279,8 @@ class UmpireTheme {
           side: BorderSide(color: Color(0xFF2E2E33)),
         ),
       ),
+      chipTheme: _chips(scheme),
+      segmentedButtonTheme: _segmented(),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           textStyle:

@@ -48,15 +48,16 @@ class HomeScreen extends StatelessWidget {
                         const Text('Umpire scorer • 100% offline',
                             textAlign: TextAlign.center),
                         const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: () =>
+                        RectBtn(
+                          onTap: () =>
                               Navigator.pushNamed(context, '/setup'),
                           child: const Text('START NEW MATCH'),
                         ),
                         if (hasLive) ...[
                           const SizedBox(height: 10),
-                          FilledButton.tonal(
-                            onPressed: () {
+                          RectBtn(
+                            primary: false,
+                            onTap: () {
                               final m = store.match!;
                               if (m.completed) {
                                 Navigator.pushNamed(context, '/result');
@@ -72,8 +73,9 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ],
                         const SizedBox(height: 10),
-                        OutlinedButton(
-                          onPressed: () =>
+                        RectBtn(
+                          primary: false,
+                          onTap: () =>
                               Navigator.pushNamed(context, '/history'),
                           child: const Text('ARCHIVES'),
                         ),
@@ -201,6 +203,33 @@ class HomeScreen extends StatelessWidget {
                 ),
                 ExpansionTile(
                   tilePadding: EdgeInsets.zero,
+                  initiallyExpanded: true,
+                  title: Text(
+                      'Wickets • ${store.complexWickets ? 'Complex' : 'Simple'}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700)),
+                  children: [
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                            value: false,
+                            label: Text('Simple')),
+                        ButtonSegment(
+                            value: true,
+                            label: Text('Complex')),
+                      ],
+                      selected: {store.complexWickets},
+                      onSelectionChanged: (s) =>
+                          store.setComplexWickets(s.first),
+                    ),
+                    const Text(
+                        'Simple: Wicket + Run Out. Complex: full grid.',
+                        style: TextStyle(fontSize: 11)),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
                   title: const Text('Sounds & extras',
                       style: TextStyle(
                           fontWeight: FontWeight.w700)),
@@ -212,15 +241,6 @@ class HomeScreen extends StatelessWidget {
                           'Single quick bleeps'),
                       value: store.soundOn,
                       onChanged: (v) => store.setSound(v),
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title:
-                          const Text('Complex wickets'),
-                      subtitle: const Text('Full type grid'),
-                      value: store.complexWickets,
-                      onChanged: (v) =>
-                          store.setComplexWickets(v),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,

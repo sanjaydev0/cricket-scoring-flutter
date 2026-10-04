@@ -194,10 +194,8 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(54)),
-              onPressed: () {
+            RectBtn(
+              onTap: () {
                 if (a.text.trim().isEmpty ||
                     b.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(

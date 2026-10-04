@@ -154,11 +154,7 @@ class MatchStore extends ChangeNotifier {
     'pop',
     'flash',
     'glow',
-    'roll',
     'shake',
-    'sweep',
-    'ring',
-    'burst',
     'blink',
   ];
   static const celebNames = {
@@ -167,11 +163,7 @@ class MatchStore extends ChangeNotifier {
     'pop': 'Pop',
     'flash': 'Flash Tint',
     'glow': 'Glow Bloom',
-    'roll': 'Tick Roll',
     'shake': 'Shake',
-    'sweep': 'Shimmer Sweep',
-    'ring': 'Ring Ping',
-    'burst': 'Chip Burst',
     'blink': 'Double Blink',
   };
 
@@ -179,11 +171,18 @@ class MatchStore extends ChangeNotifier {
   static String migrateCeleb(String? v) {
     switch (v) {
       case 'pulse':
+      case 'roll':
         return 'pop';
       case 'shimmer':
-        return 'sweep';
+      case 'sweep':
       case 'glow':
         return 'glow';
+      case 'ring':
+      case 'blink':
+        return 'blink';
+      case 'burst':
+      case 'rise':
+        return 'rise';
       default:
         return celebIds.contains(v) ? v! : 'rise';
     }

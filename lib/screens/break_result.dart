@@ -62,8 +62,8 @@ class BreakScreen extends StatelessWidget {
                         Text(
                             'RRR ${CricketMath.calcRRR(m.target!, CricketMath.totalBalls(m.config.totalOvers))} RPO'),
                         const SizedBox(height: 16),
-                        FilledButton(
-                            onPressed: () {
+                        RectBtn(
+                            onTap: () {
                               store.startSecondInnings();
                               Navigator.pushReplacementNamed(
                                   context, '/scoring');
@@ -71,8 +71,9 @@ class BreakScreen extends StatelessWidget {
                             child: const Text(
                                 'COMMENCE 2ND INNINGS')),
                         const SizedBox(height: 8),
-                        OutlinedButton(
-                            onPressed: () => store.undo(),
+                        RectBtn(
+                            primary: false,
+                            onTap: () => store.undo(),
                             child: const Text('UNDO')),
                       ],
                     ),
@@ -139,8 +140,9 @@ class ResultScreen extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
-                                child: OutlinedButton(
-                                    onPressed: () {
+                                child: RectBtn(
+                                    primary: false,
+                                    onTap: () {
                                       store.newMatch();
                                       Navigator
                                           .pushNamedAndRemoveUntil(
@@ -152,8 +154,8 @@ class ResultScreen extends StatelessWidget {
                                         const Text('HOME'))),
                             const SizedBox(width: 10),
                             Expanded(
-                                child: FilledButton(
-                                    onPressed: () {
+                                child: RectBtn(
+                                    onTap: () {
                                       store.newMatch();
                                       Navigator
                                           .pushNamedAndRemoveUntil(

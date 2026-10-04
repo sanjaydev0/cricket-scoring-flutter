@@ -74,9 +74,10 @@ class ScoringScreen extends StatelessWidget {
                   tooltip: 'Overs',
                   onPressed: () => _oversSheet(context)),
               IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  tooltip: 'Match settings',
-                  onPressed: () => _settingsSheet(context)),
+                  icon: const Icon(Icons.palette_outlined),
+                  tooltip: 'Style & font',
+                  onPressed: () =>
+                      showLookSheet(context, store)),
             ],
           ),
           body: ResponsiveCenter(
@@ -279,7 +280,10 @@ class ScoringScreen extends StatelessWidget {
                         // 7th ball; older balls scroll left.
                         SizedBox(
                             width: 246,
-                            child: OverStrip(balls: cur)),
+                            child: OverStrip(
+                                balls: cur,
+                                overNumber:
+                                    inn.currentOverNumber)),
                         TextButton(
                             onPressed: () => _oversSheet(context),
                             child: Text(
@@ -553,7 +557,9 @@ class _CornerMark extends StatelessWidget {
 /// Over strip: smooth auto-scroll to the latest ball, scrollable history.
 class OverStrip extends StatefulWidget {
   final List<Ball> balls;
-  const OverStrip({required this.balls, super.key});
+  final int overNumber;
+  const OverStrip(
+      {required this.balls, required this.overNumber, super.key});
   @override
   State<OverStrip> createState() => _OverStripState();
 }
@@ -566,8 +572,8 @@ class _OverStripState extends State<OverStrip> {
   void didUpdateWidget(OverStrip old) {
     super.didUpdateWidget(old);
     if (!_ctrl.hasClients) return;
-    if (widget.balls.length < old.balls.length) {
-      // New over started: gentle cross-fade instead of a hard cut.
+    // Fade ONLY on forward rollover into a new over — never on undo.
+    if (widget.overNumber > old.overNumber) {
       setState(() => _swapGen++);
       return;
     }

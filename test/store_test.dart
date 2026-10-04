@@ -48,11 +48,13 @@ void main() {
     }
   });
 
-  test('eleven celebrations with legacy migration', () {
-    expect(MatchStore.celebIds.length, 11);
+  test('seven layout-safe celebrations with migration', () {
+    expect(MatchStore.celebIds.length, 7);
     expect(MatchStore.migrateCeleb('pulse'), 'pop');
-    expect(MatchStore.migrateCeleb('shimmer'), 'sweep');
-    expect(MatchStore.migrateCeleb('glow'), 'glow');
+    expect(MatchStore.migrateCeleb('roll'), 'pop');
+    expect(MatchStore.migrateCeleb('shimmer'), 'glow');
+    expect(MatchStore.migrateCeleb('ring'), 'blink');
+    expect(MatchStore.migrateCeleb('burst'), 'rise');
     expect(MatchStore.migrateCeleb('nope'), 'rise');
   });
 
