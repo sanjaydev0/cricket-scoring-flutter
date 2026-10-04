@@ -172,6 +172,21 @@ class StylePreset {
 /// Material 3 umpire theme: maximum contrast for extreme sunlight glare.
 /// Solid saturated fills, near-black on bright / white on deep, no pastels.
 /// Chips + segmented controls are 8px rectangles, carbon when selected.
+/// Instant page transition: no slide/fade fights in-flight scoreboard
+/// motion. Calm handoffs for innings breaks and results.
+class _NoTransition extends PageTransitionsBuilder {
+  const _NoTransition();
+  @override
+  Widget buildTransitions<T>(
+      PageRoute<T> route,
+      BuildContext context,
+      Animation<double> animation,
+      Animation<double> secondaryAnimation,
+      Widget child) {
+    return child;
+  }
+}
+
 class UmpireTheme {
   static ChipThemeData _chips(ColorScheme scheme) => ChipThemeData(
         shape: RoundedRectangleBorder(
@@ -223,6 +238,15 @@ class UmpireTheme {
     );
     return ThemeData(
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _NoTransition(),
+          TargetPlatform.iOS: _NoTransition(),
+          TargetPlatform.linux: _NoTransition(),
+          TargetPlatform.macOS: _NoTransition(),
+          TargetPlatform.windows: _NoTransition(),
+        },
+      ),
       colorScheme: scheme,
       scaffoldBackgroundColor: const Color(0xFFFAFAFA),
       cardTheme: const CardThemeData(
@@ -257,6 +281,15 @@ class UmpireTheme {
     );
     return ThemeData(
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _NoTransition(),
+          TargetPlatform.iOS: _NoTransition(),
+          TargetPlatform.linux: _NoTransition(),
+          TargetPlatform.macOS: _NoTransition(),
+          TargetPlatform.windows: _NoTransition(),
+        },
+      ),
       colorScheme: scheme,
       scaffoldBackgroundColor: const Color(0xFF0B0B0D),
       cardTheme: const CardThemeData(

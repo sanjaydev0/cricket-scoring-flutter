@@ -253,6 +253,8 @@ class ResponsiveCenter extends StatelessWidget {  final Widget child;
 /// One-shot route guard: pushes [dest] exactly once — repeated rebuilds
 /// (undo, celebration frames, stream ticks) can never queue duplicate
 /// navigations, which was the post-innings flashing bug.
+/// All app transitions are instant (see [_NoTransition] in theme.dart),
+/// so no slide ever runs against in-flight celebrations or strip motion.
 void goOnce(BuildContext context, String dest) {
   if (ModalRoute.of(context)?.settings.name == dest) return;
   WidgetsBinding.instance.addPostFrameCallback((_) {

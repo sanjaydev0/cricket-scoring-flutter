@@ -127,8 +127,17 @@ void main() {
     expect(freshStore().complexWickets, true);
   });
 
-  test('armed no-ball allows only run-out', () {
+  test('ball generation advances on score, never on undo', () {
     final s = freshStore();
+    expect(s.ballGen, 0);
+    s.score(action: 'RUNS', runs: 1);
+    s.score(action: 'WIDE');
+    expect(s.ballGen, 2);
+    s.undo();
+    expect(s.ballGen, 2);
+  });
+
+  test('armed no-ball allows only run-out', () {    final s = freshStore();
     s.toggleNb();
     expect(s.nbArmed, true);
     // Other dismissals rejected, state untouched.

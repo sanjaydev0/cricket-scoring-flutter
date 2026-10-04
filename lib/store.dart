@@ -35,6 +35,7 @@ class MatchStore extends ChangeNotifier {
   String celebId = 'pulse'; // hero celebration: off + 10 styles
   bool complexWickets = true; // full wicket-type grid vs Wicket/RunOut
   bool hapticsOn = true; // master vibration toggle
+  int ballGen = 0; // advances on score() only — strip motion key
   List<String> _undo = [];
   List<String> _redo = [];
   bool loaded = false;
@@ -426,6 +427,7 @@ class MatchStore extends ChangeNotifier {
     }
 
     _addBall(inn, b);
+    ballGen++; // strip animates on generation change only — undo is silent
     _feedback(b);
     _checkEnd();
     _persist();

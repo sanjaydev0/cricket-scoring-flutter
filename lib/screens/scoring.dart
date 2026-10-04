@@ -35,9 +35,6 @@ class ScoringScreen extends StatelessWidget {
         final crr = CricketMath.calcCRR(inn.runs, inn.legalDeliveries);
         final ballsLeft =
             CricketMath.totalBalls(totalOvers) - inn.legalDeliveries;
-        final proj = inn.legalDeliveries == 0
-            ? '—'
-            : '${(inn.runs + (inn.runs / inn.legalDeliveries) * ballsLeft).round()}';
         final cur = inn.currentOverBalls;
         final overRuns = cur.fold<int>(0, (s, b) => s + b.totalRuns);
         final overWkts = cur.where((b) => b.isWicket).length;
@@ -61,7 +58,9 @@ class ScoringScreen extends StatelessWidget {
                     const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
             actions: [
               IconButton(
-                  icon: const Icon(Icons.volume_up_outlined),
+                  icon: Icon(store.soundOn
+                      ? Icons.volume_up
+                      : Icons.volume_off),
                   tooltip: store.soundOn ? 'Mute sounds' : 'Unmute',
                   onPressed: () => store.setSound(!store.soundOn)),
               IconButton(
@@ -242,8 +241,6 @@ class ScoringScreen extends StatelessWidget {
                                           '$oversFmt/$totalOvers',
                                           preset.heroFg),
                                       _stat(context, 'CRR', crr, preset.heroFg),
-                                      _stat(context, 'PROJ', '~$proj',
-                                          preset.heroFg),
                                       _stat(context, 'EXTRAS',
                                           '${inn.extrasTotal}', preset.heroFg),
                                     ],
@@ -268,7 +265,10 @@ class ScoringScreen extends StatelessWidget {
                                   width: 246,
                                   child: OverStrip(
                                       balls: cur,
-                                      overNumber: inn.currentOverNumber)),
+                                      overNumber:
+                                          inn.currentOverNumber,
+                                      gen: store.ballGen,
+                                      frozen: inn.completed)),
                               TextButton(
                                   onPressed: () => _oversSheet(context),
                                   child: Text('${overRuns}r • ${overWkts}w ›',
@@ -504,7 +504,14 @@ class _CornerMark extends StatelessWidget {
 class OverStrip extends StatefulWidget {
   final List<Ball> balls;
   final int overNumber;
-  const OverStrip({required this.balls, required this.overNumber, super.key});
+  final int gen; // advances on score() only — undo never animates
+  final bool frozen; // completed innings: zero motion
+  const OverStrip(
+      {required this.balls,
+      required this.overNumber,
+      required this.gen,
+      this.frozen = false,
+      super.key});
   @override
   State<OverStrip> createState() => _OverStripState();
 }
@@ -517,6 +524,16 @@ class _OverStripState extends State<OverStrip> {
   void didUpdateWidget(OverStrip old) {
     super.didUpdateWidget(old);
     if (!_ctrl.hasClients) return;
+    // Frozen (completed innings) or undo (same generation): sync silently.
+    if (widget.frozen || widget.gen == old.gen) {
+      if (_ctrl.position.pixels > _ctrl.position.maxScrollExtent) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!_ctrl.hasClients) return;
+          _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
+        });
+      }
+      return;
+    }
     // Fade ONLY on forward rollover into a new over — never on undo.
     if (widget.overNumber > old.overNumber) {
       setState(() => _swapGen++);
