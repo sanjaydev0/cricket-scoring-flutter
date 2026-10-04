@@ -63,10 +63,11 @@ class _SetupScreenState extends State<SetupScreen> {
                             textCapitalization:
                                 TextCapitalization.characters,
                             decoration: const InputDecoration(
-                                labelText: 'Team A (bats first)',
+                                labelText: 'Team A',
                                 border: OutlineInputBorder()),
-                            onChanged: (v) =>
-                                cfg.teamA = v.toUpperCase(),
+                            onChanged: (v) => setState(
+                                () =>
+                                    cfg.teamA = v.toUpperCase()),
                           ),
                         ),
                       ],
@@ -84,11 +85,53 @@ class _SetupScreenState extends State<SetupScreen> {
                             decoration: const InputDecoration(
                                 labelText: 'Team B',
                                 border: OutlineInputBorder()),
-                            onChanged: (v) =>
-                                cfg.teamB = v.toUpperCase(),
+                            onChanged: (v) => setState(
+                                () =>
+                                    cfg.teamB = v.toUpperCase()),
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('BATTING FIRST',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12)),
+                    const SizedBox(height: 6),
+                    SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(
+                            value: 'A',
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const TeamDot(
+                                    MatchStore.teamAColor,
+                                    size: 10),
+                                const SizedBox(width: 6),
+                                Text(cfg.teamA.isEmpty
+                                    ? 'TEAM A'
+                                    : cfg.teamA),
+                              ],
+                            )),
+                        ButtonSegment(
+                            value: 'B',
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const TeamDot(
+                                    MatchStore.teamBColor,
+                                    size: 10),
+                                const SizedBox(width: 6),
+                                Text(cfg.teamB.isEmpty
+                                    ? 'TEAM B'
+                                    : cfg.teamB),
+                              ],
+                            )),
+                      ],
+                      selected: {cfg.battingFirst},
+                      onSelectionChanged: (s) => setState(
+                          () => cfg.battingFirst = s.first),
                     ),
                   ],
                 ),

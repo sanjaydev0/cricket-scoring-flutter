@@ -33,6 +33,15 @@ void main() {
     expect(s.match!.config.sidesLabel, '5 + 5 + 1');
   });
 
+  test('batting-first picker orders innings', () {
+    final s = MatchStore();
+    final cfg = MatchConfig(
+        teamA: 'A', teamB: 'B', battingFirst: 'B', totalOvers: 2);
+    s.startMatch(cfg);
+    expect(s.innings!.battingTeam, 'B');
+    expect(s.innings!.bowlingTeam, 'A');
+  });
+
   test('style + font persist', () async {
     final s = freshStore();
     s.setStyle('led');
@@ -41,21 +50,22 @@ void main() {
     expect(s.fontId, 'ledger');
   });
 
-  test('ten glare-proof presets exist', () {
-    expect(StylePreset.ids.length, 10);
+  test('twelve glare-proof presets exist', () {
+    expect(StylePreset.ids.length, 12);
     for (final id in StylePreset.ids) {
       expect(StylePreset.of(id).name.isNotEmpty, true);
     }
   });
 
-  test('seven layout-safe celebrations with migration', () {
-    expect(MatchStore.celebIds.length, 7);
+  test('nine layout-safe celebrations with migration', () {
+    expect(MatchStore.celebIds.length, 9);
     expect(MatchStore.migrateCeleb('pulse'), 'pop');
     expect(MatchStore.migrateCeleb('roll'), 'pop');
+    expect(MatchStore.migrateCeleb('rise'), 'pop');
     expect(MatchStore.migrateCeleb('shimmer'), 'glow');
     expect(MatchStore.migrateCeleb('ring'), 'blink');
-    expect(MatchStore.migrateCeleb('burst'), 'rise');
-    expect(MatchStore.migrateCeleb('nope'), 'rise');
+    expect(MatchStore.migrateCeleb('burst'), 'flash');
+    expect(MatchStore.migrateCeleb('nope'), 'pop');
   });
 
   test('over strip defers rollover until next ball', () {

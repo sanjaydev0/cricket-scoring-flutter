@@ -261,10 +261,9 @@ class ResponsiveCenter extends StatelessWidget {
 /// Layout-frozen primitives only: Transform, Opacity, ShaderMask,
 /// text color/shadow, Positioned overlays. Nothing here may change size.
 class Celebrate extends StatefulWidget {
-  final String mode; // off/rise/pop/flash/glow/shake/blink
+  final String mode; // off/pop/flash/glow/shake/blink/glitch/crt/slowmo
   final String valueKey; // score string — change re-fires
   final bool fire; // true when last ball deserves it
-  final String label; // floating tag: +4 / +6 / W
   final Color tint; // event color (boundary tint / wicket red)
   final String text;
   final TextStyle style;
@@ -272,7 +271,6 @@ class Celebrate extends StatefulWidget {
     required this.mode,
     required this.valueKey,
     required this.fire,
-    required this.label,
     required this.tint,
     required this.text,
     required this.style,
@@ -316,32 +314,35 @@ class _CelebrateState extends State<Celebrate>
   Widget build(BuildContext context) {
     final base = widget.style.color ?? Colors.black;
     if (widget.mode == 'off' || !widget.fire) return _text(base);
-    final label = widget.label;
     final tint = widget.tint;
     return AnimatedBuilder(
       animation: _c,
       builder: (_, __) {
         final t = Curves.easeOutCubic.transform(_c.value);
         switch (widget.mode) {
-          case 'rise': // floating +4/+6/W tag rises and dissolves
-            return Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                _text(base),
-                Positioned(
-                  top: -8 - t * 44,
-                  child: Opacity(
-                    opacity: (1 - t).clamp(0.0, 1.0),
-                    child: Text(label,
-                        style: TextStyle(
-                            color: tint,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900)),
-                  ),
-                ),
-              ],
-            );
+          case 'glitch': // chromatic-aberration snap, numerals never move
+            final g = sin(t * 3.14159) * 4 * (1 - t * 0.3);
+            return _text(base, shadows: [
+              Shadow(
+                  color: const Color(0xFFFF004C)
+                      .withValues(alpha: 0.9 * (1 - t)),
+                  offset: Offset(-g, 0),
+                  blurRadius: 0),
+              Shadow(
+                  color: const Color(0xFF00E5FF)
+                      .withValues(alpha: 0.9 * (1 - t)),
+                  offset: Offset(g, 0),
+                  blurRadius: 0),
+            ]);
+          case 'crt': // faint CRT refresh flicker, settles clean
+            final f = 0.9 + 0.1 * sin(t * 55);
+            return Opacity(
+                opacity: t > 0.9 ? 1.0 : f, child: _text(base));
+          case 'slowmo': // long swell to 1.15x, eases back exactly
+            return Transform.scale(
+                scale: 1 + 0.15 * sin(t * 3.14159),
+                child: _text(base));
+          case 'rise': // retired — falls to pop
           case 'flash': // numerals tint to event color, ease back
             final k = t < 0.35 ? t / 0.35 : 1 - (t - 0.35) / 0.65;
             return _text(Color.lerp(base, tint, k.clamp(0.0, 1.0))!);

@@ -150,21 +150,25 @@ class MatchStore extends ChangeNotifier {
 
   static const celebIds = [
     'off',
-    'rise',
     'pop',
     'flash',
     'glow',
     'shake',
     'blink',
+    'glitch',
+    'crt',
+    'slowmo',
   ];
   static const celebNames = {
     'off': 'Off',
-    'rise': 'Rise Tag',
     'pop': 'Pop',
     'flash': 'Flash Tint',
     'glow': 'Glow Bloom',
     'shake': 'Shake',
     'blink': 'Double Blink',
+    'glitch': 'Pixel Glitch',
+    'crt': 'CRT Flicker',
+    'slowmo': 'Slow-Mo',
   };
 
   /// Legacy ids from earlier builds map forward silently.
@@ -172,6 +176,7 @@ class MatchStore extends ChangeNotifier {
     switch (v) {
       case 'pulse':
       case 'roll':
+      case 'rise':
         return 'pop';
       case 'shimmer':
       case 'sweep':
@@ -181,10 +186,9 @@ class MatchStore extends ChangeNotifier {
       case 'blink':
         return 'blink';
       case 'burst':
-      case 'rise':
-        return 'rise';
+        return 'flash';
       default:
-        return celebIds.contains(v) ? v! : 'rise';
+        return celebIds.contains(v) ? v! : 'pop';
     }
   }
 
@@ -226,7 +230,10 @@ class MatchStore extends ChangeNotifier {
   bool get canUndo => _undo.isNotEmpty;
 
   void startMatch(MatchConfig cfg) {
-    final inn = Innings.create(cfg.teamA, cfg.teamB);
+    final batFirst = cfg.battingFirst == 'B';
+    final inn = Innings.create(
+        batFirst ? cfg.teamB : cfg.teamA,
+        batFirst ? cfg.teamA : cfg.teamB);
     match = Match(config: cfg, innings1: inn);
     _undo.clear();
     _redo.clear();

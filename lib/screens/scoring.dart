@@ -157,6 +157,10 @@ class ScoringScreen extends StatelessWidget {
                               ]);
                           // Runs and wickets celebrate independently —
                           // a boundary never shakes the wicket digit.
+                          // Balls that finish an innings stay calm: no
+                          // celebration fights the route transition.
+                          final calm =
+                              inn.completed || m.completed;
                           return Row(
                             mainAxisAlignment:
                                 MainAxisAlignment.center,
@@ -168,8 +172,7 @@ class ScoringScreen extends StatelessWidget {
                               Celebrate(
                                 mode: store.celebId,
                                 valueKey: '${inn.runs}',
-                                fire: isFour || isSix,
-                                label: isFour ? '+4' : '+6',
+                                fire: (isFour || isSix) && !calm,
                                 tint: isFour
                                     ? const Color(
                                         0xFF2DC653)
@@ -188,8 +191,7 @@ class ScoringScreen extends StatelessWidget {
                                 mode: store.celebId,
                                 valueKey:
                                     '${inn.wickets}',
-                                fire: isW,
-                                label: 'W',
+                                fire: isW && !calm,
                                 tint: const Color(
                                     0xFFDC143C),
                                 text: '${inn.wickets}',

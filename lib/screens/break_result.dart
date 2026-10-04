@@ -13,6 +13,19 @@ class BreakScreen extends StatelessWidget {
       listenable: store,
       builder: (_, __) {
         final m = store.match!;
+        // Undo-safety: state may no longer be an innings break.
+        if (m.completed) {
+          WidgetsBinding.instance.addPostFrameCallback(
+              (_) => Navigator.pushReplacementNamed(context, '/result'));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        if (m.currentInnings != 1 || !m.innings1.completed) {
+          WidgetsBinding.instance.addPostFrameCallback(
+              (_) => Navigator.pushReplacementNamed(context, '/scoring'));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
         final inn1 = m.innings1;
         return Scaffold(
           appBar: AppBar(title: const Text('INNINGS BREAK')),
@@ -101,6 +114,16 @@ class ResultScreen extends StatelessWidget {
           return Scaffold(
               appBar: AppBar(title: const Text('RESULT')),
               body: const Center(child: Text('No match')));
+        }
+        // Undo-safety: a restored live match leaves this screen.
+        if (!m.completed) {
+          final dest = (m.currentInnings == 1 && m.innings1.completed)
+              ? '/break'
+              : '/scoring';
+          WidgetsBinding.instance.addPostFrameCallback(
+              (_) => Navigator.pushReplacementNamed(context, dest));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         final inn1 = m.innings1;
         final inn2 = m.innings2;

@@ -30,6 +30,7 @@ class Rules {
 class MatchConfig {
   String teamA;
   String teamB;
+  String battingFirst; // 'A' | 'B'
   int totalOvers;
   int playersPerSide;
   int commonPlayers; // odd-man: plays for both sides
@@ -37,6 +38,7 @@ class MatchConfig {
   MatchConfig({
     this.teamA = 'EAGLES XI',
     this.teamB = 'TITANS',
+    this.battingFirst = 'A',
     this.totalOvers = 6,
     this.playersPerSide = 8,
     this.commonPlayers = 0,
@@ -45,6 +47,7 @@ class MatchConfig {
   factory MatchConfig.fromJson(Map<String, dynamic> j) => MatchConfig(
         teamA: (j['teamA'] ?? 'EAGLES XI').toString(),
         teamB: (j['teamB'] ?? 'TITANS').toString(),
+        battingFirst: (j['battingFirst'] ?? 'A').toString(),
         totalOvers: (j['totalOvers'] ?? 6) as int,
         playersPerSide: (j['playersPerSide'] ?? 8) as int,
         commonPlayers: (j['commonPlayers'] ?? 0) as int,
@@ -53,6 +56,7 @@ class MatchConfig {
   Map<String, dynamic> toJson() => {
         'teamA': teamA,
         'teamB': teamB,
+        'battingFirst': battingFirst,
         'totalOvers': totalOvers,
         'playersPerSide': playersPerSide,
         'commonPlayers': commonPlayers,
