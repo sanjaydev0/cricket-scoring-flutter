@@ -52,13 +52,12 @@ class SoundService extends ChangeNotifier {
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - _lastMs < 150) return;
     _lastMs = now;
+    // Only preloaded players ever play: constructing an AudioPlayer outside
+    // init() throws uncatchable async errors on platforms without channels
+    // (e.g. unit tests), so a missing player means stay silent.
+    final p = _players[name];
+    if (p == null) return;
     try {
-      var p = _players[name];
-      p ??= AudioPlayer();
-      if (!_players.containsKey(name)) {
-        await p.setSource(AssetSource('audio/$name.ogg'));
-        _players[name] = p;
-      }
       await p.resume();
     } catch (_) {}
   }
