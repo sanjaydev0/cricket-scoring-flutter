@@ -3,12 +3,75 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'adapters/local_only_sync.dart';
+import 'domain/room_snapshot.dart';
 import 'math.dart';
 import 'models.dart';
+import 'ports/sync_port.dart';
 import 'sound.dart';
 
-/// Offline store: SharedPreferences only. No network - 100% offline.
+/// Offline store: SharedPreferences is the source of truth and always will be.
+/// The optional [sync] adapter publishes snapshots for viewers; nothing in
+/// scoring depends on it, so a missing or broken backend costs you the live
+/// room and nothing else.
 class MatchStore extends ChangeNotifier {
+  /// Live-room adapter. Defaults to local-only, which is what every build
+  /// without Supabase credentials uses.
+  final SyncPort sync;
+
+  MatchStore({SyncPort? sync}) : sync = sync ?? LocalOnlySync();
+
+  /// Live join code while sharing, else null.
+  String? roomCode;
+
+  /// Monotonic snapshot counter for the open room.
+  int _roomSeq = 0;
+
+  /// Copies state out to viewers. Never awaited by scoring.
+  void _publishRoom() {
+    final code = roomCode;
+    final m = match;
+    if (code == null || m == null) return;
+    _roomSeq++;
+    // Fire and forget, and the rejection is caught on the *future*: a `try`
+    // around the call would not see it, which is how a failing backend used to
+    // become an unhandled async error. A ball never waits on, or fails because
+    // of, the network. Dropped publishes self-heal on the next ball.
+    unawaited(sync
+        .publish(
+          code,
+          RoomSnapshot(
+              seq: _roomSeq, match: m.toJson(), updatedAt: DateTime.now()),
+        )
+        .catchError((Object _) {}));
+  }
+
+  /// Opens a live room for the current match. Returns the join code, or null
+  /// when sharing is unavailable (no backend configured, or offline).
+  Future<String?> startSharing() async {
+    if (match == null) return null;
+    if (roomCode != null) return roomCode;
+    final code = await sync.createRoom();
+    if (code == null) return null;
+    roomCode = code;
+    _roomSeq = 0;
+    _publishRoom();
+    notifyListeners();
+    return code;
+  }
+
+  /// Closes the room and deletes it server-side. The match stays untouched
+  /// locally — sharing is additive, never destructive.
+  Future<void> stopSharing() async {
+    final code = roomCode;
+    roomCode = null;
+    _roomSeq = 0;
+    if (code != null) await sync.endRoom(code);
+    notifyListeners();
+  }
+
+  /// Best-effort viewer count for the share banner.
+  int get viewerCount => sync.viewerCount;
   static const kActive = 'cricket_active_match_v4';
   static const kHistory = 'cricket_history_vault_v4';
   static const kUndo = 'cricket_undo_stack_v4';
@@ -251,7 +314,10 @@ class MatchStore extends ChangeNotifier {
       match!.innings2!.completed = false;
     }
     _buzz(HapticFeedback.lightImpact);
-    SoundService.instance.undo();
+    unawaited(SoundService.instance.undo());
+    // Undo retracts too: a viewer must never be left showing a ball the scorer
+    // has just taken back.
+    _publishRoom();
     await _persist();
     notifyListeners();
   }
@@ -440,6 +506,7 @@ class MatchStore extends ChangeNotifier {
     _addBall(inn, b);
     ballGen++; // strip animates on generation change only — undo is silent
     _feedback(b);
+    _publishRoom(); // viewers see the ball; scoring never waits on this
     _checkEnd();
     _persist();
     notifyListeners();
@@ -683,6 +750,8 @@ class MatchStore extends ChangeNotifier {
     match = null;
     _undo.clear();
     _redo.clear();
+    // The match is gone, so the room has nothing to show: close it.
+    if (roomCode != null) unawaited(stopSharing());
     _persist();
     notifyListeners();
   }
@@ -692,6 +761,7 @@ class MatchStore extends ChangeNotifier {
     match = null;
     _undo.clear();
     _redo.clear();
+    if (roomCode != null) unawaited(stopSharing());
     _persist();
     notifyListeners();
   }

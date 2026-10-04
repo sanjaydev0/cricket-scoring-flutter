@@ -59,6 +59,26 @@ class ScoringScreen extends StatelessWidget {
                 style:
                     const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
             actions: [
+              if (store.roomCode != null) ...[
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  alignment: Alignment.center,
+                  child: Text(store.roomCode!,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                          color: Colors.white)),
+                ),
+                IconButton(
+                    icon: const Icon(Icons.stop_circle_outlined),
+                    tooltip: 'Stop sharing',
+                    onPressed: () => store.stopSharing()),
+              ] else
+                IconButton(
+                    icon: const Icon(Icons.ios_share),
+                    tooltip: 'Share live score',
+                    onPressed: () => _shareSheet(context)),
               IconButton(
                   icon:
                       Icon(store.soundOn ? Icons.volume_up : Icons.volume_off),
@@ -512,6 +532,25 @@ class ScoringScreen extends StatelessWidget {
   void _moreSheet(BuildContext context) => showExtrasSheet(context, store);
   void _settingsSheet(BuildContext context) =>
       showSettingsSheet(context, store);
+
+  /// Opens a live room. Sharing is strictly additive: if no backend is
+  /// configured, or the sign-in failed, this says so plainly instead of
+  /// pretending, and the match is untouched either way.
+  Future<void> _shareSheet(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final code = await store.startSharing();
+    if (!context.mounted) return;
+    if (code == null) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text(
+              'Live sharing unavailable — no backend configured in this build')));
+      return;
+    }
+    messenger.showSnackBar(SnackBar(
+      content: Text('Live — anyone with the code $code can watch (read-only)'),
+      duration: const Duration(seconds: 6),
+    ));
+  }
 }
 
 /// Tiny corner registration mark, like the reference scoreboard tile.

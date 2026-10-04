@@ -6,4 +6,11 @@ build/
 *.aab
 .DS_Store
 .zed/
-AGENTS.md
+
+# Local Supabase keys. Live rooms are configured with --dart-define, so no key
+# belongs in the repo. Supabase writes a .temp/ dir when a CLI project is linked.
+supabase/.temp/
+supabase/.branches/
+.env
+.env.*
+!.env.example

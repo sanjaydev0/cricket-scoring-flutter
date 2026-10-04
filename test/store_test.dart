@@ -1,11 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cricket_scoring/adapters/local_only_sync.dart';
+import 'package:cricket_scoring/domain/room_snapshot.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/store.dart';
 import 'package:cricket_scoring/theme.dart';
 
-MatchStore freshStore() {
-  final s = MatchStore();
+MatchStore freshStore({FakeSync? sync}) {
+  final s = MatchStore(sync: sync ?? FakeSync());
   s.draft = MatchConfig(
       teamA: 'A',
       teamB: 'B',
@@ -20,6 +24,124 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  // --- live rooms -----------------------------------------------------------
+  // Sharing is additive: it must publish, and it must never be able to break a
+  // ball. These tests use FakeSync precisely because a real network is not
+  // available in unit tests and must not be needed to prove that.
+
+  test('a scored ball publishes the whole match to the room', () async {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    expect(await s.startSharing(), 'TEST1');
+    expect(s.roomCode, 'TEST1');
+    // Opening the room publishes once, at seq 1, with nothing scored yet.
+    expect(fake.published.length, 1);
+    expect(fake.published.first.match['innings1']['runs'], 0);
+
+    s.score(action: 'RUNS', runs: 4);
+    expect(fake.published.length, 2);
+    final latest = fake.published.last;
+    expect(latest.seq, greaterThan(fake.published.first.seq));
+    expect(latest.match['innings1']['runs'], 4);
+  });
+
+  test('every delivery kind reaches a viewer as a new snapshot', () async {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    await s.startSharing();
+    fake.published.clear(); // ignore the opening snapshot
+    s.score(action: 'FOUR');
+    s.score(action: 'WIDE');
+    s.score(action: 'WICKET', wicketType: 'Bowled');
+    s.score(action: 'SIX');
+    expect(fake.published.length, 4);
+    // Monotonic and gap-free: a viewer can order by seq alone.
+    expect(fake.published.map((e) => e.seq).toList(), [2, 3, 4, 5]);
+  });
+
+  test('undo retracts the ball for viewers', () async {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    await s.startSharing();
+    s.score(action: 'RUNS', runs: 4);
+    expect(fake.published.last.match['innings1']['runs'], 4);
+    await s.undo();
+    // The retraction must carry the corrected score, not the stale one.
+    expect(fake.published.last.match['innings1']['runs'], 0);
+    expect(fake.published.last.seq, greaterThan(2));
+  });
+
+  test('sharing is off by default and no ball is published', () {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    expect(s.roomCode, isNull);
+    s.score(action: 'RUNS', runs: 1);
+    expect(fake.published, isEmpty);
+  });
+
+  test('a backend that cannot open a room leaves scoring untouched', () async {
+    final fake = FakeSync()..failCreate = true;
+    final s = freshStore(sync: fake);
+    expect(await s.startSharing(), isNull);
+    expect(s.roomCode, isNull);
+    // And the match still scores normally.
+    expect(s.score(action: 'RUNS', runs: 4), isNull);
+    expect(s.innings!.runs, 4);
+  });
+
+  test('a publish that throws cannot fail the ball it was reporting', () async {
+    final fake = FakeSync()..publishError = 'backend on fire';
+    final s = freshStore(sync: fake);
+    await s.startSharing();
+    // Fire-and-forget: the exception must not surface to scoring.
+    expect(s.score(action: 'FOUR'), isNull);
+    expect(s.innings!.runs, 4);
+    expect(s.innings!.wickets, 0);
+  });
+
+  test('stopping sharing deletes the room and keeps the match', () async {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    await s.startSharing();
+    s.score(action: 'RUNS', runs: 1);
+    await s.stopSharing();
+    expect(fake.ended, ['TEST1']);
+    expect(s.roomCode, isNull);
+    // The local match is untouched: sharing was never destructive.
+    expect(s.innings!.runs, 1);
+    final before = fake.published.length;
+    s.score(action: 'RUNS', runs: 1);
+    expect(fake.published.length, before);
+  });
+
+  test('starting a new match closes the room', () async {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    await s.startSharing();
+    s.newMatch();
+    expect(fake.ended, ['TEST1']);
+    expect(s.roomCode, isNull);
+  });
+
+  test('starting sharing twice keeps one room', () async {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    await s.startSharing();
+    await s.startSharing();
+    expect(fake.created.length, 1);
+  });
+
+  test('a snapshot decodes what the store published', () async {
+    final fake = FakeSync();
+    final s = freshStore(sync: fake);
+    await s.startSharing();
+    s.score(action: 'SIX');
+    // The viewer path: same JSON, decoded by the same code the viewer uses.
+    final back = RoomSnapshot.fromPayload(fake.published.last.toPayload());
+    expect(back, isNotNull);
+    expect(Match.decode(jsonEncode(back!.match)).innings1.runs, 6);
   });
 
   test('no-ball default is 0', () {
