@@ -9,7 +9,7 @@ MatchStore freshStore() {
   s.draft = MatchConfig(
       teamA: 'A',
       teamB: 'B',
-      totalOvers: 2,
+      totalOvers: 5,
       playersPerSide: 5,
       rules: Rules(widePenalty: 1, noBallPenalty: 0));
   s.startMatch(s.draft);
