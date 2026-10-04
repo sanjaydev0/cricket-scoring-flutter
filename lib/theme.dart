@@ -189,40 +189,31 @@ class _NoTransition extends PageTransitionsBuilder {
 
 class UmpireTheme {
   static ChipThemeData _chips(ColorScheme scheme) => ChipThemeData(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         showCheckmark: false,
         // 44px+ touch targets per platform guidance.
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         selectedColor: const Color(0xFF131316),
-        labelStyle: TextStyle(
-            fontWeight: FontWeight.w800, color: scheme.onSurface),
-        secondaryLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w800, color: Colors.white),
+        labelStyle:
+            TextStyle(fontWeight: FontWeight.w800, color: scheme.onSurface),
+        secondaryLabelStyle:
+            const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
         side: BorderSide(color: scheme.outline),
       );
 
-  static SegmentedButtonThemeData _segmented() =>
-      SegmentedButtonThemeData(
+  static SegmentedButtonThemeData _segmented() => SegmentedButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8))),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
           // 44px+ touch targets per platform guidance.
-          minimumSize: const WidgetStatePropertyAll(
-              Size(48, 44)),
-          backgroundColor:
-              WidgetStateProperty.resolveWith((s) =>
-                  s.contains(WidgetState.selected)
-                      ? const Color(0xFF131316)
-                      : null),
-          foregroundColor:
-              WidgetStateProperty.resolveWith((s) =>
-                  s.contains(WidgetState.selected)
-                      ? Colors.white
-                      : null),
+          minimumSize: const WidgetStatePropertyAll(Size(48, 44)),
+          backgroundColor: WidgetStateProperty.resolveWith((s) =>
+              s.contains(WidgetState.selected)
+                  ? const Color(0xFF131316)
+                  : null),
+          foregroundColor: WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.selected) ? Colors.white : null),
           textStyle: const WidgetStatePropertyAll(
               TextStyle(fontWeight: FontWeight.w800)),
         ),

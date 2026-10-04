@@ -62,6 +62,7 @@ class MatchConfig {
         'commonPlayers': commonPlayers,
         'rules': rules.toJson(),
       };
+
   /// e.g. "6 + 6 + 1" or "8 v 8"
   String get sidesLabel => commonPlayers > 0
       ? '$playersPerSide + $playersPerSide + $commonPlayers'
@@ -116,8 +117,10 @@ class Over {
             .map((e) => Ball.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
-  Map<String, dynamic> toJson() =>
-      {'overNumber': overNumber, 'balls': balls.map((b) => b.toJson()).toList()};
+  Map<String, dynamic> toJson() => {
+        'overNumber': overNumber,
+        'balls': balls.map((b) => b.toJson()).toList()
+      };
 }
 
 class Innings {

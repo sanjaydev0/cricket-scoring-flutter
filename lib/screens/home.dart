@@ -221,8 +221,7 @@ class HomeScreen extends StatelessWidget {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Haptics'),
-                      subtitle:
-                          const Text('Vibration by impact'),
+                      subtitle: const Text('Vibration by impact'),
                       value: store.hapticsOn,
                       onChanged: (v) => store.setHaptics(v),
                     ),

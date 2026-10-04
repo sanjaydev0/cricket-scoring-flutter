@@ -35,8 +35,8 @@ void main() {
 
   test('batting-first picker orders innings', () {
     final s = MatchStore();
-    final cfg = MatchConfig(
-        teamA: 'A', teamB: 'B', battingFirst: 'B', totalOvers: 2);
+    final cfg =
+        MatchConfig(teamA: 'A', teamB: 'B', battingFirst: 'B', totalOvers: 2);
     s.startMatch(cfg);
     expect(s.innings!.battingTeam, 'B');
     expect(s.innings!.bowlingTeam, 'A');
@@ -150,20 +150,17 @@ void main() {
     expect(s.ballGen, 2);
   });
 
-  test('armed no-ball allows only run-out', () {    final s = freshStore();
+  test('armed no-ball allows only run-out', () {
+    final s = freshStore();
     s.toggleNb();
     expect(s.nbArmed, true);
     // Other dismissals rejected, state untouched.
-    expect(
-        s.score(action: 'WICKET', wicketType: 'Bowled'), isNotNull);
+    expect(s.score(action: 'WICKET', wicketType: 'Bowled'), isNotNull);
     expect(s.innings!.wickets, 0);
     expect(s.innings!.legalDeliveries, 0);
     // Run-out on the armed NB records an illegal wicket ball.
     s.toggleNb();
-    expect(
-        s.score(
-            action: 'WICKET', runs: 1, wicketType: 'Run Out'),
-        isNull);
+    expect(s.score(action: 'WICKET', runs: 1, wicketType: 'Run Out'), isNull);
     final last = s.innings!.currentOverBalls.last;
     expect(last.isWicket, true);
     expect(last.isLegal, false);
@@ -197,8 +194,7 @@ void main() {
       ['RUNS', 1],
     ];
     for (final a in seq) {
-      expect(s.score(action: a[0] as String, runs: a[1] as int),
-          isNull);
+      expect(s.score(action: a[0] as String, runs: a[1] as int), isNull);
     }
     final inn = s.innings!;
     // legals: all but 3 wides + 1 NB = 16 across 3 overs.

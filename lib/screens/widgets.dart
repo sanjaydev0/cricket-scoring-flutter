@@ -235,7 +235,8 @@ class KeyBtn extends StatelessWidget {
 }
 
 /// Centers content with a max width for responsive phone/desktop layouts.
-class ResponsiveCenter extends StatelessWidget {  final Widget child;
+class ResponsiveCenter extends StatelessWidget {
+  final Widget child;
   final double maxWidth;
   const ResponsiveCenter({required this.child, this.maxWidth = 560, super.key});
   @override

@@ -60,9 +60,8 @@ class ScoringScreen extends StatelessWidget {
                     const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
             actions: [
               IconButton(
-                  icon: Icon(store.soundOn
-                      ? Icons.volume_up
-                      : Icons.volume_off),
+                  icon:
+                      Icon(store.soundOn ? Icons.volume_up : Icons.volume_off),
                   tooltip: store.soundOn ? 'Mute sounds' : 'Unmute',
                   onPressed: () => store.setSound(!store.soundOn)),
               IconButton(
@@ -274,8 +273,7 @@ class ScoringScreen extends StatelessWidget {
                                   ),
                                 ),
                                 RectBtn(
-                                  onTap: () =>
-                                      store.skipBreakWait(),
+                                  onTap: () => store.skipBreakWait(),
                                   child: const Text('NEXT →'),
                                 ),
                               ],
@@ -297,8 +295,7 @@ class ScoringScreen extends StatelessWidget {
                                   width: 246,
                                   child: OverStrip(
                                       balls: cur,
-                                      overNumber:
-                                          inn.currentOverNumber,
+                                      overNumber: inn.currentOverNumber,
                                       gen: store.ballGen,
                                       frozen: inn.completed)),
                               TextButton(

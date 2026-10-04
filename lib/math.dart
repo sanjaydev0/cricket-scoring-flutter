@@ -22,5 +22,6 @@ class CricketMath {
     return lastManStanding ? p : (p - 1 < 1 ? 1 : p - 1);
   }
 
-  static int totalBalls(int totalOvers) => (totalOvers <= 0 ? 6 : totalOvers) * 6;
+  static int totalBalls(int totalOvers) =>
+      (totalOvers <= 0 ? 6 : totalOvers) * 6;
 }

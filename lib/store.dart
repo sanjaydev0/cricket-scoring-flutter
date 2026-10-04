@@ -58,7 +58,9 @@ class MatchStore extends ChangeNotifier {
     celebId = MatchStore.migrateCeleb(p.getString(kCeleb));
     complexWickets = p.getBool(kComplexWkts) ?? true;
     hapticsOn = p.getBool(kHaptics) ?? true;
-    SoundService.instance.init(enabled: soundOn);
+    // Awaited: when load() returns, every SFX clip is preloaded, so the first
+    // ball of the match cannot outrun the audio pool.
+    await SoundService.instance.init(enabled: soundOn);
     final raw = p.getString(kActive);
     if (raw != null) {
       try {
@@ -134,6 +136,11 @@ class MatchStore extends ChangeNotifier {
 
   void setSound(bool v) {
     soundOn = v;
+    // Un-muting after a failed/unfinished preload retries it, so the toggle is
+    // never a dead end.
+    if (v && !SoundService.instance.ready) {
+      SoundService.instance.init(enabled: true);
+    }
     SoundService.instance.setEnabled(v);
     _persist();
     notifyListeners();
@@ -254,8 +261,7 @@ class MatchStore extends ChangeNotifier {
   void startMatch(MatchConfig cfg) {
     final batFirst = cfg.battingFirst == 'B';
     final inn = Innings.create(
-        batFirst ? cfg.teamB : cfg.teamA,
-        batFirst ? cfg.teamA : cfg.teamB);
+        batFirst ? cfg.teamB : cfg.teamA, batFirst ? cfg.teamA : cfg.teamB);
     match = Match(config: cfg, innings1: inn);
     _undo.clear();
     _redo.clear();
@@ -287,7 +293,8 @@ class MatchStore extends ChangeNotifier {
   }
 
   String? score({
-    required String action, // DOT,RUNS,FOUR,SIX,WIDE,NB_DIRECT,BYE,LEGBYE,WICKET
+    required String
+        action, // DOT,RUNS,FOUR,SIX,WIDE,NB_DIRECT,BYE,LEGBYE,WICKET
     int runs = 0,
     String wicketType = 'Bowled',
   }) {
@@ -587,8 +594,8 @@ class MatchStore extends ChangeNotifier {
 
   void startSecondInnings() {
     final m = match!;
-    m.innings2 =
-        Innings.create(m.innings1.bowlingTeam, m.innings1.battingTeam, m.target);
+    m.innings2 = Innings.create(
+        m.innings1.bowlingTeam, m.innings1.battingTeam, m.target);
     m.currentInnings = 2;
     nbArmed = false;
     _persist();

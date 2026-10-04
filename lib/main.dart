@@ -11,8 +11,11 @@ import 'screens/history.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = MatchStore();
-  runApp(CricketApp(store: store));
+  // Load before the first frame: this also preloads every SFX clip, so the
+  // very first boundary/wicket of the match is never swallowed by an
+  // audio pool that is still warming up.
   await store.load();
+  runApp(CricketApp(store: store));
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
@@ -32,8 +35,7 @@ class CricketApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: UmpireTheme.light(),
         darkTheme: UmpireTheme.dark(),
-        themeMode:
-            store.themeId == 'dark' ? ThemeMode.dark : ThemeMode.light,
+        themeMode: store.themeId == 'dark' ? ThemeMode.dark : ThemeMode.light,
         initialRoute: '/',
         routes: {
           '/': (_) => HomeScreen(store),
