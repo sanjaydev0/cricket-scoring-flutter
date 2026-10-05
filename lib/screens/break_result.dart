@@ -3,6 +3,7 @@ import '../math.dart';
 import '../theme.dart';
 import '../store.dart';
 import 'widgets.dart';
+import 'summary.dart';
 
 class BreakScreen extends StatelessWidget {
   final MatchStore store;
@@ -65,6 +66,9 @@ class BreakScreen extends StatelessWidget {
                       Text(
                           'RRR ${CricketMath.calcRRR(m.target!, CricketMath.totalBalls(m.config.totalOvers))} RPO'),
                       const SizedBox(height: 16),
+                      if (store.tracking)
+                        ScorecardView(store: store, inningsNo: 1),
+                      if (store.tracking) const SizedBox(height: 12),
                       RectBtn(
                           onTap: () {
                             store.startSecondInnings();
@@ -136,6 +140,20 @@ class ResultScreen extends StatelessWidget {
                       if (inn2 != null)
                         _innCard(m, inn2.battingTeam, inn2.runs, inn2.wickets,
                             inn2.legalDeliveries),
+                      if (store.tracking) ...[
+                        const SizedBox(height: 12),
+                        ScorecardView(store: store, inningsNo: 1),
+                        if (inn2 != null)
+                          ScorecardView(store: store, inningsNo: 2),
+                        const SizedBox(height: 12),
+                        AwardsView(store: store),
+                        const SizedBox(height: 12),
+                        RectBtn(
+                          primary: false,
+                          onTap: () => shareScorecard(context, store),
+                          child: const Text('COPY SCORECARD (WHATSAPP)'),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       Row(
                         children: [

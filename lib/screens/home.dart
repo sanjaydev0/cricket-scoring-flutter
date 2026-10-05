@@ -82,6 +82,12 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 10),
                       RectBtn(
                         primary: false,
+                        onTap: () => Navigator.pushNamed(context, '/club'),
+                        child: const Text('CLUB + PLAYERS'),
+                      ),
+                      const SizedBox(height: 10),
+                      RectBtn(
+                        primary: false,
                         onTap: () => Navigator.pushNamed(context, '/history'),
                         child: const Text('ARCHIVES'),
                       ),
@@ -259,6 +265,14 @@ class HomeScreen extends StatelessWidget {
                   title: const Text('Dark mode'),
                   value: store.themeId == 'dark',
                   onChanged: (v) => store.setTheme(v ? 'dark' : 'light'),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Ask who took the catch'),
+                  subtitle:
+                      const Text('Optional fielder on wickets. Off = fastest.'),
+                  value: store.askFielder,
+                  onChanged: (v) => store.setAskFielder(v),
                 ),
                 // Live-backend status, verbatim. A sharing failure on a gully
                 // ground must be diagnosable without a laptop, and the first

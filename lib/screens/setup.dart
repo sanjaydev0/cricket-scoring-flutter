@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../store.dart';
 import '../models.dart';
+import '../domain/players.dart';
 import 'widgets.dart';
 
 class SetupScreen extends StatefulWidget {
@@ -14,6 +15,11 @@ class _SetupScreenState extends State<SetupScreen> {
   late TextEditingController a, b;
   late MatchConfig cfg;
   bool _triedSubmit = false;
+  bool _track = false;
+  final Set<String> _squadA = {};
+  final Set<String> _squadB = {};
+  String _qa = '';
+  String _qb = '';
   @override
   void initState() {
     super.initState();
@@ -218,6 +224,37 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Track players + stats'),
+                    subtitle: const Text(
+                        'Squads, striker/bowler, scorecard. Off = fast scoring.'),
+                    value: _track,
+                    onChanged: (v) => setState(() => _track = v),
+                  ),
+                  if (_track) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                        'Squads come from CLUB roster (${widget.store.clubRoster.length} players).',
+                        style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
+                    _squadPicker('TEAM A XI', cfg.teamA, _squadA, _qa,
+                        (v) => setState(() => _qa = v)),
+                    const SizedBox(height: 8),
+                    _squadPicker('TEAM B XI', cfg.teamB, _squadB, _qb,
+                        (v) => setState(() => _qb = v)),
+                  ],
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
           RectBtn(
             onTap: () {
@@ -225,6 +262,15 @@ class _SetupScreenState extends State<SetupScreen> {
               if (a.text.trim().isEmpty || b.text.trim().isEmpty) {
                 return;
               }
+              if (_track && (_squadA.length < 2 || _squadB.length < 2)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text(
+                        'Pick at least 2 players per side (or turn tracking off).')));
+                return;
+              }
+              cfg.trackPlayers = _track;
+              cfg.squadA = _squadA.toList();
+              cfg.squadB = _squadB.toList();
               widget.store.draft = cfg;
               widget.store.startMatch(cfg);
               Navigator.pushReplacementNamed(context, '/scoring');
@@ -233,6 +279,52 @@ class _SetupScreenState extends State<SetupScreen> {
           ),
         ],
       ))),
+    );
+  }
+
+  Widget _squadPicker(String title, String team, Set<String> sel, String query,
+      ValueChanged<String> onQuery) {
+    final all = widget.store.clubRoster;
+    final q = query.toLowerCase().trim();
+    final shown = all
+        .where((p) => p.active && (q.isEmpty || p.searchKey.contains(q)))
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$title • $team (\${sel.length} picked)',
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+        const SizedBox(height: 6),
+        TextField(
+          decoration: const InputDecoration(
+              labelText: 'Search roster',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder()),
+          onChanged: onQuery,
+        ),
+        const SizedBox(height: 6),
+        if (shown.isEmpty)
+          const Text('No players — add them in CLUB first.',
+              style: TextStyle(fontSize: 12)),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final p in shown)
+              FilterChip(
+                label: Text(p.name),
+                selected: sel.contains(p.id),
+                onSelected: (_) => setState(() {
+                  if (sel.contains(p.id)) {
+                    sel.remove(p.id);
+                  } else {
+                    sel.add(p.id);
+                  }
+                }),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

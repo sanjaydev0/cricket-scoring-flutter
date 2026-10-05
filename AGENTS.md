@@ -63,12 +63,17 @@ lib/
   theme.dart        UmpireTheme, StylePreset (12), ScoreFonts (10)
   app_config.dart   AppConfig — --dart-define values (Supabase URL/key), never committed
   domain/           room_code.dart (32^5 codes), room_snapshot.dart (versioned payload)
+  domain/players.dart Player/Club/ClubProfile, DismissalType, BattingCard,
+                      BowlingCard, FieldingCard, InningsSheet, Career aggregates
   ports/            sync_port.dart — SyncPort + SyncState
   adapters/         supabase_sync.dart (real), local_only_sync.dart (default + FakeSync)
   screens/
     home.dart       Start / Resume / Archives + settings sections
     setup.dart      Teams (+batting-first pills), format, rules
-    scoring.dart    Keypad + undo + extras; renders Scoreboard
+    scoring.dart    Keypad + undo + extras + PLAYERS button; renders Scoreboard
+    player_sheets.dart dismissal (one-tap), bowler picker, stats sheet, openers
+    club.dart       profiles (local PIN), clubs, roster + search + career stats
+    summary.dart    scorecard tables, awards, player-of-match, WhatsApp share
     scoreboard.dart Scoreboard (hero tile + over strip) + OverStrip — SHARED with viewer
     viewer.dart     ViewerScreen (read-only live view), JoinRoomScreen (enter a code)
     sheets.dart     wicket/run-out dialogs, overs, extras, match settings, look sheet
@@ -188,13 +193,24 @@ adb devices -l           # confirm device (USB or wireless)
 - Commit messages: `type: short description` (feat/fix/chore).
 - Ask before removing features, renaming public storage keys, or changing badge colours.
 
+## Player tracking (shipped)
+
+- `Ball` carries nullable `strikerId/nonStrikerId/bowlerId/fielderName`: old saves
+  decode untouched, tracked balls attribute. `MatchConfig.trackPlayers` (default
+  OFF) + `squadA/squadB` select XIs from the CLUB roster.
+- One method owns the Laws: `InningsSheet.applyDelivery`. UI never attributes.
+- Undo snapshots carry `{match, sheets}` envelopes; legacy plain-match entries
+  still decode. New batter joins in the same commit as the wicket.
+- Overs stored as balls, displayed `4.3`-style; undefined stats render `—`.
+- Fielder picker (caught/stumped/run-out) is optional behind `askFielder`
+  (default OFF); scorecards degrade gracefully (`c b Ravi`, `run out`).
+
 ## Known gaps (open work)
 
-- Full `DeliveryEvent` model with striker / non-striker / bowler tracking and batsman selection
-  after each wicket. Current model tracks score-level state only.
 - Innings scorecard with per-player and per-bowler figures.
-  **Note:** these are one piece of work, not two — figures cannot be attributed to a
-  player until the model knows who faced the ball and who bowled it.
+- Live-room web viewer page at `/r/CODE` (the in-app read-only screen ships in v2.7).
+- Club roster and career stats (needs the `DeliveryEvent` model first, plus a Postgres
+  schema for `clubs` / `players` / `matches` / batting+bowling figures).
 - Live-room web viewer page at `/r/CODE` (the in-app read-only screen ships in v2.7).
 - Club roster and career stats (needs the `DeliveryEvent` model first, plus a Postgres
   schema for `clubs` / `players` / `matches` / batting+bowling figures).

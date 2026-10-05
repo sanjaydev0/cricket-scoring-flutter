@@ -35,6 +35,9 @@ class MatchConfig {
   int playersPerSide;
   int commonPlayers; // odd-man: plays for both sides
   Rules rules;
+  bool trackPlayers; // per-match player stats + scorecard
+  List<String> squadA; // player ids for team A (when tracking)
+  List<String> squadB; // player ids for team B (when tracking)
   MatchConfig({
     this.teamA = 'EAGLES XI',
     this.teamB = 'TITANS',
@@ -43,7 +46,12 @@ class MatchConfig {
     this.playersPerSide = 8,
     this.commonPlayers = 0,
     Rules? rules,
-  }) : rules = rules ?? Rules();
+    this.trackPlayers = false,
+    List<String>? squadA,
+    List<String>? squadB,
+  })  : rules = rules ?? Rules(),
+        squadA = squadA ?? [],
+        squadB = squadB ?? [];
   factory MatchConfig.fromJson(Map<String, dynamic> j) => MatchConfig(
         teamA: (j['teamA'] ?? 'EAGLES XI').toString(),
         teamB: (j['teamB'] ?? 'TITANS').toString(),
@@ -52,6 +60,9 @@ class MatchConfig {
         playersPerSide: (j['playersPerSide'] ?? 8) as int,
         commonPlayers: (j['commonPlayers'] ?? 0) as int,
         rules: Rules.fromJson((j['rules'] ?? {}) as Map<String, dynamic>),
+        trackPlayers: (j['trackPlayers'] ?? false) as bool,
+        squadA: ((j['squadA'] ?? []) as List).map((e) => e.toString()).toList(),
+        squadB: ((j['squadB'] ?? []) as List).map((e) => e.toString()).toList(),
       );
   Map<String, dynamic> toJson() => {
         'teamA': teamA,
@@ -61,6 +72,9 @@ class MatchConfig {
         'playersPerSide': playersPerSide,
         'commonPlayers': commonPlayers,
         'rules': rules.toJson(),
+        'trackPlayers': trackPlayers,
+        'squadA': squadA,
+        'squadB': squadB,
       };
 
   /// e.g. "6 + 6 + 1" or "8 v 8"
@@ -77,6 +91,10 @@ class Ball {
   bool isWicket;
   String wicketType;
   String badge;
+  String? strikerId; // who faced (player tracking only, null for old saves)
+  String? nonStrikerId;
+  String? bowlerId;
+  String? fielderName; // optional catcher / run-out fielder
   Ball({
     this.runs = 0,
     this.extra = 'none',
@@ -85,6 +103,10 @@ class Ball {
     this.isWicket = false,
     this.wicketType = '',
     this.badge = '0',
+    this.strikerId,
+    this.nonStrikerId,
+    this.bowlerId,
+    this.fielderName,
   });
   factory Ball.fromJson(Map<String, dynamic> j) => Ball(
         runs: (j['runs'] ?? 0) as int,
@@ -94,6 +116,10 @@ class Ball {
         isWicket: (j['isWicket'] ?? false) as bool,
         wicketType: (j['wicketType'] ?? '').toString(),
         badge: (j['badge'] ?? '0').toString(),
+        strikerId: j['strikerId']?.toString(),
+        nonStrikerId: j['nonStrikerId']?.toString(),
+        bowlerId: j['bowlerId']?.toString(),
+        fielderName: j['fielderName']?.toString(),
       );
   Map<String, dynamic> toJson() => {
         'runs': runs,
@@ -103,6 +129,10 @@ class Ball {
         'isWicket': isWicket,
         'wicketType': wicketType,
         'badge': badge,
+        'strikerId': strikerId,
+        'nonStrikerId': nonStrikerId,
+        'bowlerId': bowlerId,
+        'fielderName': fielderName,
       };
   int get totalRuns => runs + extraRuns;
 }
@@ -208,6 +238,7 @@ class Match {
   bool completed;
   String? winner;
   String? winMargin;
+  String? potmId;
   String createdAt;
   Match({
     required this.config,
@@ -218,6 +249,7 @@ class Match {
     this.completed = false,
     this.winner,
     this.winMargin,
+    this.potmId,
     String? createdAt,
   }) : createdAt = createdAt ?? DateTime.now().toIso8601String();
 
@@ -234,6 +266,7 @@ class Match {
         completed: (j['completed'] ?? false) as bool,
         winner: j['winner']?.toString(),
         winMargin: j['winMargin']?.toString(),
+        potmId: j['potmId']?.toString(),
         createdAt: (j['createdAt'] ?? '').toString(),
       );
   Map<String, dynamic> toJson() => {
@@ -245,6 +278,7 @@ class Match {
         'completed': completed,
         'winner': winner,
         'winMargin': winMargin,
+        'potmId': potmId,
         'createdAt': createdAt,
       };
   String encode() => jsonEncode(toJson());

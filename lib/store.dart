@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'adapters/local_only_sync.dart';
+import 'domain/players.dart';
 import 'domain/room_snapshot.dart';
 import 'math.dart';
 import 'models.dart';
@@ -33,6 +34,10 @@ class MatchStore extends ChangeNotifier {
     final m = match;
     if (code == null || m == null) return;
     _roomSeq++;
+    final doc = m.toJson();
+    if (sheets.isNotEmpty) {
+      doc['sheets'] = sheets.map((k, v) => MapEntry(k, v.toJson()));
+    }
     // Fire and forget, and the rejection is caught on the *future*: a `try`
     // around the call would not see it, which is how a failing backend used to
     // become an unhandled async error. A ball never waits on, or fails because
@@ -40,8 +45,7 @@ class MatchStore extends ChangeNotifier {
     unawaited(sync
         .publish(
           code,
-          RoomSnapshot(
-              seq: _roomSeq, match: m.toJson(), updatedAt: DateTime.now()),
+          RoomSnapshot(seq: _roomSeq, match: doc, updatedAt: DateTime.now()),
         )
         .catchError((Object _) {}));
   }
@@ -93,6 +97,12 @@ class MatchStore extends ChangeNotifier {
   static const kCeleb = 'cricket_celebration';
   static const kComplexWkts = 'cricket_complex_wkts';
   static const kHaptics = 'cricket_haptics';
+  static const kRoster = 'cricket_roster_v1';
+  static const kClubs = 'cricket_clubs_v1';
+  static const kProfiles = 'cricket_profiles_v1';
+  static const kActiveProfile = 'cricket_active_profile';
+  static const kSheets = 'cricket_sheets_v1';
+  static const kAskFielder = 'cricket_ask_fielder';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -109,6 +119,14 @@ class MatchStore extends ChangeNotifier {
   String celebId = 'pulse'; // hero celebration: off + 10 styles
   bool complexWickets = true; // full wicket-type grid vs Wicket/RunOut
   bool hapticsOn = true; // master vibration toggle
+  bool askFielder = false; // optional catcher/run-out picker on wickets
+  List<Player> roster = [];
+  List<Club> clubs = [];
+  List<ClubProfile> profiles = [];
+  String? activeProfileId;
+  String? activeClubId;
+  // Per-innings attribution sheets for the live match: '1' and '2'.
+  Map<String, InningsSheet> sheets = {};
   int ballGen = 0; // advances on score() only — strip motion key
   int breakWait = 0; // countdown seconds before break/result handoff
   String? breakDest; // '/break' | '/result' while counting down
@@ -131,6 +149,46 @@ class MatchStore extends ChangeNotifier {
     celebId = MatchStore.migrateCeleb(p.getString(kCeleb));
     complexWickets = p.getBool(kComplexWkts) ?? true;
     hapticsOn = p.getBool(kHaptics) ?? true;
+    askFielder = p.getBool(kAskFielder) ?? false;
+    try {
+      roster = ((jsonDecode(p.getString(kRoster) ?? '[]')) as List)
+          .map((e) => Player.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      roster = [];
+    }
+    try {
+      clubs = ((jsonDecode(p.getString(kClubs) ?? '[]')) as List)
+          .map((e) => Club.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      clubs = [];
+    }
+    try {
+      profiles = ((jsonDecode(p.getString(kProfiles) ?? '[]')) as List)
+          .map((e) => ClubProfile.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      profiles = [];
+    }
+    activeProfileId = p.getString(kActiveProfile);
+    activeClubId = null;
+    for (final pr in profiles) {
+      if (pr.id == activeProfileId) {
+        activeClubId = pr.clubId;
+        break;
+      }
+    }
+    try {
+      sheets = {};
+      final sj = jsonDecode(p.getString(kSheets) ?? '{}') as Map;
+      for (final e in sj.entries) {
+        sheets[e.key.toString()] =
+            InningsSheet.fromJson(Map<String, dynamic>.from(e.value as Map));
+      }
+    } catch (_) {
+      sheets = {};
+    }
     // Awaited: when load() returns, every SFX clip is preloaded, so the first
     // ball of the match cannot outrun the audio pool.
     await SoundService.instance.init(enabled: soundOn);
@@ -197,6 +255,20 @@ class MatchStore extends ChangeNotifier {
     await p.setString(kCeleb, celebId);
     await p.setBool(kComplexWkts, complexWickets);
     await p.setBool(kHaptics, hapticsOn);
+    await p.setBool(kAskFielder, askFielder);
+    await p.setString(
+        kRoster, jsonEncode(roster.map((e) => e.toJson()).toList()));
+    await p.setString(
+        kClubs, jsonEncode(clubs.map((e) => e.toJson()).toList()));
+    await p.setString(
+        kProfiles, jsonEncode(profiles.map((e) => e.toJson()).toList()));
+    if (activeProfileId != null) {
+      await p.setString(kActiveProfile, activeProfileId!);
+    } else {
+      await p.remove(kActiveProfile);
+    }
+    await p.setString(
+        kSheets, jsonEncode(sheets.map((k, v) => MapEntry(k, v.toJson()))));
   }
 
   void setTheme(String id) {
@@ -293,10 +365,247 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Save + refresh without any other side effects (used by the
+  /// player-of-the-match override, which must not touch the match itself).
+  void persistOnly() {
+    _persist();
+    notifyListeners();
+  }
+
   void setHaptics(bool v) {
     hapticsOn = v;
     _persist();
     notifyListeners();
+  }
+
+  void setAskFielder(bool v) {
+    askFielder = v;
+    _persist();
+    notifyListeners();
+  }
+
+  // --- club + roster (all local, all offline) ------------------------------
+
+  ClubProfile createProfile({required String name, required String pin}) {
+    final profile = ClubProfile.create(
+        name: name.trim(), pinHash: hashPin(pin, name.trim()));
+    profiles.add(profile);
+    activeProfileId = profile.id;
+    activeClubId = null;
+    _persist();
+    notifyListeners();
+    return profile;
+  }
+
+  bool unlockProfile(String id, String pin) {
+    for (final pr in profiles) {
+      if (pr.id == id && pr.pinHash == hashPin(pin, pr.name)) {
+        activeProfileId = id;
+        activeClubId = pr.clubId;
+        _persist();
+        notifyListeners();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void useWithoutProfile() {
+    activeProfileId = null;
+    activeClubId = profiles.isEmpty ? null : activeClubId;
+    notifyListeners();
+  }
+
+  void lockProfile() {
+    activeProfileId = null;
+    notifyListeners();
+  }
+
+  Club createClub({required String name}) {
+    final club = Club.create(name: name.trim());
+    clubs.add(club);
+    activeClubId = club.id;
+    for (final pr in profiles) {
+      if (pr.id == activeProfileId) pr.clubId = club.id;
+    }
+    _persist();
+    notifyListeners();
+    return club;
+  }
+
+  void selectClub(String id) {
+    activeClubId = id;
+    for (final pr in profiles) {
+      if (pr.id == activeProfileId) pr.clubId = id;
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  Player addPlayer(
+      {required String name,
+      PlayerRole role = PlayerRole.allRounder,
+      String? phone}) {
+    final cid = activeClubId ?? 'local';
+    final player = Player.create(clubId: cid, name: name.trim(), role: role);
+    if (phone != null && phone.trim().isNotEmpty) {
+      player.phone = phone.trim();
+    }
+    roster.add(player);
+    // A newly added player joins any live tracked sheet immediately, so the
+    // umpire never has to restart a match to use them.
+    for (final sheet in sheets.values) {
+      sheet.register(player);
+    }
+    _persist();
+    notifyListeners();
+    return player;
+  }
+
+  /// Paste-a-list bulk add: one name per line, optional "Name - role".
+  List<Player> addPlayersBulk(String text) {
+    final added = <Player>[];
+    for (final line in text.split('\n')) {
+      final t = line.trim().replaceAll(RegExp(r'^[\-\*\d.\)\s]+'), '');
+      if (t.isEmpty) continue;
+      var name = t;
+      var role = PlayerRole.allRounder;
+      final dash = t.lastIndexOf(' - ');
+      if (dash > 0) {
+        final r = t.substring(dash + 3).toLowerCase();
+        name = t.substring(0, dash).trim();
+        if (r.startsWith('bat')) role = PlayerRole.batter;
+        if (r.startsWith('bowl')) role = PlayerRole.bowler;
+        if (r.startsWith('keep')) role = PlayerRole.keeper;
+        if (r.startsWith('all')) role = PlayerRole.allRounder;
+      }
+      if (name.isEmpty) continue;
+      added.add(addPlayer(name: name, role: role));
+    }
+    return added;
+  }
+
+  void renamePlayer(String id, String name) {
+    for (final p in roster) {
+      if (p.id == id) p.name = name.trim();
+    }
+    for (final sheet in sheets.values) {
+      final n = sheet.names[id];
+      if (n != null) {
+        sheet.names[id] = name.trim();
+        sheet.batting[id]?.name = name.trim();
+        sheet.bowling[id]?.name = name.trim();
+        sheet.fielding[id]?.name = name.trim();
+      }
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  void setPlayerActive(String id, bool active) {
+    for (final p in roster) {
+      if (p.id == id) p.active = active;
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  void setPlayerRole(String id, PlayerRole role) {
+    for (final p in roster) {
+      if (p.id == id) p.role = role;
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  String playerName(String id) {
+    for (final p in roster) {
+      if (p.id == id) return p.name;
+    }
+    return currentSheet?.nameOf(id) ?? '?';
+  }
+
+  CareerBatting careerBatting(String id) {
+    final c = CareerBatting();
+    for (final sheet in sheets.values) {
+      final card = sheet.batting[id];
+      if (card != null) c.add(card);
+    }
+    return c;
+  }
+
+  CareerBowling careerBowling(String id) {
+    final c = CareerBowling();
+    for (final sheet in sheets.values) {
+      final card = sheet.bowling[id];
+      if (card != null) c.add(card);
+    }
+    return c;
+  }
+
+  int careerMatches(String id) {
+    var n = 0;
+    for (final sheet in sheets.values) {
+      final b = sheet.batting[id];
+      final w = sheet.bowling[id];
+      if ((b != null && b.position > 0) ||
+          (w != null && (w.balls > 0 || w.wickets > 0))) {
+        n++;
+      }
+    }
+    return n;
+  }
+
+  // --- tracked scoring helpers ----------------------------------------------
+
+  void setOpeners(String a, String b) {
+    final sheet = currentSheet;
+    if (sheet == null) return;
+    pushSnapshot();
+    sheet.setOpeners(a, b);
+    _persist();
+    notifyListeners();
+  }
+
+  void setBowler(String id) {
+    final sheet = currentSheet;
+    if (sheet == null) return;
+    pushSnapshot();
+    sheet.setBowler(id);
+    _persist();
+    notifyListeners();
+  }
+
+  void swapStrike() {
+    final sheet = currentSheet;
+    if (sheet == null) return;
+    pushSnapshot();
+    sheet.swapEnds();
+    _persist();
+    notifyListeners();
+  }
+
+  /// The over just finished: maiden accounting happens here, where the legal
+  /// count is known.
+  void finishOverForSheet() {
+    final sheet = currentSheet;
+    final inn = innings;
+    if (sheet == null || inn == null) return;
+    final bowl = sheet.currentBowler;
+    if (bowl == null) return;
+    // Legal balls in the over that just ended.
+    final overs = inn.overs;
+    final last = overs.isEmpty ? null : overs.last;
+    var legal = 0;
+    if (last != null) {
+      for (final b in last.balls) {
+        if (b.isLegal) legal++;
+      }
+    }
+    if (legal >= 6 && bowl.overRuns == 0) bowl.maidens++;
+    bowl.overRuns = 0;
+    bowl.overBalls = 0;
+    bowl.overLegal = 0;
   }
 
   void _buzz(Future<void> Function() fn) {
@@ -308,16 +617,47 @@ class MatchStore extends ChangeNotifier {
 
   void pushSnapshot() {
     if (match == null) return;
-    _undo.add(match!.encode());
+    _undo.add(jsonEncode({
+      'm': match!.toJson(),
+      's': sheets.map((k, v) => MapEntry(k, v.toJson())),
+    }));
     if (_undo.length > 60) _undo.removeAt(0);
     _redo.clear();
+  }
+
+  Map<String, dynamic>? _decodeEnvelope(String raw) {
+    try {
+      final d = jsonDecode(raw) as Map;
+      if (d['m'] is Map) return Map<String, dynamic>.from(d);
+    } catch (_) {}
+    return null;
   }
 
   Future<void> undo() async {
     nbArmed = false;
     if (_undo.isEmpty) return;
-    if (match != null) _redo.add(match!.encode());
-    match = Match.decode(_undo.removeLast());
+    if (match != null) {
+      _redo.add(jsonEncode({
+        'm': match!.toJson(),
+        's': sheets.map((k, v) => MapEntry(k, v.toJson())),
+      }));
+    }
+    final raw = _undo.removeLast();
+    final env = _decodeEnvelope(raw);
+    if (env != null) {
+      match = Match.fromJson(Map<String, dynamic>.from(env['m'] as Map));
+      try {
+        sheets = {};
+        final sj = Map<String, dynamic>.from((env['s'] ?? {}) as Map);
+        for (final e in sj.entries) {
+          sheets[e.key.toString()] =
+              InningsSheet.fromJson(Map<String, dynamic>.from(e.value as Map));
+        }
+      } catch (_) {}
+    } else {
+      // Legacy plain-match entries from before player tracking.
+      match = Match.decode(raw);
+    }
     match!.completed = false;
     if (match!.currentInnings == 1) match!.innings1.completed = false;
     if (match!.innings2 != null && match!.currentInnings == 2) {
@@ -342,8 +682,58 @@ class MatchStore extends ChangeNotifier {
     _undo.clear();
     _redo.clear();
     nbArmed = false;
+    sheets = {};
+    if (cfg.trackPlayers) _ensureSheet(1);
     _persist();
     notifyListeners();
+  }
+
+  /// Sheet for an innings, or null when player tracking is off.
+  InningsSheet? sheetFor(int inningsNo) => sheets[inningsNo.toString()];
+
+  InningsSheet? get currentSheet =>
+      match == null ? null : sheetFor(match!.currentInnings);
+
+  bool get tracking => match?.config.trackPlayers ?? false;
+
+  InningsSheet _ensureSheet(int inningsNo) {
+    final m = match!;
+    final inn = inningsNo == 1 ? m.innings1 : m.innings2!;
+    final key = inningsNo.toString();
+    final existing = sheets[key];
+    if (existing != null) return existing;
+    final sheet = InningsSheet(
+        battingTeam: inn.battingTeam, bowlingTeam: inn.bowlingTeam);
+    final battingSquad = squadForTeam(inn.battingTeam);
+    final bowlingSquad = squadForTeam(inn.bowlingTeam);
+    sheet.registerSquad([...battingSquad, ...bowlingSquad]);
+    sheets[key] = sheet;
+    return sheet;
+  }
+
+  List<Player> squadForTeam(String team) {
+    final m = match;
+    if (m == null) return const [];
+    final ids = team == m.config.teamA ? m.config.squadA : m.config.squadB;
+    if (ids.isEmpty) return const [];
+    final byId = {for (final p in roster) p.id: p};
+    return [
+      for (final id in ids)
+        if (byId[id] != null) byId[id]!
+    ];
+  }
+
+  List<Player> get clubRoster {
+    final cid = activeClubId;
+    if (cid == null) return List.unmodifiable(roster);
+    return roster.where((p) => p.clubId == cid).toList();
+  }
+
+  List<Player> searchRoster(String q) {
+    final query = q.toLowerCase().trim();
+    final base = clubRoster.where((p) => p.active).toList();
+    if (query.isEmpty) return base;
+    return base.where((p) => p.searchKey.contains(query)).toList();
   }
 
   void _addBall(Innings inn, Ball b) {
@@ -373,6 +763,10 @@ class MatchStore extends ChangeNotifier {
         action, // DOT,RUNS,FOUR,SIX,WIDE,NB_DIRECT,BYE,LEGBYE,WICKET
     int runs = 0,
     String wicketType = 'Bowled',
+    String? dismissal, // DismissalType.name when tracking players
+    String? fielderName,
+    String? newBatterId,
+    bool crossed = false,
   }) {
     final m = match;
     final inn = innings;
@@ -513,7 +907,43 @@ class MatchStore extends ChangeNotifier {
       inn.isFreeHitActive = false;
     }
 
+    // Player attribution: stamp who faced and who bowled before the ball
+    // lands, so the sheet and the strip never disagree.
+    final sheet = tracking ? _ensureSheet(m.currentInnings) : null;
+    if (sheet != null) {
+      // An over that rolls here ends the previous bowler's figures first.
+      if (inn.overs.isNotEmpty &&
+          inn.overs.last.balls.where((x) => x.isLegal).length >= 6) {
+        finishOverForSheet();
+      }
+      b.strikerId = sheet.strikerId;
+      b.nonStrikerId = sheet.nonStrikerId;
+      b.bowlerId = sheet.bowlerId;
+      if (fielderName != null && fielderName.isNotEmpty) {
+        b.fielderName = fielderName;
+      }
+    }
     _addBall(inn, b);
+    if (sheet != null) {
+      final type = dismissal != null
+          ? DismissalType.fromId(dismissal)
+          : DismissalType.fromId(b.wicketType);
+      sheet.applyDelivery(b,
+          dismissalType: b.isWicket ? type : null, fielderName: fielderName);
+      if (b.isWicket && !inn.completed) {
+        // Bring the new batter in at the striker's end in the same commit, so
+        // a dismissal is always resolved: one sheet, one tap, no limbo.
+        final next = (newBatterId != null && newBatterId.isNotEmpty)
+            ? newBatterId
+            : (sheet.waitingBatters.isEmpty
+                ? null
+                : sheet.waitingBatters.first);
+        if (next != null) {
+          sheet.bringIn(next);
+          if (crossed) sheet.crossedRunOutFix(next);
+        }
+      }
+    }
     ballGen++; // strip animates on generation change only — undo is silent
     _feedback(b);
     _publishRoom(); // viewers see the ball; scoring never waits on this
@@ -675,6 +1105,8 @@ class MatchStore extends ChangeNotifier {
         m.innings1.bowlingTeam, m.innings1.battingTeam, m.target);
     m.currentInnings = 2;
     nbArmed = false;
+    if (m.config.trackPlayers) _ensureSheet(2);
+    _publishRoom();
     _persist();
     notifyListeners();
   }
@@ -758,6 +1190,7 @@ class MatchStore extends ChangeNotifier {
   void abandon() {
     _cancelBreak();
     match = null;
+    sheets = {};
     _undo.clear();
     _redo.clear();
     // The match is gone, so the room has nothing to show: close it.
@@ -769,6 +1202,7 @@ class MatchStore extends ChangeNotifier {
   void newMatch() {
     _cancelBreak();
     match = null;
+    sheets = {};
     _undo.clear();
     _redo.clear();
     if (roomCode != null) unawaited(stopSharing());

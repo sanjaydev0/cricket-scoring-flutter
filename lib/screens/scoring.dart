@@ -4,6 +4,7 @@ import '../theme.dart';
 import 'widgets.dart';
 import 'scoreboard.dart';
 import 'sheets.dart';
+import 'player_sheets.dart';
 
 class ScoringScreen extends StatelessWidget {
   final MatchStore store;
@@ -127,6 +128,37 @@ class ScoringScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (store.tracking &&
+                          (store.currentSheet?.strikerId == null ||
+                              store.currentSheet?.bowlerId == null)) ...[
+                        const SizedBox(height: 10),
+                        Card(
+                          color: const Color(0xFF1D4ED8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'SET BATTERS + BOWLER TO START',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1),
+                                  ),
+                                ),
+                                RectBtn(
+                                  primary: false,
+                                  onTap: () =>
+                                      showInningsStartSheet(context, store),
+                                  child: const Text('SET'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       RepaintBoundary(
                           child: Card(
@@ -239,6 +271,31 @@ class ScoringScreen extends StatelessWidget {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
+                                      if (store.tracking) ...[
+                                        SizedBox(
+                                          width: 72,
+                                          height: 72,
+                                          child: FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color(0xFF1D4ED8),
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.zero,
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          20)),
+                                            ),
+                                            onPressed: () =>
+                                                showPlayerStatsSheet(
+                                                    context, store),
+                                            child: const Icon(
+                                                Icons.groups_outlined,
+                                                size: 28),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                      ],
                                       SizedBox(
                                         width: 72,
                                         height: 72,
@@ -303,13 +360,91 @@ class ScoringScreen extends StatelessWidget {
   }
 
   void _tap(BuildContext ctx, String action, {int runs = 0}) {
+    final beforeOver = store.innings?.currentOverNumber ?? 1;
+    final beforeLegal = store.innings?.legalDeliveries ?? 0;
     final err = store.score(action: action, runs: runs);
     if (err != null) {
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    // The over just finished: prompt the next bowler immediately, while the
+    // captain is deciding. Never on innings end.
+    final inn = store.innings;
+    if (store.tracking &&
+        inn != null &&
+        !inn.completed &&
+        (inn.currentOverNumber != beforeOver ||
+            (inn.legalDeliveries - beforeLegal > 0 &&
+                inn.legalDeliveries % 6 == 0))) {
+      showBowlerSheet(ctx, store, auto: true);
     }
   }
 
-  void _wicketDialog(BuildContext context) => showWicketDialog(context, store);
+  void _wicketDialog(BuildContext context) {
+    if (!store.tracking) {
+      showWicketDialog(context, store);
+      return;
+    }
+    if (store.nbArmed) {
+      showDismissalSheet(context, store, 'Run Out');
+      return;
+    }
+    final simple = !store.complexWickets;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('RECORD DISMISSAL'),
+        content: SizedBox(
+          width: 340,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('SELECT WICKET TYPE',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 2.4,
+                children: [
+                  _tWicketKey(context, 'BOWLED', 'Bowled'),
+                  if (!simple) _tWicketKey(context, 'CAUGHT', 'Caught'),
+                  _tWicketKey(context, 'RUN OUT ›', 'Run Out'),
+                  if (!simple) ...[
+                    _tWicketKey(context, 'LBW', 'LBW'),
+                    _tWicketKey(context, 'STUMPED', 'Stumped'),
+                    _tWicketKey(context, 'HIT WICKET', 'Hit Wicket'),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('✕'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tWicketKey(BuildContext context, String label, String type) {
+    return RectBtn(
+      primary: false,
+      onTap: () {
+        Navigator.pop(context);
+        showDismissalSheet(context, store, type);
+      },
+      child: Text(label),
+    );
+  }
+
   void _oversSheet(BuildContext context) => showOversSheet(context, store);
   void _moreSheet(BuildContext context) => showExtrasSheet(context, store);
   void _settingsSheet(BuildContext context) =>
