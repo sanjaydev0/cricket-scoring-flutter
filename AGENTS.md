@@ -125,6 +125,34 @@ supabase/       migrations/*.sql + README.md (the setup steps a human must do)
    returns 204 with zero rows affected). A leaked 5-character code grants read and nothing
    else.
 
+## Workflow: web first, APK last
+
+Iterate on the **web** build; only cut an APK once features and UI have settled.
+An APK build costs 10-20 minutes on this machine, a web build ~60 seconds.
+
+```bash
+# 1. sub-second nudges (hot reload: r, hot restart: R)
+flutter run -d web-server --web-port 8000 --web-hostname 0.0.0.0
+#    desktop http://localhost:8000   phone http://<LAN-IP>:8000
+
+# 2. checkpoint: release-fidelity web build, served on the LAN
+./tool/web.sh
+
+# 3. release: only when the feature/UI work is done
+./tool/release.sh 2.9.0 "notes"
+```
+
+**What web cannot check** — these are part of "done" at step 3, not optional:
+sounds (audioplayers differs on web), haptics (absent in a browser), and
+anything release-only (see the INTERNET-permission rule below). Step 3 ends by
+printing that checklist.
+
+**Never run a web build and an APK build concurrently.** `dart2js` aborts with
+`Could not start thread: Resource temporarily unavailable` when the box is out
+of memory; a Gradle daemon held 2.4 GB and killed a web build once.
+`tool/web.sh` stops the daemon first. `tool/release.sh` refuses to run while a
+`flutter run` dev server is alive.
+
 ## Commands
 
 ```bash
@@ -132,6 +160,8 @@ flutter pub get          # deps
 dart format .            # formatting (enforced by opencode.jsonc)
 flutter analyze          # lint — must be clean before commit
 flutter test             # unit/widget tests
+./tool/web.sh            # release web build + serve on LAN (prints URL)
+./tool/release.sh VER NOTE  # analyze, test, pre-flight, apk, install, gh release
 flutter build apk --release
 flutter build web --release
 adb devices -l           # confirm device (USB or wireless)
@@ -144,7 +174,11 @@ adb devices -l           # confirm device (USB or wireless)
   rediscover with `avahi-browse -r _adb-tls-connect._tcp`.
 - Waydroid is installed for quick Android preview but its IP is unreachable from the host;
   use `flutter build web` + `localhost:8000` for rapid UI iteration.
-- Release flow: commit → push → `gh release create v<semver>` with APK → `adb install -r`.
+- Release flow: `./tool/release.sh <version> "<notes>"` — analyze, test, pre-flight gate, APK,
+  tag/release, install. It refuses a duplicate tag and a live dev server.
+- The pre-flight gate is not optional ceremony: it asserts `INTERNET` +
+  `ACCESS_NETWORK_STATE` in the **merged release manifest** and that the
+  Supabase keys are baked into `libapp.so`. Both faults are invisible on web.
 
 ## Rules
 
