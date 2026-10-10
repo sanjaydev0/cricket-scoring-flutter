@@ -89,6 +89,18 @@ Current feature inventory (keep compatible unless asked):
 - Run-out badges read `W+n`; complex/simple wicket toggle; double-side player None/One;
   advanced-extras master switch; declare-winner + abandon flows
 - Deferred over rollover; 900ms strip glide; fade on forward rollover only, never on undo
+- Player names are rows, never pills: every name picker renders compact rows
+  (name left, radio/check right) via one shared row layout. Chips stay only for
+  non-name toggles (dismissal types, styles).
+- Squad rules live in the store, never just the UI: XI cap = playersPerSide,
+  cross-XI exclusion waived only for the shared pick when a common player is
+  allowed, duplicates warn and are never created, mid-match removal only when
+  uncapped.
+- One method owns the Laws: `InningsSheet.applyDelivery` for balls,
+  `closeOver` for over ends. Bowler changes go through `MatchStore.setBowler`,
+  which enforces the consecutive-over law. Retired-out falls a team wicket;
+  retired-hurt does not. Free-hit and armed no-ball route wicket flows to
+  run-out only.
 - Live rooms (Phase 1): share icon in the scoring app bar opens a room and shows its code;
   every ball publishes a full versioned snapshot; undo retracts; `Stop sharing` deletes the row.
   Viewer app and web viewer page are Phase 2+.

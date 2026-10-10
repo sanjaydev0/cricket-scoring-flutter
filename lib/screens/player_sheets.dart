@@ -4,6 +4,7 @@ import '../domain/players.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
+import 'summary.dart';
 
 String fmt1(double? v) => v == null ? '—' : v.toStringAsFixed(1);
 String fmt2(double? v) => v == null ? '—' : v.toStringAsFixed(2);
@@ -155,46 +156,9 @@ Widget _batterRow(
   );
 }
 
-Widget _bowlerRow(BowlingCard b) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    decoration: const BoxDecoration(
-      border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(b.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-              const Text('Bowler', style: TextStyle(fontSize: 11)),
-            ],
-          ),
-        ),
-        SizedBox(
-          width: 76,
-          child: Text('${b.wickets}-${b.runsConceded}',
-              textAlign: TextAlign.right,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-        ),
-        SizedBox(
-          width: 44,
-          child: Text(b.oversDisplay,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w700)),
-        ),
-        SizedBox(
-          width: 44,
-          child: Text(fmt2(b.economy),
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w700)),
-        ),
-      ],
-    ),
-  );
-}
+/// Single-bowler row in the stats sheet: same shared rows as the scorecard,
+/// so the two can never disagree on layout.
+Widget _bowlerRow(BowlingCard b) => BowlerRows([b]);
 
 Widget _partnershipRow(InningsSheet s) {
   final last = s.fallOfWickets.isEmpty ? null : s.fallOfWickets.last;
@@ -428,7 +392,27 @@ void showBowlerSheet(BuildContext context, MatchStore store,
     {bool auto = false}) {
   final sheet = store.currentSheet;
   if (sheet == null) return;
-  final candidates = sheet.bowling.keys.toList();
+  // Candidates are the BOWLING side's squad in XI order — never the batters.
+  // (The bowling map holds every registered player, so reading its keys
+  // showed batting names as bowlers.)
+  final m = store.match!;
+  final squadIds =
+      sheet.bowlingTeam == m.config.teamA ? m.config.squadA : m.config.squadB;
+  final inXi = squadIds.isEmpty
+      ? sheet.bowling.keys.toList()
+      : [
+          for (final id in squadIds)
+            if (sheet.bowling.containsKey(id)) id
+        ];
+  // Anyone who already bowled but is not in the XI (mid-match squad edits)
+  // stays visible rather than vanishing.
+  final candidates = [
+    ...inXi,
+    for (final id in sheet.bowling.keys)
+      if (!inXi.contains(id) &&
+          (sheet.bowling[id]!.balls > 0 || sheet.bowling[id]!.wickets > 0))
+        id,
+  ];
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
@@ -455,7 +439,12 @@ void showBowlerSheet(BuildContext context, MatchStore store,
                     primary: false,
                     onTap: allowed
                         ? () {
-                            store.setBowler(id);
+                            final err = store.setBowler(id);
+                            if (err != null) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(content: Text(err)));
+                              return;
+                            }
                             Navigator.pop(context);
                           }
                         : null,

@@ -310,10 +310,14 @@ class _SetupScreenState extends State<SetupScreen> {
     final expanded = _expanded.contains(side);
     final visible = expanded ? pool.take(12).toList() : pool.take(8).toList();
     final hidden = pool.length - visible.length;
+    // The XI can never exceed players-per-side: selected stay tappable so a
+    // pick can always be undone, unselected lock with the reason visible.
+    final cap = cfg.playersPerSide;
+    final full = sel.length >= cap;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$side • $team (\${sel.length} picked)',
+        Text('$side • $team (${sel.length}/$cap picked)',
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
         const SizedBox(height: 6),
         TextField(
@@ -329,38 +333,43 @@ class _SetupScreenState extends State<SetupScreen> {
           const Text('No players — add them in CLUB first.',
               style: TextStyle(fontSize: 12)),
         for (final p in visible)
-          InkWell(
-            onTap: () => setState(() {
-              if (sel.contains(p.id)) {
-                sel.remove(p.id);
-              } else {
-                sel.add(p.id);
-              }
-            }),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(p.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w800)),
-                        Text(
-                            '${_roleName(p.role)} | ${battingStyleLabel(p.battingStyle)} ${bowlingStyleLabel(p.bowlingStyle)}${freq(p.id) > 0 ? ' | ${freq(p.id)} played' : ''}',
-                            style: const TextStyle(fontSize: 11)),
-                      ],
+          Opacity(
+            opacity: (full && !sel.contains(p.id)) ? 0.45 : 1.0,
+            child: InkWell(
+              onTap: (full && !sel.contains(p.id))
+                  ? null
+                  : () => setState(() {
+                        if (sel.contains(p.id)) {
+                          sel.remove(p.id);
+                        } else {
+                          sel.add(p.id);
+                        }
+                      }),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(p.name,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
+                          Text(
+                              '${_roleName(p.role)} | ${battingStyleLabel(p.battingStyle)} ${bowlingStyleLabel(p.bowlingStyle)}${freq(p.id) > 0 ? ' | ${freq(p.id)} played' : ''}',
+                              style: const TextStyle(fontSize: 11)),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(
-                    sel.contains(p.id)
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
-                    color: sel.contains(p.id) ? Colors.green : Colors.grey,
-                  ),
-                ],
+                    Icon(
+                      sel.contains(p.id)
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: sel.contains(p.id) ? Colors.green : Colors.grey,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

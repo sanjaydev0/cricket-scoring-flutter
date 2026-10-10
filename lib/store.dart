@@ -80,7 +80,11 @@ class MatchStore extends ChangeNotifier {
 
   void _bumpAppearances() {
     final sheet = currentSheet;
-    if (sheet == null) return;
+    final m = match;
+    if (sheet == null || m == null) return;
+    final key = '${m.createdAt}_${m.currentInnings}';
+    if (appearanceKeys.contains(key)) return;
+    appearanceKeys.add(key);
     for (final c in sheet.batting.values) {
       if (c.position > 0) {
         playerAppearances[c.playerId] =
@@ -92,6 +96,30 @@ class MatchStore extends ChangeNotifier {
           (sheet.batting[c.playerId]?.position ?? 0) == 0) {
         playerAppearances[c.playerId] =
             (playerAppearances[c.playerId] ?? 0) + 1;
+      }
+    }
+  }
+
+  /// Withdraws the appearance bump when undo reopens an innings, so the
+  /// frequency ordering behind squad pickers cannot drift.
+  void _withdrawAppearances() {
+    final m = match;
+    if (m == null) return;
+    final key = '${m.createdAt}_${m.currentInnings}';
+    if (!appearanceKeys.remove(key)) return;
+    final sheet = currentSheet;
+    if (sheet == null) return;
+    for (final c in sheet.batting.values) {
+      if (c.position > 0) {
+        playerAppearances[c.playerId] =
+            ((playerAppearances[c.playerId] ?? 1) - 1).clamp(0, 1 << 30);
+      }
+    }
+    for (final c in sheet.bowling.values) {
+      if ((c.balls > 0 || c.wickets > 0) &&
+          (sheet.batting[c.playerId]?.position ?? 0) == 0) {
+        playerAppearances[c.playerId] =
+            ((playerAppearances[c.playerId] ?? 1) - 1).clamp(0, 1 << 30);
       }
     }
   }
@@ -122,6 +150,7 @@ class MatchStore extends ChangeNotifier {
   static const kSheets = 'cricket_sheets_v1';
   static const kAskFielder = 'cricket_ask_fielder';
   static const kAppearances = 'cricket_appearances_v1';
+  static const kAppearanceKeys = 'cricket_appearance_keys_v1';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -151,6 +180,7 @@ class MatchStore extends ChangeNotifier {
   /// squad-picker ordering (most frequent first). Bumped when an innings
   /// completes, for everyone who batted or bowled.
   Map<String, int> playerAppearances = {};
+  Set<String> appearanceKeys = {};
   int ballGen = 0; // advances on score() only — strip motion key
   int breakWait = 0; // countdown seconds before break/result handoff
   String? breakDest; // '/break' | '/result' while counting down
@@ -179,6 +209,14 @@ class MatchStore extends ChangeNotifier {
           jsonDecode(p.getString(kAppearances) ?? '{}') as Map);
     } catch (_) {
       playerAppearances = {};
+    }
+    try {
+      appearanceKeys =
+          (jsonDecode(p.getString(kAppearanceKeys) ?? '[]') as List)
+              .map((e) => e.toString())
+              .toSet();
+    } catch (_) {
+      appearanceKeys = {};
     }
     try {
       roster = ((jsonDecode(p.getString(kRoster) ?? '[]')) as List)
@@ -287,6 +325,7 @@ class MatchStore extends ChangeNotifier {
     await p.setBool(kHaptics, hapticsOn);
     await p.setBool(kAskFielder, askFielder);
     await p.setString(kAppearances, jsonEncode(playerAppearances));
+    await p.setString(kAppearanceKeys, jsonEncode(appearanceKeys.toList()));
     await p.setString(
         kRoster, jsonEncode(roster.map((e) => e.toJson()).toList()));
     await p.setString(
@@ -475,6 +514,14 @@ class MatchStore extends ChangeNotifier {
 
   /// Null when no club exists yet: the UI must create a club first instead
   /// of scattering players under a fake club.
+  /// True when [name] already exists in the active club (case-insensitive).
+  /// The UI warns "already exists" instead of creating a twin.
+  bool duplicateName(String name) {
+    final q = name.trim().toLowerCase();
+    if (q.isEmpty) return false;
+    return clubRoster.any((p) => p.name.trim().toLowerCase() == q);
+  }
+
   Player? addPlayer(
       {required String name,
       PlayerRole role = PlayerRole.allRounder,
@@ -483,6 +530,7 @@ class MatchStore extends ChangeNotifier {
       String? phone}) {
     final cid = activeClubId;
     if (cid == null) return null;
+    if (duplicateName(name)) return null;
     final player = Player.create(
         clubId: cid,
         name: name.trim(),
@@ -504,9 +552,10 @@ class MatchStore extends ChangeNotifier {
   }
 
   /// Paste-a-list bulk add: one name per line, optional "Name - role".
-  List<Player> addPlayersBulk(String text) {
-    if (activeClubId == null) return const [];
+  BulkResult addPlayersBulk(String text) {
+    if (activeClubId == null) return const BulkResult([], 0);
     final added = <Player>[];
+    var skipped = 0;
     for (final line in text.split('\n')) {
       final t = line.trim().replaceAll(RegExp(r'^[\-\*\d.\)\s]+'), '');
       if (t.isEmpty) continue;
@@ -522,10 +571,14 @@ class MatchStore extends ChangeNotifier {
         if (r.startsWith('all')) role = PlayerRole.allRounder;
       }
       if (name.isEmpty) continue;
+      if (duplicateName(name)) {
+        skipped++;
+        continue;
+      }
       final created = addPlayer(name: name, role: role);
       if (created != null) added.add(created);
     }
-    return added;
+    return BulkResult(added, skipped);
   }
 
   void renamePlayer(String id, String name) {
@@ -610,13 +663,20 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setBowler(String id) {
+  /// Assigns the over's bowler. Returns an error when the Laws forbid it —
+  /// the picker greys the just-bowled player, but the store is the enforcer.
+  String? setBowler(String id) {
     final sheet = currentSheet;
-    if (sheet == null) return;
+    if (sheet == null) return 'Player tracking is off';
+    if (!sheet.canBowl(id)) {
+      return '${sheet.nameOf(id)} bowled the last over';
+    }
     pushSnapshot();
+    sheet.closeOver(legalBalls: 0); // reset without maiden: mid-over change
     sheet.setBowler(id);
     _persist();
     notifyListeners();
+    return null;
   }
 
   /// Retires the striker (hurt or out): recorded on the card without a
@@ -633,6 +693,15 @@ class MatchStore extends ChangeNotifier {
       bat.dismissal = type;
       bat.isNotOut = false;
     }
+    // Retired-out is a dismissal in the Laws: it counts toward all-out.
+    // Retired-hurt does not.
+    if (type == DismissalType.retiredOut) {
+      final inn = innings;
+      if (inn != null) {
+        inn.wickets++;
+        _checkEnd();
+      }
+    }
     _persist();
     notifyListeners();
   }
@@ -647,13 +716,11 @@ class MatchStore extends ChangeNotifier {
   }
 
   /// The over just finished: maiden accounting happens here, where the legal
-  /// count is known.
+  /// count is known. Delegates to the sheet's single close path.
   void finishOverForSheet() {
     final sheet = currentSheet;
     final inn = innings;
     if (sheet == null || inn == null) return;
-    final bowl = sheet.currentBowler;
-    if (bowl == null) return;
     // Legal balls in the over that just ended.
     final overs = inn.overs;
     final last = overs.isEmpty ? null : overs.last;
@@ -663,10 +730,7 @@ class MatchStore extends ChangeNotifier {
         if (b.isLegal) legal++;
       }
     }
-    if (legal >= 6 && bowl.overRuns == 0) bowl.maidens++;
-    bowl.overRuns = 0;
-    bowl.overBalls = 0;
-    bowl.overLegal = 0;
+    sheet.closeOver(legalBalls: legal);
   }
 
   void _buzz(Future<void> Function() fn) {
@@ -720,6 +784,7 @@ class MatchStore extends ChangeNotifier {
       match = Match.decode(raw);
     }
     match!.completed = false;
+    _withdrawAppearances();
     if (match!.currentInnings == 1) match!.innings1.completed = false;
     if (match!.innings2 != null && match!.currentInnings == 2) {
       match!.innings2!.completed = false;
@@ -1052,6 +1117,67 @@ class MatchStore extends ChangeNotifier {
     _buzz(HapticFeedback.selectionClick);
     SoundService.instance.extra();
     notifyListeners();
+  }
+
+  /// Adds a roster player to a mid-match XI. Enforces the same three rules as
+  /// setup: the XI cap, cross-exclusion (waived for the shared pick when a
+  /// common player is allowed), and tracking must be on.
+  String? addToSquad(String team, String playerId) {
+    final m = match;
+    final sheet = currentSheet;
+    if (m == null || sheet == null) return 'Player tracking is off';
+    final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
+    final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
+    if (mine.contains(playerId)) return null;
+    if (mine.length >= m.config.playersPerSide) {
+      return 'XI is full (${m.config.playersPerSide})';
+    }
+    if (other.contains(playerId) && m.config.commonPlayers == 0) {
+      return 'Already in the other XI';
+    }
+    pushSnapshot();
+    mine.add(playerId);
+    final p = roster.where((e) => e.id == playerId);
+    if (p.isNotEmpty) sheet.register(p.first);
+    _persist();
+    notifyListeners();
+    return null;
+  }
+
+  /// Type-a-name mid-match add: roster hit joins the XI, a new name is created
+  /// in the club (name-only; styles later) and joins. Duplicates warn.
+  String? addSquadByName(String team, String name) {
+    final t = name.trim();
+    if (t.isEmpty) return 'Type a name';
+    for (final p in clubRoster) {
+      if (p.name.trim().toLowerCase() == t.toLowerCase()) {
+        return addToSquad(team, p.id);
+      }
+    }
+    final created = addPlayer(name: t);
+    if (created == null) return 'Create a club first';
+    return addToSquad(team, created.id);
+  }
+
+  /// Removes an uncapped pick mid-match. Anyone who batted or bowled stays:
+  /// figures already reference them.
+  String? removeFromSquad(String team, String playerId) {
+    final m = match;
+    final sheet = currentSheet;
+    if (m == null || sheet == null) return 'Player tracking is off';
+    final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
+    if (!mine.contains(playerId)) return null;
+    final b = sheet.batting[playerId];
+    final w = sheet.bowling[playerId];
+    if ((b != null && b.position > 0) ||
+        (w != null && (w.balls > 0 || w.wickets > 0))) {
+      return 'Already played — cannot remove mid-match';
+    }
+    pushSnapshot();
+    mine.remove(playerId);
+    _persist();
+    notifyListeners();
+    return null;
   }
 
   /// Mid-match config change (settings sheet). Validated + undoable.

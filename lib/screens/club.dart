@@ -316,6 +316,11 @@ class _ClubScreenState extends State<ClubScreen> {
 
   void _add(MatchStore store) {
     if (_name.text.trim().isEmpty) return;
+    if (store.duplicateName(_name.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${_name.text.trim()} already exists')));
+      return;
+    }
     final created = store.addPlayer(
         name: _name.text.trim(),
         role: _role,
@@ -362,11 +367,13 @@ class _ClubScreenState extends State<ClubScreen> {
               const SizedBox(height: 10),
               RectBtn(
                 onTap: () {
-                  final added = store.addPlayersBulk(_bulk.text);
+                  final res = store.addPlayersBulk(_bulk.text);
                   _bulk.clear();
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${added.length} added')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(res.skipped > 0
+                          ? '${res.added.length} added, ${res.skipped} already existed'
+                          : '${res.added.length} added')));
                   setState(() {});
                 },
                 child: const Text('ADD ALL'),

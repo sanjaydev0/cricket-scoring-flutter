@@ -9,6 +9,72 @@ import 'widgets.dart';
 /// Shared scorecard + awards, used by the break screen (first innings) and the
 /// result screen (both innings). Rendered only when the match tracked players;
 /// otherwise the existing totals UI stands alone.
+/// Section band shared by break, result and scorecard: preset hero colors,
+/// one style everywhere instead of four ad-hoc headers.
+class SectionHeader extends StatelessWidget {
+  final String label;
+  const SectionHeader(this.label, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131316),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label,
+          style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+              letterSpacing: 1)),
+    );
+  }
+}
+
+/// One bowler per two lines: figures large right, wides/no-balls + economy
+/// small below. Roomier than the old 3-column table, same numbers.
+class BowlerRows extends StatelessWidget {
+  final List<BowlingCard> bowlers;
+  const BowlerRows(this.bowlers, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final c in bowlers)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(c.name,
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      Text(
+                          'Wd ${c.wides} Nb ${c.noBalls} • Econ ${c.economy == null ? '—' : c.economy!.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                ),
+                Text(
+                    '${c.oversDisplay}-${c.maidens}-${c.runsConceded}-${c.wickets}',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 16)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class ScorecardView extends StatelessWidget {
   final MatchStore store;
   final int inningsNo;
@@ -27,8 +93,7 @@ class ScorecardView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('INNINGS $inningsNo • ${sheet.battingTeam}',
-                style: const TextStyle(fontWeight: FontWeight.w900)),
+            SectionHeader('INNINGS $inningsNo • ${sheet.battingTeam}'),
             const SizedBox(height: 8),
             Table(
               columnWidths: const {
@@ -107,55 +172,9 @@ class ScorecardView extends StatelessWidget {
               ],
             ),
             const Divider(height: 20),
-            Table(
-              columnWidths: const {
-                0: FlexColumnWidth(3),
-                1: FlexColumnWidth(2),
-                2: FlexColumnWidth(1),
-              },
-              children: [
-                const TableRow(
-                  children: [
-                    Text('BOWLER',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 11)),
-                    Text('O-M-R-W',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 11),
-                        textAlign: TextAlign.right),
-                    Text('ECON',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 11),
-                        textAlign: TextAlign.right),
-                  ],
-                ),
-                for (final c in bowl)
-                  TableRow(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Text(c.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w800)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Text(
-                            '${c.oversDisplay}-${c.maidens}-${c.runsConceded}-${c.wickets}',
-                            textAlign: TextAlign.right),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Text(
-                            c.economy == null
-                                ? '—'
-                                : c.economy!.toStringAsFixed(2),
-                            textAlign: TextAlign.right),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
+            const SectionHeader('BOWLING'),
+            const SizedBox(height: 4),
+            BowlerRows(bowl),
             Builder(builder: (_) {
               final m = store.match!;
               final inn = inningsNo == 1 ? m.innings1 : m.innings2!;
@@ -188,8 +207,7 @@ class ScorecardView extends StatelessWidget {
             }),
             if (sheet.fallOfWickets.isNotEmpty) ...[
               const Divider(height: 20),
-              const Text('FALL OF WICKETS',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+              const SectionHeader('FALL OF WICKETS'),
               const SizedBox(height: 4),
               Text(
                 sheet.fallOfWickets

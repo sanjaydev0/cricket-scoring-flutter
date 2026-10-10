@@ -385,7 +385,7 @@ class ScoringScreen extends StatelessWidget {
       showWicketDialog(context, store);
       return;
     }
-    if (store.nbArmed) {
+    if (store.nbArmed || (store.innings?.isFreeHitActive ?? false)) {
       showDismissalSheet(context, store, 'Run Out');
       return;
     }

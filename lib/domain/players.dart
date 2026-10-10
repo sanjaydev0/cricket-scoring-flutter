@@ -593,15 +593,18 @@ class InningsSheet {
   bool canBowl(String id) => id != bowlerId;
 
   void setBowler(String id) {
-    endOverIfNeeded();
+    // No reset here: whoever ends an over must close it first, so the maiden
+    // credit and the counter reset always travel together (see closeOver).
     bowlerId = id;
   }
 
-  /// Close the over for the current bowler: maiden check + reset counters.
-  void endOverIfNeeded() {
+  /// Closes the current bowler's over: maiden credit plus counter reset, in one
+  /// place. A maiden needs a full 6 legal balls with zero bowler-charged runs.
+  /// Mid-over changes pass 0 legal balls: counters reset, no maiden.
+  void closeOver({required int legalBalls}) {
     final b = currentBowler;
     if (b == null) return;
-    if (b.overLegal >= 6 && b.overRuns == 0) b.maidens++;
+    if (legalBalls >= 6 && b.overRuns == 0) b.maidens++;
     b.overRuns = 0;
     b.overBalls = 0;
     b.overLegal = 0;
@@ -709,6 +712,14 @@ class InningsSheet {
   /// This-over balls for the strip header, e.g. [1,4,W,0].
   List<String> thisOverBadges(List<Ball> balls) =>
       balls.map((b) => b.badge).toList();
+}
+
+/// Outcome of a bulk roster add: created players plus the duplicate count
+/// the UI reports ("3 added, 2 already existed").
+class BulkResult {
+  final List<Player> added;
+  final int skipped;
+  const BulkResult(this.added, this.skipped);
 }
 
 /// Career aggregates across matches. Computed at read time from per-match

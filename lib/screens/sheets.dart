@@ -9,8 +9,8 @@ import 'widgets.dart';
 /// Decorative text purged — titles, values and actions only.
 
 void showWicketDialog(BuildContext context, MatchStore store) {
-  // Armed no-ball: Laws allow only a run-out — skip the grid entirely.
-  if (store.nbArmed) {
+  // Armed no-ball or free hit: Laws allow only a run-out — skip the grid.
+  if (store.nbArmed || (store.innings?.isFreeHitActive ?? false)) {
     showRunOutDialog(context, store);
     return;
   }
@@ -365,6 +365,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   onSelectionChanged: (s) => setSheet(() => lms = s.first),
                 ),
               ),
+              if (store.tracking) _squadSection(context, store, setSheet),
+              if (store.tracking) const Divider(height: 24),
               const Divider(height: 24),
               Row(
                 children: [
@@ -591,5 +593,112 @@ void showLookSheet(BuildContext context, MatchStore store) {
         ),
       ),
     ),
+  );
+}
+
+/// Mid-match XI management: rows per side, search-to-add from the roster,
+/// type-a-name to create + add. Same cap and cross-exclusion as setup.
+Widget _squadSection(
+    BuildContext context, MatchStore store, StateSetter setSheet) {
+  final m = store.match!;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text('SQUADS',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+      const SizedBox(height: 8),
+      for (final team in [m.config.teamA, m.config.teamB])
+        _sideBlock(context, store, setSheet, team),
+    ],
+  );
+}
+
+Widget _sideBlock(
+    BuildContext context, MatchStore store, StateSetter setSheet, String team) {
+  final m = store.match!;
+  final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
+  final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
+  final cap = m.config.playersPerSide;
+  // Quick adds: most frequent eligible first. Typed names go through the
+  // field below (roster hit or created in-club, duplicates warned).
+  final cands = store.clubRoster.where((p) {
+    if (!p.active || mine.contains(p.id)) return false;
+    if (other.contains(p.id) && m.config.commonPlayers == 0) return false;
+    return true;
+  }).toList()
+    ..sort((a, b) => (store.playerAppearances[b.id] ?? 0)
+        .compareTo(store.playerAppearances[a.id] ?? 0));
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('$team (${mine.length}/$cap)',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+      for (final id in mine.toList())
+        Row(
+          children: [
+            Expanded(
+              child: Text(store.playerName(id),
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 18),
+              tooltip: 'Remove (only if uncapped)',
+              onPressed: () {
+                final err = store.removeFromSquad(team, id);
+                setSheet(() {});
+                if (err != null) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(err)));
+                }
+              },
+            ),
+          ],
+        ),
+      const SizedBox(height: 4),
+      TextField(
+        decoration: InputDecoration(
+          labelText:
+              mine.length >= cap ? 'XI full' : 'Add from roster / type a name',
+          prefixIcon: const Icon(Icons.search),
+          border: const OutlineInputBorder(),
+        ),
+        enabled: mine.length < cap,
+        onSubmitted: (v) {
+          final err = store.addSquadByName(team, v);
+          setSheet(() {});
+          if (err != null) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(err)));
+          }
+        },
+      ),
+      const SizedBox(height: 4),
+      for (final p in cands.take(4))
+        InkWell(
+          onTap: mine.length >= cap
+              ? null
+              : () {
+                  final err = store.addToSquad(team, p.id);
+                  setSheet(() {});
+                  if (err != null) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(err)));
+                  }
+                },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(p.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                ),
+                const Icon(Icons.add_circle_outline, size: 20),
+              ],
+            ),
+          ),
+        ),
+      const SizedBox(height: 10),
+    ],
   );
 }

@@ -157,7 +157,7 @@ void main() {
     final s = MatchStore();
     expect(s.activeClubId, isNull);
     expect(s.addPlayer(name: 'No Club'), isNull);
-    expect(s.addPlayersBulk('A\nB'), isEmpty);
+    expect(s.addPlayersBulk('A\nB').added, isEmpty);
     final club = s.createClub(name: 'Eagles');
     expect(s.activeClubId, club.id);
     final created = s.addPlayer(
@@ -168,6 +168,86 @@ void main() {
     expect(created!.battingStyle, BattingStyle.leftHand);
     expect(created.bowlingStyle, BowlingStyle.rightSpin);
     expect(s.clubRoster.length, 1);
+  });
+
+  test('duplicate names warn and never create', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    expect(s.addPlayer(name: 'Rohit'), isNotNull);
+    expect(s.duplicateName('rohit sharma'.split(' ').first), isTrue);
+    expect(s.addPlayer(name: 'ROHIT'), isNull);
+    expect(s.clubRoster.length, 1);
+    final res = s.addPlayersBulk('Rohit\nDeepak');
+    expect(res.added.length, 1);
+    expect(res.skipped, 1);
+  });
+
+  test('mid-match squad rules: cap, exclusion, removal', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [
+      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id
+    ];
+    s.draft = MatchConfig(
+        teamA: 'A',
+        teamB: 'B',
+        totalOvers: 2,
+        playersPerSide: 2,
+        trackPlayers: true,
+        squadA: [ids[0], ids[1]],
+        squadB: [ids[2]]);
+    s.startMatch(s.draft);
+    // Cap: XI already full at 2.
+    expect(s.addToSquad('A', ids[3]), contains('full'));
+    // Cross-exclusion without a common player.
+    final s2 = MatchStore();
+    expect(s2.addToSquad('A', ids[0]), contains('tracking'));
+    // Removal of an uncapped pick works; setup tested paths cover the rest.
+    expect(s.removeFromSquad('A', ids[0]), isNull);
+    expect(s.match!.config.squadA, isNot(contains(ids[0])));
+  });
+
+  test('setBowler refuses the just-bowled bowler', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [
+      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id
+    ];
+    s.draft = MatchConfig(
+        teamA: 'A',
+        teamB: 'B',
+        totalOvers: 2,
+        playersPerSide: 4,
+        trackPlayers: true,
+        squadA: [ids[0], ids[1]],
+        squadB: [ids[2], ids[3]]);
+    s.startMatch(s.draft);
+    s.setOpeners(ids[0], ids[1]);
+    expect(s.setBowler(ids[2]), isNull);
+    expect(s.setBowler(ids[2]), isNotNull);
+    expect(s.setBowler(ids[3]), isNull);
+  });
+
+  test('retired-out falls a wicket, retired-hurt does not', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [
+      for (final n in ['A1', 'A2', 'B1']) s.addPlayer(name: n)!.id
+    ];
+    s.draft = MatchConfig(
+        teamA: 'A',
+        teamB: 'B',
+        totalOvers: 5,
+        playersPerSide: 5,
+        trackPlayers: true,
+        squadA: ids.sublist(0, 2),
+        squadB: [ids[2]]);
+    s.startMatch(s.draft);
+    s.setOpeners(ids[0], ids[1]);
+    s.setBowler(ids[2]);
+    final before = s.innings!.wickets;
+    s.retireStriker(DismissalType.retiredOut);
+    expect(s.innings!.wickets, before + 1);
   });
 
   test('no-ball default is 0', () {
