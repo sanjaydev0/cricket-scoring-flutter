@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 MatchStore trackedStore() {
   final s = MatchStore();
-  final mk = (String n) => Player(id: 'p_$n', clubId: 'c', name: n);
+  Player mk(String n) => Player(id: 'p_$n', clubId: 'c', name: n);
   for (final n in ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3']) {
     s.roster.add(mk(n));
   }

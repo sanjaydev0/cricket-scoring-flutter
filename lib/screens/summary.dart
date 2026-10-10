@@ -460,8 +460,9 @@ String buildShareText(MatchStore store) {
       }
     }
   }
-  if (top != null)
+  if (top != null) {
     b.writeln('Top scorer: ${top.name} ${top.runs} (${top.balls})');
+  }
   if (bowl != null) {
     b.writeln(
         'Best bowler: ${bowl.name} ${bowl.wickets}/${bowl.runsConceded} (${bowl.oversDisplay} ov)');

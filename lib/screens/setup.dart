@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../store.dart';
 import '../models.dart';
-import '../domain/players.dart';
 import 'widgets.dart';
 
 class SetupScreen extends StatefulWidget {

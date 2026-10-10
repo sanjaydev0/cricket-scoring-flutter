@@ -183,6 +183,7 @@ void showDismissalSheet(
   String? fielder;
   String? newId;
   var crossed = false;
+  var runOutRuns = 0;
   final waiting = sheet.waitingBatters;
   showModalBottomSheet(
     context: context,
@@ -242,6 +243,21 @@ void showDismissalSheet(
               ],
               if (type == DismissalType.runOut) ...[
                 const SizedBox(height: 8),
+                const Text('RUNS COMPLETED',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (var i = 0; i <= 3; i++)
+                      ChoiceChip(
+                        label: Text('$i'),
+                        selected: runOutRuns == i,
+                        onSelected: (_) => setSheet(() => runOutRuns = i),
+                      ),
+                  ],
+                ),
                 Row(
                   children: [
                     const Expanded(
@@ -265,7 +281,8 @@ void showDismissalSheet(
                   child: RectBtn(
                     primary: newId == id,
                     onTap: () {
-                      final runs = 0;
+                      final runs =
+                          type == DismissalType.runOut ? runOutRuns : 0;
                       Navigator.pop(sheetCtx);
                       final label = _wicketLabel(type);
                       final err = store.score(

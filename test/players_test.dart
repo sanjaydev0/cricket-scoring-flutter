@@ -99,7 +99,7 @@ void main() {
   });
 
   test('a catch without a named fielder still renders', () {
-    final t = DismissalType.caught;
+    const t = DismissalType.caught;
     expect(t.text(bowler: 'Ravi'), 'c b Ravi');
     expect(DismissalType.runOut.text(), 'run out');
     expect(DismissalType.bowled.text(bowler: 'Ravi'), 'b Ravi');
@@ -152,7 +152,8 @@ void main() {
     c.add(i1);
     c.add(i2);
     expect(c.innings, 2);
-    expect(c.average, 40.0); // 40 runs, one dismissal; the not-out innings is excluded
+    expect(c.average,
+        40.0); // 40 runs, one dismissal; the not-out innings is excluded
     expect(c.strikeRate, closeTo(133.3, 0.1));
   });
 
