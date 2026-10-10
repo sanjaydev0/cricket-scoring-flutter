@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../store.dart';
+import '../domain/players.dart';
 import '../models.dart';
 import 'widgets.dart';
 
@@ -19,6 +20,7 @@ class _SetupScreenState extends State<SetupScreen> {
   final Set<String> _squadB = {};
   String _qa = '';
   String _qb = '';
+  final Set<String> _expanded = {};
   @override
   void initState() {
     super.initState();
@@ -244,10 +246,10 @@ class _SetupScreenState extends State<SetupScreen> {
                         'Squads come from CLUB roster (${widget.store.clubRoster.length} players).',
                         style: const TextStyle(fontSize: 12)),
                     const SizedBox(height: 8),
-                    _squadPicker('TEAM A XI', cfg.teamA, _squadA, _qa,
+                    _squadPicker('TEAM A', cfg.teamA, _squadA, _squadB, _qa,
                         (v) => setState(() => _qa = v)),
                     const SizedBox(height: 8),
-                    _squadPicker('TEAM B XI', cfg.teamB, _squadB, _qb,
+                    _squadPicker('TEAM B', cfg.teamB, _squadB, _squadA, _qb,
                         (v) => setState(() => _qb = v)),
                   ],
                 ],
@@ -281,49 +283,100 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Widget _squadPicker(String title, String team, Set<String> sel, String query,
-      ValueChanged<String> onQuery) {
-    final all = widget.store.clubRoster;
+  Widget _squadPicker(String side, String team, Set<String> sel,
+      Set<String> otherSel, String query, ValueChanged<String> onQuery) {
+    final store = widget.store;
     final q = query.toLowerCase().trim();
-    final shown = all
-        .where((p) => p.active && (q.isEmpty || p.searchKey.contains(q)))
-        .toList();
+    // Cross-exclusion: a player picked for one side never appears on the
+    // other — unless the match allows a common player, in which case the
+    // shared pick stays visible on both.
+    final sharedOk = cfg.commonPlayers > 0;
+    final pool = store.clubRoster.where((p) {
+      if (!p.active) return false;
+      if (otherSel.contains(p.id)) {
+        if (!(sharedOk && sel.contains(p.id))) return false;
+      }
+      return q.isEmpty || p.searchKey.contains(q);
+    }).toList();
+    // Most frequent first; the picked stay pinned on top so a tap never makes
+    // a name vanish from under the finger.
+    int freq(String id) => store.playerAppearances[id] ?? 0;
+    pool.sort((a, b) {
+      final sa = sel.contains(a.id) ? 1 : 0;
+      final sb = sel.contains(b.id) ? 1 : 0;
+      if (sa != sb) return sb.compareTo(sa);
+      return freq(b.id).compareTo(freq(a.id));
+    });
+    final expanded = _expanded.contains(side);
+    final visible = expanded ? pool.take(12).toList() : pool.take(8).toList();
+    final hidden = pool.length - visible.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$title • $team (\${sel.length} picked)',
+        Text('$side • $team (\${sel.length} picked)',
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
         const SizedBox(height: 6),
         TextField(
           decoration: const InputDecoration(
-              labelText: 'Search roster',
+              labelText: 'Select players',
               prefixIcon: Icon(Icons.search),
               border: OutlineInputBorder()),
           onChanged: onQuery,
+          onTap: () => setState(() => _expanded.add(side)),
         ),
-        const SizedBox(height: 6),
-        if (shown.isEmpty)
+        const SizedBox(height: 4),
+        if (pool.isEmpty)
           const Text('No players — add them in CLUB first.',
               style: TextStyle(fontSize: 12)),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final p in shown)
-              FilterChip(
-                label: Text(p.name),
-                selected: sel.contains(p.id),
-                onSelected: (_) => setState(() {
-                  if (sel.contains(p.id)) {
-                    sel.remove(p.id);
-                  } else {
-                    sel.add(p.id);
-                  }
-                }),
+        for (final p in visible)
+          InkWell(
+            onTap: () => setState(() {
+              if (sel.contains(p.id)) {
+                sel.remove(p.id);
+              } else {
+                sel.add(p.id);
+              }
+            }),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        Text(
+                            '${_roleName(p.role)} | ${battingStyleLabel(p.battingStyle)} ${bowlingStyleLabel(p.bowlingStyle)}${freq(p.id) > 0 ? ' | ${freq(p.id)} played' : ''}',
+                            style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    sel.contains(p.id)
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: sel.contains(p.id) ? Colors.green : Colors.grey,
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+          ),
+        if (hidden > 0)
+          TextButton(
+            onPressed: () => setState(() => _expanded.add(side)),
+            child: Text(expanded ? 'Show less' : 'More ($hidden)'),
+          ),
       ],
     );
   }
+
+  String _roleName(PlayerRole r) => switch (r) {
+        PlayerRole.batter => 'Batter',
+        PlayerRole.bowler => 'Bowler',
+        PlayerRole.allRounder => 'All-rounder',
+        PlayerRole.keeper => 'Keeper',
+      };
 }

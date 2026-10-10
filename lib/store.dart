@@ -78,6 +78,24 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _bumpAppearances() {
+    final sheet = currentSheet;
+    if (sheet == null) return;
+    for (final c in sheet.batting.values) {
+      if (c.position > 0) {
+        playerAppearances[c.playerId] =
+            (playerAppearances[c.playerId] ?? 0) + 1;
+      }
+    }
+    for (final c in sheet.bowling.values) {
+      if ((c.balls > 0 || c.wickets > 0) &&
+          (sheet.batting[c.playerId]?.position ?? 0) == 0) {
+        playerAppearances[c.playerId] =
+            (playerAppearances[c.playerId] ?? 0) + 1;
+      }
+    }
+  }
+
   /// Best-effort viewer count for the share banner.
   int get viewerCount => sync.viewerCount;
 
@@ -103,6 +121,7 @@ class MatchStore extends ChangeNotifier {
   static const kActiveProfile = 'cricket_active_profile';
   static const kSheets = 'cricket_sheets_v1';
   static const kAskFielder = 'cricket_ask_fielder';
+  static const kAppearances = 'cricket_appearances_v1';
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -127,6 +146,11 @@ class MatchStore extends ChangeNotifier {
   String? activeClubId;
   // Per-innings attribution sheets for the live match: '1' and '2'.
   Map<String, InningsSheet> sheets = {};
+
+  /// Matches played per player id, across all matches on this device. Drives
+  /// squad-picker ordering (most frequent first). Bumped when an innings
+  /// completes, for everyone who batted or bowled.
+  Map<String, int> playerAppearances = {};
   int ballGen = 0; // advances on score() only — strip motion key
   int breakWait = 0; // countdown seconds before break/result handoff
   String? breakDest; // '/break' | '/result' while counting down
@@ -150,6 +174,12 @@ class MatchStore extends ChangeNotifier {
     complexWickets = p.getBool(kComplexWkts) ?? true;
     hapticsOn = p.getBool(kHaptics) ?? true;
     askFielder = p.getBool(kAskFielder) ?? false;
+    try {
+      playerAppearances = Map<String, int>.from(
+          jsonDecode(p.getString(kAppearances) ?? '{}') as Map);
+    } catch (_) {
+      playerAppearances = {};
+    }
     try {
       roster = ((jsonDecode(p.getString(kRoster) ?? '[]')) as List)
           .map((e) => Player.fromJson(Map<String, dynamic>.from(e as Map)))
@@ -256,6 +286,7 @@ class MatchStore extends ChangeNotifier {
     await p.setBool(kComplexWkts, complexWickets);
     await p.setBool(kHaptics, hapticsOn);
     await p.setBool(kAskFielder, askFielder);
+    await p.setString(kAppearances, jsonEncode(playerAppearances));
     await p.setString(
         kRoster, jsonEncode(roster.map((e) => e.toJson()).toList()));
     await p.setString(
@@ -442,12 +473,22 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Player addPlayer(
+  /// Null when no club exists yet: the UI must create a club first instead
+  /// of scattering players under a fake club.
+  Player? addPlayer(
       {required String name,
       PlayerRole role = PlayerRole.allRounder,
+      BattingStyle battingStyle = BattingStyle.rightHand,
+      BowlingStyle bowlingStyle = BowlingStyle.none,
       String? phone}) {
-    final cid = activeClubId ?? 'local';
-    final player = Player.create(clubId: cid, name: name.trim(), role: role);
+    final cid = activeClubId;
+    if (cid == null) return null;
+    final player = Player.create(
+        clubId: cid,
+        name: name.trim(),
+        role: role,
+        battingStyle: battingStyle,
+        bowlingStyle: bowlingStyle);
     if (phone != null && phone.trim().isNotEmpty) {
       player.phone = phone.trim();
     }
@@ -464,6 +505,7 @@ class MatchStore extends ChangeNotifier {
 
   /// Paste-a-list bulk add: one name per line, optional "Name - role".
   List<Player> addPlayersBulk(String text) {
+    if (activeClubId == null) return const [];
     final added = <Player>[];
     for (final line in text.split('\n')) {
       final t = line.trim().replaceAll(RegExp(r'^[\-\*\d.\)\s]+'), '');
@@ -480,7 +522,8 @@ class MatchStore extends ChangeNotifier {
         if (r.startsWith('all')) role = PlayerRole.allRounder;
       }
       if (name.isEmpty) continue;
-      added.add(addPlayer(name: name, role: role));
+      final created = addPlayer(name: name, role: role);
+      if (created != null) added.add(created);
     }
     return added;
   }
@@ -572,6 +615,24 @@ class MatchStore extends ChangeNotifier {
     if (sheet == null) return;
     pushSnapshot();
     sheet.setBowler(id);
+    _persist();
+    notifyListeners();
+  }
+
+  /// Retires the striker (hurt or out): recorded on the card without a
+  /// ball, and the next batter resolves through the same picker.
+  void retireStriker(DismissalType type) {
+    final sheet = currentSheet;
+    if (sheet == null) return;
+    if (type != DismissalType.retiredHurt && type != DismissalType.retiredOut) {
+      return;
+    }
+    pushSnapshot();
+    final bat = sheet.striker;
+    if (bat != null) {
+      bat.dismissal = type;
+      bat.isNotOut = false;
+    }
     _persist();
     notifyListeners();
   }
@@ -933,11 +994,12 @@ class MatchStore extends ChangeNotifier {
       if (b.isWicket && !inn.completed) {
         // Bring the new batter in at the striker's end in the same commit, so
         // a dismissal is always resolved: one sheet, one tap, no limbo.
+        // Options exclude the out batter, the non-striker and the dismissed;
+        // retired-hurt returnees stay eligible.
+        final opts = sheet.nextBatterOptions(b.strikerId ?? '');
         final next = (newBatterId != null && newBatterId.isNotEmpty)
             ? newBatterId
-            : (sheet.waitingBatters.isEmpty
-                ? null
-                : sheet.waitingBatters.first);
+            : (opts.isEmpty ? null : opts.first);
         if (next != null) {
           sheet.bringIn(next);
           if (crossed) sheet.crossedRunOutFix(next);
@@ -1066,6 +1128,7 @@ class MatchStore extends ChangeNotifier {
     if (m.currentInnings == 1) {
       if (inn.legalDeliveries >= maxBalls || inn.wickets >= maxW) {
         inn.completed = true;
+        _bumpAppearances();
         m.target = inn.runs + 1;
         SoundService.instance.confirm();
         _startBreakCountdown('/break');
@@ -1074,6 +1137,7 @@ class MatchStore extends ChangeNotifier {
       final tgt = m.target ?? (m.innings1.runs + 1);
       if (inn.runs >= tgt) {
         inn.completed = true;
+        _bumpAppearances();
         m.completed = true;
         m.winner = inn.battingTeam;
         final wktsLeft = maxW - inn.wickets;
@@ -1084,6 +1148,7 @@ class MatchStore extends ChangeNotifier {
         _startBreakCountdown('/result');
       } else if (inn.legalDeliveries >= maxBalls || inn.wickets >= maxW) {
         inn.completed = true;
+        _bumpAppearances();
         m.completed = true;
         if (inn.runs == tgt - 1) {
           m.winner = 'TIE';

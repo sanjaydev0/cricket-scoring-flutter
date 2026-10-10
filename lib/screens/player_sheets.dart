@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/players.dart';
 import '../store.dart';
+import '../theme.dart';
 import 'widgets.dart';
 
 String fmt1(double? v) => v == null ? '—' : v.toStringAsFixed(1);
@@ -25,6 +26,7 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
       builder: (_, __) {
         final s = store.currentSheet;
         if (s == null) return const SizedBox.shrink();
+        final preset = StylePreset.of(store.styleId);
         return SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -32,19 +34,18 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('PLAYERS',
-                    style: TextStyle(fontWeight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                _batterCard(context, store, s, s.striker, isStriker: true),
-                const SizedBox(height: 8),
-                _batterCard(context, store, s, s.nonStriker, isStriker: false),
-                const SizedBox(height: 8),
-                _bowlerCard(context, store, s),
-                const SizedBox(height: 8),
-                Text('Partnership ${s.partnershipRuns} (${s.partnershipBalls})',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 8),
+                _rowsHeader(preset, 'Batter', const ['R', 'B', '4s', '6s']),
+                if (s.striker != null)
+                  _batterRow(context, store, s, s.striker!, isStriker: true),
+                if (s.nonStriker != null)
+                  _batterRow(context, store, s, s.nonStriker!,
+                      isStriker: false),
+                const SizedBox(height: 6),
+                _partnershipRow(s),
+                const SizedBox(height: 10),
+                _rowsHeader(preset, 'Bowler', const ['W-R', 'Ov', 'Econ']),
+                if (s.currentBowler != null) _bowlerRow(s.currentBowler!),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
@@ -79,92 +80,184 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
   );
 }
 
-Widget _batterCard(
-    BuildContext context, MatchStore store, InningsSheet s, BattingCard? c,
-    {required bool isStriker}) {
-  if (c == null) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Text(isStriker ? 'No striker set' : 'No non-striker set'),
-      ),
-    );
-  }
-  return Card(
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                    '${isStriker ? 'STRIKER ★ ' : ''}${c.name.toUpperCase()}',
-                    style: const TextStyle(fontWeight: FontWeight.w900)),
-              ),
-              Text('${c.runs} (${c.balls})',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w900, fontSize: 18)),
-            ],
+/// Column header row in preset colors: label left, stat titles right.
+Widget _rowsHeader(StylePreset preset, String label, List<String> cols) {
+  return Container(
+    color: preset.heroBg,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(label,
+              style: TextStyle(
+                  color: preset.heroFg,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13)),
+        ),
+        for (final c in cols)
+          SizedBox(
+            width: 44,
+            child: Text(c,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                    color: preset.heroFg.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11)),
           ),
-          const SizedBox(height: 4),
-          Text(
-              '4s ${c.fours} • 6s ${c.sixes} • Dots ${c.dots} • SR ${fmt1(c.strikeRate)}',
-              style: const TextStyle(fontSize: 12)),
+      ],
+    ),
+  );
+}
+
+Widget _batterRow(
+    BuildContext context, MatchStore store, InningsSheet s, BattingCard c,
+    {required bool isStriker}) {
+  final p = _playerOf(store, c.playerId);
+  return InkWell(
+    onLongPress: () => _retireDialog(context, store, c),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${c.name}${isStriker ? ' *' : ''}',
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                    'SR ${fmt1(c.strikeRate)}${p == null ? '' : ' | ${battingStyleLabel(p.battingStyle)}'}',
+                    style: const TextStyle(fontSize: 11)),
+              ],
+            ),
+          ),
+          for (final v in [
+            '${c.runs}',
+            '${c.balls}',
+            '${c.fours}',
+            '${c.sixes}'
+          ])
+            SizedBox(
+              width: 44,
+              child: Text(v,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                      fontWeight:
+                          v == '${c.runs}' ? FontWeight.w900 : FontWeight.w700,
+                      fontSize: v == '${c.runs}' ? 16 : 13)),
+            ),
         ],
       ),
     ),
   );
 }
 
-Widget _bowlerCard(BuildContext context, MatchStore store, InningsSheet s) {
-  final b = s.currentBowler;
-  if (b == null) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('No bowler set'),
-            const SizedBox(height: 8),
-            RectBtn(
-              onTap: () {
-                Navigator.pop(context);
-                showBowlerSheet(context, store);
-              },
-              child: const Text('SET BOWLER'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  return Card(
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+Widget _bowlerRow(BowlingCard b) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: const BoxDecoration(
+      border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text('BOWLER ${b.name.toUpperCase()}',
-                    style: const TextStyle(fontWeight: FontWeight.w900)),
-              ),
-              Text(
-                  '${b.oversDisplay}-${b.maidens}-${b.runsConceded}-${b.wickets}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w900, fontSize: 18)),
+              Text(b.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const Text('Bowler', style: TextStyle(fontSize: 11)),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-              'Wd ${b.wides} • Nb ${b.noBalls} • Econ ${fmt2(b.economy)} • This over ${b.overBalls} balls',
-              style: const TextStyle(fontSize: 12)),
-        ],
-      ),
+        ),
+        SizedBox(
+          width: 76,
+          child: Text('${b.wickets}-${b.runsConceded}',
+              textAlign: TextAlign.right,
+              style:
+                  const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+        ),
+        SizedBox(
+          width: 44,
+          child: Text(b.oversDisplay,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        SizedBox(
+          width: 44,
+          child: Text(fmt2(b.economy),
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _partnershipRow(InningsSheet s) {
+  final last = s.fallOfWickets.isEmpty ? null : s.fallOfWickets.last;
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text("P'ship: ${s.partnershipRuns} (${s.partnershipBalls})",
+              style:
+                  const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+        ),
+        if (last != null)
+          Expanded(
+            child: Text('Last wkt: ${last.name} ${last.runs} (${last.balls})',
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 12)),
+          ),
+      ],
+    ),
+  );
+}
+
+Player? _playerOf(MatchStore store, String id) {
+  for (final p in store.roster) {
+    if (p.id == id) return p;
+  }
+  return null;
+}
+
+/// Long-press a batter row to retire them. Hurt may return via the next-batter
+/// picker; out never does.
+void _retireDialog(BuildContext context, MatchStore store, BattingCard c) {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text('RETIRE ${c.name}?'),
+      content: const Text(
+          'Hurt can return later through the next-batter list. Out cannot.'),
+      actions: [
+        RectBtn(
+          primary: false,
+          onTap: () => Navigator.pop(context),
+          child: const Text('Keep'),
+        ),
+        RectBtn(
+          onTap: () {
+            store.retireStriker(DismissalType.retiredHurt);
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+          child: const Text('Hurt'),
+        ),
+        RectBtn(
+          danger: true,
+          onTap: () {
+            store.retireStriker(DismissalType.retiredOut);
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+          child: const Text('Out'),
+        ),
+      ],
     ),
   );
 }
@@ -184,7 +277,10 @@ void showDismissalSheet(
   String? newId;
   var crossed = false;
   var runOutRuns = 0;
-  final waiting = sheet.waitingBatters;
+  // Explicit exclusion: the out batter, the non-striker, the dismissed and
+  // the retired-out never appear. Retired-hurt returnees do.
+  final outId = sheet.strikerId ?? '';
+  final waiting = sheet.nextBatterOptions(outId);
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
@@ -276,32 +372,37 @@ void showDismissalSheet(
               if (waiting.isEmpty)
                 const Text('No batters left.', style: TextStyle(fontSize: 12)),
               for (final id in waiting)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: RectBtn(
-                    primary: newId == id,
-                    onTap: () {
-                      final runs =
-                          type == DismissalType.runOut ? runOutRuns : 0;
-                      Navigator.pop(sheetCtx);
-                      final label = _wicketLabel(type);
-                      final err = store.score(
-                        action: 'WICKET',
-                        runs: runs,
-                        wicketType: label,
-                        dismissal: type.name,
-                        fielderName: fielder,
-                        newBatterId: id,
-                        crossed: crossed,
-                      );
-                      if (err != null && context.mounted) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text(err)));
-                      }
-                    },
-                    child: Text(sheet.nameOf(id)),
-                  ),
-                ),
+                Builder(builder: (_) {
+                  final returning = (sheet.batting[id]?.position ?? 0) > 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: RectBtn(
+                      primary: newId == id,
+                      onTap: () {
+                        final runs =
+                            type == DismissalType.runOut ? runOutRuns : 0;
+                        Navigator.pop(sheetCtx);
+                        final label = _wicketLabel(type);
+                        final err = store.score(
+                          action: 'WICKET',
+                          runs: runs,
+                          wicketType: label,
+                          dismissal: type.name,
+                          fielderName: fielder,
+                          newBatterId: id,
+                          crossed: crossed,
+                        );
+                        if (err != null && context.mounted) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(err)));
+                        }
+                      },
+                      child: Text(returning
+                          ? '${sheet.nameOf(id)} (returning)'
+                          : sheet.nameOf(id)),
+                    ),
+                  );
+                }),
             ],
           ),
         ),

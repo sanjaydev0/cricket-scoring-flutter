@@ -21,6 +21,8 @@ class _ClubScreenState extends State<ClubScreen> {
   final _name = TextEditingController();
   final _bulk = TextEditingController();
   PlayerRole _role = PlayerRole.allRounder;
+  BattingStyle _bat = BattingStyle.rightHand;
+  BowlingStyle _bowl = BowlingStyle.none;
   String _tab = 'players'; // players | stats
 
   @override
@@ -44,8 +46,6 @@ class _ClubScreenState extends State<ClubScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _profileCard(context, store),
-                  const SizedBox(height: 12),
                   _clubCard(context, store),
                   const SizedBox(height: 12),
                   Row(
@@ -68,7 +68,27 @@ class _ClubScreenState extends State<ClubScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  if (_tab == 'players')
+                  if (store.activeClubId == null)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Create a club first — players belong to a club.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            RectBtn(
+                              onTap: () => _clubSheet(context, store),
+                              child: const Text('CREATE CLUB'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (_tab == 'players')
                     _players(context, store)
                   else
                     _statsList(context, store),
@@ -78,143 +98,6 @@ class _ClubScreenState extends State<ClubScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _profileCard(BuildContext context, MatchStore store) {
-    if (store.profiles.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('LOCAL PROFILE',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              const Text(
-                'Unlocks the app on this phone only. Never required — skip to score straight away.',
-                style: TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              RectBtn(
-                onTap: () => _profileSheet(context, store, null),
-                child: const Text('CREATE PROFILE'),
-              ),
-              const SizedBox(height: 8),
-              RectBtn(
-                primary: false,
-                onTap: () => store.useWithoutProfile(),
-                child: const Text('CONTINUE WITHOUT'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    final active = store.profiles.where((p) => p.id == store.activeProfileId);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('LOCAL PROFILE',
-                style: TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final p in store.profiles)
-                  ChoiceChip(
-                    label: Text(p.name),
-                    selected: store.activeProfileId == p.id,
-                    onSelected: (_) => _profileSheet(context, store, p),
-                  ),
-                ActionChip(
-                  label: const Text('+ New'),
-                  onPressed: () => _profileSheet(context, store, null),
-                ),
-              ],
-            ),
-            if (active.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text('Unlocked as ${active.first.name}',
-                    style: const TextStyle(fontSize: 12)),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _profileSheet(
-      BuildContext context, MatchStore store, ClubProfile? existing) {
-    final name = TextEditingController(text: existing?.name ?? '');
-    final pin = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(existing == null ? 'NEW PROFILE' : 'UNLOCK ${existing.name}',
-                  style: const TextStyle(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
-              if (existing == null)
-                TextField(
-                  controller: name,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                      labelText: 'Your name', border: OutlineInputBorder()),
-                ),
-              if (existing == null) const SizedBox(height: 10),
-              TextField(
-                controller: pin,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                    labelText: '4-digit PIN', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              RectBtn(
-                onTap: () {
-                  if (existing == null) {
-                    if (name.text.trim().isEmpty || pin.text.length < 4) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Name + 4-digit PIN needed')));
-                      return;
-                    }
-                    store.createProfile(
-                        name: name.text.trim(), pin: pin.text.trim());
-                  } else {
-                    if (!store.unlockProfile(existing.id, pin.text.trim())) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Wrong PIN')));
-                      return;
-                    }
-                  }
-                  Navigator.pop(context);
-                },
-                child: Text(existing == null ? 'CREATE' : 'UNLOCK'),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -338,6 +221,43 @@ class _ClubScreenState extends State<ClubScreen> {
             RectBtn(onTap: () => _add(store), child: const Text('+ ADD')),
           ],
         ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<BattingStyle>(
+                value: _bat,
+                decoration: const InputDecoration(
+                    labelText: 'Batting', border: OutlineInputBorder()),
+                items: const [
+                  DropdownMenuItem(
+                      value: BattingStyle.rightHand,
+                      child: Text('Right-hand bat')),
+                  DropdownMenuItem(
+                      value: BattingStyle.leftHand,
+                      child: Text('Left-hand bat')),
+                ],
+                onChanged: (v) =>
+                    setState(() => _bat = v ?? BattingStyle.rightHand),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: DropdownButtonFormField<BowlingStyle>(
+                value: _bowl,
+                decoration: const InputDecoration(
+                    labelText: 'Bowling', border: OutlineInputBorder()),
+                items: [
+                  for (final b in BowlingStyle.values)
+                    DropdownMenuItem(
+                        value: b, child: Text(bowlingStyleName(b))),
+                ],
+                onChanged: (v) =>
+                    setState(() => _bowl = v ?? BowlingStyle.none),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
         Wrap(
           spacing: 6,
@@ -372,7 +292,7 @@ class _ClubScreenState extends State<ClubScreen> {
               title: Text(p.name,
                   style: const TextStyle(fontWeight: FontWeight.w800)),
               subtitle: Text(
-                  '${_roleName(p.role)} • ${store.careerMatches(p.id)} matches'),
+                  '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)} • ${store.careerMatches(p.id)} matches'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -397,7 +317,16 @@ class _ClubScreenState extends State<ClubScreen> {
 
   void _add(MatchStore store) {
     if (_name.text.trim().isEmpty) return;
-    store.addPlayer(name: _name.text.trim(), role: _role);
+    final created = store.addPlayer(
+        name: _name.text.trim(),
+        role: _role,
+        battingStyle: _bat,
+        bowlingStyle: _bowl);
+    if (created == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Create a club first.')));
+      return;
+    }
     _name.clear();
     setState(() {});
   }

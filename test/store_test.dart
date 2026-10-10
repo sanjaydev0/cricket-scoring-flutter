@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/domain/room_snapshot.dart';
+import 'package:cricket_scoring/domain/players.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/ports/sync_port.dart';
 import 'package:cricket_scoring/store.dart';
@@ -150,6 +151,23 @@ void main() {
     final back = RoomSnapshot.fromPayload(fake.published.last.toPayload());
     expect(back, isNotNull);
     expect(Match.decode(jsonEncode(back!.match)).innings1.runs, 6);
+  });
+
+  test('players need a club first', () {
+    final s = MatchStore();
+    expect(s.activeClubId, isNull);
+    expect(s.addPlayer(name: 'No Club'), isNull);
+    expect(s.addPlayersBulk('A\nB'), isEmpty);
+    final club = s.createClub(name: 'Eagles');
+    expect(s.activeClubId, club.id);
+    final created = s.addPlayer(
+        name: 'Rohit',
+        battingStyle: BattingStyle.leftHand,
+        bowlingStyle: BowlingStyle.rightSpin);
+    expect(created, isNotNull);
+    expect(created!.battingStyle, BattingStyle.leftHand);
+    expect(created.bowlingStyle, BowlingStyle.rightSpin);
+    expect(s.clubRoster.length, 1);
   });
 
   test('no-ball default is 0', () {

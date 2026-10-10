@@ -15,11 +15,58 @@ PlayerRole roleFromId(String v) => PlayerRole.values.firstWhere(
       orElse: () => PlayerRole.allRounder,
     );
 
+/// Right-hand / left-hand bat.
+enum BattingStyle { rightHand, leftHand }
+
+/// Bowling arm + pace. `none` for pure batters.
+enum BowlingStyle {
+  none,
+  rightFast,
+  rightMedium,
+  leftFast,
+  leftMedium,
+  rightSpin,
+  leftSpin,
+}
+
+String battingStyleLabel(BattingStyle s) =>
+    s == BattingStyle.rightHand ? 'RHB' : 'LHB';
+
+String bowlingStyleLabel(BowlingStyle s) => switch (s) {
+      BowlingStyle.none => '\u2014',
+      BowlingStyle.rightFast => 'RAF',
+      BowlingStyle.rightMedium => 'RAM',
+      BowlingStyle.leftFast => 'LAF',
+      BowlingStyle.leftMedium => 'LAM',
+      BowlingStyle.rightSpin => 'RAS',
+      BowlingStyle.leftSpin => 'LAS',
+    };
+
+String bowlingStyleName(BowlingStyle s) => switch (s) {
+      BowlingStyle.none => 'Does not bowl',
+      BowlingStyle.rightFast => 'Right-arm fast',
+      BowlingStyle.rightMedium => 'Right-arm medium',
+      BowlingStyle.leftFast => 'Left-arm fast',
+      BowlingStyle.leftMedium => 'Left-arm medium',
+      BowlingStyle.rightSpin => 'Right-arm spin',
+      BowlingStyle.leftSpin => 'Left-arm spin',
+    };
+
+BattingStyle battingStyleFromId(String? v) =>
+    v == 'leftHand' ? BattingStyle.leftHand : BattingStyle.rightHand;
+
+BowlingStyle bowlingStyleFromId(String? v) => BowlingStyle.values.firstWhere(
+      (b) => b.name == v,
+      orElse: () => BowlingStyle.none,
+    );
+
 class Player {
   final String id;
   final String clubId;
   String name;
   PlayerRole role;
+  BattingStyle battingStyle;
+  BowlingStyle bowlingStyle;
   String? phone;
   bool active;
 
@@ -28,18 +75,26 @@ class Player {
     required this.clubId,
     required this.name,
     this.role = PlayerRole.allRounder,
+    this.battingStyle = BattingStyle.rightHand,
+    this.bowlingStyle = BowlingStyle.none,
     this.phone,
     this.active = true,
   });
 
   factory Player.create(
-      {required String clubId, required String name, PlayerRole? role}) {
+      {required String clubId,
+      required String name,
+      PlayerRole? role,
+      BattingStyle? battingStyle,
+      BowlingStyle? bowlingStyle}) {
     final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     return Player(
         id: 'p_$stamp',
         clubId: clubId,
         name: name,
-        role: role ?? PlayerRole.allRounder);
+        role: role ?? PlayerRole.allRounder,
+        battingStyle: battingStyle ?? BattingStyle.rightHand,
+        bowlingStyle: bowlingStyle ?? BowlingStyle.none);
   }
 
   factory Player.fromJson(Map<String, dynamic> j) => Player(
@@ -47,6 +102,8 @@ class Player {
         clubId: (j['clubId'] ?? '').toString(),
         name: (j['name'] ?? '').toString(),
         role: roleFromId((j['role'] ?? 'allRounder').toString()),
+        battingStyle: battingStyleFromId(j['battingStyle']?.toString()),
+        bowlingStyle: bowlingStyleFromId(j['bowlingStyle']?.toString()),
         phone: j['phone']?.toString(),
         active: (j['active'] ?? true) as bool,
       );
@@ -56,6 +113,8 @@ class Player {
         'clubId': clubId,
         'name': name,
         'role': role.name,
+        'battingStyle': battingStyle.name,
+        'bowlingStyle': bowlingStyle.name,
         'phone': phone,
         'active': active,
       };
@@ -415,10 +474,47 @@ class InningsSheet {
           id != nonStrikerId)
       .toList();
 
+  /// Who may come in after [outId] goes. Explicit by id, never by position
+  /// alone: the out batter, the non-striker, the dismissed and the retired-out
+  /// are all excluded, so the non-striker can never appear as their own
+  /// replacement. Retired-hurt IS included: they may resume.
+  List<String> nextBatterOptions(String outId) {
+    final opts = <String>[];
+    for (final id in names.keys) {
+      if (id == outId || id == nonStrikerId) continue;
+      final c = batting[id];
+      if (c == null) continue;
+      if (c.position == 0) {
+        opts.add(id);
+        continue;
+      }
+      // Batted before: only a retired-hurt returnee may come again, and they
+      // are recorded not-out=false, so this check must come first.
+      if (c.dismissal == DismissalType.retiredHurt) {
+        opts.add(id);
+        continue;
+      }
+      if (!c.isNotOut) continue;
+    }
+    return opts;
+  }
+
+  /// A retired-hurt player resumes: same batting position, back not-out.
+  /// Retired-out never returns.
+  bool reEnter(String id) {
+    final c = batting[id];
+    if (c == null) return false;
+    if (c.dismissal != DismissalType.retiredHurt) return false;
+    c.isNotOut = true;
+    c.dismissal = null;
+    c.wicketNumber = 0;
+    return true;
+  }
+
   /// Dismissed this innings, in fall order.
   List<BattingCard> get fallOfWickets {
     final gone = batting.values
-        .where((c) => c.position > 0 && !c.isNotOut)
+        .where((c) => c.position > 0 && !c.isNotOut && c.wicketNumber > 0)
         .toList()
       ..sort((a, b) => a.wicketNumber.compareTo(b.wicketNumber));
     return gone;
@@ -462,8 +558,14 @@ class InningsSheet {
     if (!names.containsKey(nextId)) return false;
     _bankPartnership();
     strikerId = nextId;
-    _enter(nextId, nextPosition);
-    nextPosition++;
+    final c = batting[nextId];
+    if (c != null && c.position == 0) {
+      _enter(nextId, nextPosition);
+      nextPosition++;
+    } else {
+      // A resumed innings (retired-hurt return): original position stands.
+      reEnter(nextId);
+    }
     partnershipRuns = 0;
     partnershipBalls = 0;
     return true;
@@ -569,8 +671,12 @@ class InningsSheet {
       final type = dismissalType ?? DismissalType.fromId(ball.wicketType);
       bat.dismissal = type;
       bat.isNotOut = false;
-      wicketNumber++;
-      bat.wicketNumber = wicketNumber;
+      // Retirements are not wickets: no number, no fall-of-wickets entry.
+      if (type != DismissalType.retiredHurt &&
+          type != DismissalType.retiredOut) {
+        wicketNumber++;
+        bat.wicketNumber = wicketNumber;
+      }
       if (type.creditsBowler) {
         bowl.wickets++;
         bat.bowlerName = bowl.name;

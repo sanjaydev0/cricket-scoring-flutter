@@ -161,4 +161,70 @@ void main() {
     expect(hashPin('1234', 'A'), isNot(hashPin('1234', 'B')));
     expect(hashPin('1234', 'A'), hashPin('1234', 'A'));
   });
+
+  test('next-batter options exclude the out batter and non-striker', () {
+    final s = trackedSheet();
+    final opts = s.nextBatterOptions('a');
+    expect(opts, contains('c'));
+    expect(opts, isNot(contains('a')));
+    expect(opts, isNot(contains('b')));
+  });
+
+  test('retired-hurt returns to the options, retired-out does not', () {
+    final s = trackedSheet();
+    // c comes in at 3, then retires hurt. b replaces c at the crease.
+    s.bringIn('c');
+    s.batting['c']!
+      ..dismissal = DismissalType.retiredHurt
+      ..isNotOut = false;
+    s.strikerId = 'b';
+    s.nonStrikerId = 'a';
+    // When a later goes, the retired-hurt c may resume.
+    var opts = s.nextBatterOptions('a');
+    expect(opts, contains('c'));
+    expect(opts, isNot(contains('a')));
+    expect(opts, isNot(contains('b')));
+    // Same, but retired out: gone for the innings.
+    s.batting['c']!.dismissal = DismissalType.retiredOut;
+    opts = s.nextBatterOptions('a');
+    expect(opts, isNot(contains('c')));
+  });
+
+  test('re-enter keeps the original batting position', () {
+    final s = trackedSheet();
+    s.bringIn('c');
+    expect(s.batting['c']!.position, 3);
+    s.striker?.dismissal = DismissalType.retiredHurt;
+    s.striker?.isNotOut = false;
+    expect(s.reEnter('c'), isTrue);
+    expect(s.batting['c']!.position, 3);
+    expect(s.batting['c']!.isNotOut, isTrue);
+    // Retired-out cannot re-enter.
+    s.striker?.dismissal = DismissalType.retiredOut;
+    s.striker?.isNotOut = false;
+    expect(s.reEnter('c'), isFalse);
+  });
+
+  test('retirements are not numbered as wickets', () {
+    final s = trackedSheet();
+    s.applyDelivery(
+        Ball(isWicket: true, wicketType: 'Retired Hurt', badge: 'W'),
+        dismissalType: DismissalType.retiredHurt);
+    expect(s.batting['a']!.wicketNumber, 0);
+    expect(s.fallOfWickets, isEmpty);
+  });
+
+  test('player styles survive a JSON round trip', () {
+    final p = Player(
+        id: 'x',
+        clubId: 'c',
+        name: 'Test',
+        battingStyle: BattingStyle.leftHand,
+        bowlingStyle: BowlingStyle.leftSpin);
+    final back = Player.fromJson(p.toJson());
+    expect(back.battingStyle, BattingStyle.leftHand);
+    expect(back.bowlingStyle, BowlingStyle.leftSpin);
+    expect(battingStyleLabel(back.battingStyle), 'LHB');
+    expect(bowlingStyleLabel(back.bowlingStyle), 'LAS');
+  });
 }
