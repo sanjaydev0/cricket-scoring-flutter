@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../domain/players.dart';
 import '../store.dart';
@@ -226,7 +225,7 @@ class _ClubScreenState extends State<ClubScreen> {
           children: [
             Expanded(
               child: DropdownButtonFormField<BattingStyle>(
-                value: _bat,
+                initialValue: _bat,
                 decoration: const InputDecoration(
                     labelText: 'Batting', border: OutlineInputBorder()),
                 items: const [
@@ -244,7 +243,7 @@ class _ClubScreenState extends State<ClubScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: DropdownButtonFormField<BowlingStyle>(
-                value: _bowl,
+                initialValue: _bowl,
                 decoration: const InputDecoration(
                     labelText: 'Bowling', border: OutlineInputBorder()),
                 items: [
