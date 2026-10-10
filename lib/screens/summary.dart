@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../domain/players.dart';
+import '../models.dart';
 import '../store.dart';
 import 'widgets.dart';
 
@@ -155,6 +156,36 @@ class ScorecardView extends StatelessWidget {
                   ),
               ],
             ),
+            Builder(builder: (_) {
+              final m = store.match!;
+              final inn = inningsNo == 1 ? m.innings1 : m.innings2!;
+              final dnb = didNotBat(store, inningsNo);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(height: 20),
+                  Text(extrasLine(inn),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 12)),
+                  if (dnb.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text('DID NOT BAT',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 11)),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final id in dnb)
+                          Text(store.playerName(id),
+                              style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ],
+              );
+            }),
             if (sheet.fallOfWickets.isNotEmpty) ...[
               const Divider(height: 20),
               const Text('FALL OF WICKETS',
@@ -447,4 +478,244 @@ void shareScorecard(BuildContext context, MatchStore store) {
   Clipboard.setData(ClipboardData(text: text));
   ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Scorecard copied — paste into WhatsApp')));
+}
+
+/// Innings selector pills + the selected innings' full section.
+///
+/// Pills default to the chase innings when it exists, else innings 1. The
+/// selection lives in this widget, not the store: it is view state, and the
+/// store must not grow view state.
+class ResultScorecard extends StatefulWidget {
+  final MatchStore store;
+  const ResultScorecard({required this.store, super.key});
+
+  @override
+  State<ResultScorecard> createState() => _ResultScorecardState();
+}
+
+class _ResultScorecardState extends State<ResultScorecard> {
+  int? _picked;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.store.match!;
+    final hasTwo = m.innings2 != null;
+    final sel = _picked ?? (hasTwo ? 2 : 1);
+    Innings innOf(int n) => n == 1 ? m.innings1 : m.innings2!;
+    String labelOf(int n) {
+      final inn = innOf(n);
+      return '${inn.battingTeam} ${inn.runs}/${inn.wickets}';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+                child: _pill(context, labelOf(1), sel == 1,
+                    () => setState(() => _picked = 1))),
+            const SizedBox(width: 8),
+            if (hasTwo)
+              Expanded(
+                  child: _pill(context, labelOf(2), sel == 2,
+                      () => setState(() => _picked = 2))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ScorecardView(store: widget.store, inningsNo: sel),
+        const SizedBox(height: 12),
+        BallsView(store: widget.store, inningsNo: sel),
+      ],
+    );
+  }
+
+  Widget _pill(
+      BuildContext context, String label, bool selected, VoidCallback onTap) {
+    final cs = Theme.of(context).colorScheme;
+    return RectBtn(
+      primary: selected,
+      onTap: onTap,
+      child: Text(label,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: selected ? Colors.white : cs.onSurface)),
+    );
+  }
+}
+
+/// Every ball of an innings, over by over, read-only.
+///
+/// The umpire asked for "balls data" on the finished page: this is the
+/// overs-history rendering inline for the selected innings, so both innings'
+/// balls are one tap apart via the pills above.
+class BallsView extends StatelessWidget {
+  final MatchStore store;
+  final int inningsNo;
+  const BallsView({required this.store, required this.inningsNo, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = store.match!;
+    final inn = inningsNo == 1 ? m.innings1 : m.innings2;
+    if (inn == null) return const SizedBox.shrink();
+    final overs = inn.overs.where((o) => o.balls.isNotEmpty).toList();
+    if (overs.isEmpty) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('BALLS • ${inn.battingTeam}',
+                style: const TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            for (final o in overs) ...[
+              Text(
+                  'OVER ${o.overNumber.toString().padLeft(2, '0')} // ${o.balls.fold<int>(0, (s, b) => s + b.totalRuns)} RUNS • ${o.balls.where((b) => b.isWicket).length} WKT',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [for (final b in o.balls) BallBadge(b)],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Top two batters + best bowler of each played innings, with the toss note.
+///
+/// This is the per-innings story: who made the runs, who took the wickets,
+/// and who chose to chase.
+class TopPerformersView extends StatelessWidget {
+  final MatchStore store;
+  const TopPerformersView({required this.store, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = store.match;
+    if (m == null || !store.tracking) return const SizedBox.shrink();
+    final parts = <Widget>[];
+    for (var n = 1; n <= 2; n++) {
+      final sheet = store.sheetFor(n);
+      if (sheet == null) continue;
+      if (sheet.battingCards.isEmpty && sheet.bowlingCards.isEmpty) continue;
+      final bat = sheet.battingCards.toList()
+        ..sort((a, b) {
+          final r = b.runs.compareTo(a.runs);
+          return r != 0 ? r : (b.strikeRate ?? 0).compareTo(a.strikeRate ?? 0);
+        });
+      final bowl = sheet.bowlingCards.toList()
+        ..sort((a, b) {
+          final w = b.wickets.compareTo(a.wickets);
+          return w != 0 ? w : a.runsConceded.compareTo(b.runsConceded);
+        });
+      parts.add(Text('${sheet.battingTeam} • ${n == 1 ? '1st' : '2nd'} Inns',
+          style: const TextStyle(fontWeight: FontWeight.w900)));
+      if (n == 1) {
+        final bowlingFirst =
+            m.config.battingFirst == 'A' ? m.config.teamB : m.config.teamA;
+        parts.add(Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text('$bowlingFirst opt to bowl',
+              style: const TextStyle(fontSize: 12)),
+        ));
+      }
+      for (final c in bat.take(2)) {
+        parts.add(_row(
+          name: c.name,
+          sub: c.strikeRate == null
+              ? 'SR —'
+              : 'SR ${c.strikeRate!.toStringAsFixed(2)}',
+          figure: '${c.runs} (${c.balls})${c.isNotOut ? '*' : ''}',
+        ));
+      }
+      if (bowl.isNotEmpty && bowl.first.wickets > 0) {
+        final c = bowl.first;
+        parts.add(_row(
+          name: c.name,
+          sub: c.economy == null
+              ? 'ER —'
+              : 'ER ${c.economy!.toStringAsFixed(2)}',
+          figure: '${c.wickets}-${c.runsConceded} (${c.oversDisplay})',
+        ));
+      }
+      parts.add(const SizedBox(height: 8));
+    }
+    if (parts.isEmpty) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('TOP PERFORMERS',
+                style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            ...parts,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(
+      {required String name, required String sub, required String figure}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(sub, style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          Text(figure,
+              style:
+                  const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Squad members who never batted: ids on the side minus everyone with a
+/// batting position. Retired-hurt counts as batted; that is the point of the
+/// distinction.
+List<String> didNotBat(MatchStore store, int inningsNo) {
+  final m = store.match;
+  final sheet = store.sheetFor(inningsNo);
+  if (m == null || sheet == null) return const [];
+  final inn = inningsNo == 1 ? m.innings1 : m.innings2;
+  if (inn == null) return const [];
+  final squad =
+      inn.battingTeam == m.config.teamA ? m.config.squadA : m.config.squadB;
+  final batted = {
+    for (final c in sheet.battingCards) c.playerId,
+  };
+  return [
+    for (final id in squad)
+      if (!batted.contains(id)) id
+  ];
+}
+
+/// One-line extras breakdown: `b 4, lb 2, w 11, nb 3 — total 20`.
+String extrasLine(Innings inn) {
+  final parts = <String>[];
+  if (inn.byes > 0) parts.add('b ${inn.byes}');
+  if (inn.legByes > 0) parts.add('lb ${inn.legByes}');
+  if (inn.wides > 0) parts.add('w ${inn.wides}');
+  if (inn.noBalls > 0) parts.add('nb ${inn.noBalls}');
+  if (parts.isEmpty) return 'Extras 0';
+  return 'Extras: ${parts.join(', ')} — total ${inn.extrasTotal}';
 }

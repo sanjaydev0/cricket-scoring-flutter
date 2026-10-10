@@ -142,9 +142,9 @@ class ResultScreen extends StatelessWidget {
                             inn2.legalDeliveries),
                       if (store.tracking) ...[
                         const SizedBox(height: 12),
-                        ScorecardView(store: store, inningsNo: 1),
-                        if (inn2 != null)
-                          ScorecardView(store: store, inningsNo: 2),
+                        ResultScorecard(store: store),
+                        const SizedBox(height: 12),
+                        TopPerformersView(store: store),
                         const SizedBox(height: 12),
                         AwardsView(store: store),
                         const SizedBox(height: 12),
