@@ -245,6 +245,14 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                     letterSpacing: 10),
                 decoration: InputDecoration(
                   counterText: '',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear, size: 22),
+                    tooltip: 'Clear code',
+                    onPressed: () => setState(() {
+                      _controller.clear();
+                      _error = null;
+                    }),
+                  ),
                   hintText: 'ABCDE',
                   hintStyle: const TextStyle(
                       fontSize: 28,

@@ -238,7 +238,6 @@ void showDismissalSheet(
   }
   var type = DismissalType.fromId(wicketType);
   String? fielder;
-  String? newId;
   var crossed = false;
   var runOutRuns = 0;
   // Explicit exclusion: the out batter, the non-striker, the dismissed and
@@ -283,23 +282,52 @@ void showDismissalSheet(
                     style:
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                 const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final id in sheet.bowling.keys)
-                      if (id != sheet.strikerId)
-                        ChoiceChip(
-                          label: Text(sheet.nameOf(id)),
-                          selected: fielder == sheet.nameOf(id),
-                          onSelected: (_) => setSheet(() {
+                Builder(builder: (_) {
+                  // Fielders come from the FIELDING (bowling) side's squad in
+                  // XI order — the bowling map holds every registered player,
+                  // so its keys showed batters as fielders.
+                  final m = store.match!;
+                  final squadIds = sheet.bowlingTeam == m.config.teamA
+                      ? m.config.squadA
+                      : m.config.squadB;
+                  final ids = squadIds.isEmpty
+                      ? sheet.bowling.keys
+                          .where((id) => id != sheet.strikerId)
+                          .toList()
+                      : squadIds.where((id) => id != sheet.strikerId).toList();
+                  return Column(
+                    children: [
+                      for (final id in ids)
+                        InkWell(
+                          onTap: () => setSheet(() {
                             fielder = fielder == sheet.nameOf(id)
                                 ? null
                                 : sheet.nameOf(id);
                           }),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(sheet.nameOf(id),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                                Icon(
+                                  fielder == sheet.nameOf(id)
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_unchecked,
+                                  color: fielder == sheet.nameOf(id)
+                                      ? Colors.green
+                                      : Colors.grey,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                  ],
-                ),
+                    ],
+                  );
+                }),
               ],
               if (type == DismissalType.runOut) ...[
                 const SizedBox(height: 8),
@@ -341,7 +369,7 @@ void showDismissalSheet(
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: RectBtn(
-                      primary: newId == id,
+                      primary: false,
                       onTap: () {
                         final runs =
                             type == DismissalType.runOut ? runOutRuns : 0;
@@ -425,6 +453,12 @@ void showBowlerSheet(BuildContext context, MatchStore store,
           children: [
             Text(auto ? 'OVER DONE — NEXT BOWLER' : 'CHANGE BOWLER',
                 style: const TextStyle(fontWeight: FontWeight.w900)),
+            if (sheet.lastBowlerId != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                  'Prev: ${sheet.nameOf(sheet.lastBowlerId!)} (${_oversBowled(sheet, sheet.lastBowlerId!)} overs)',
+                  style: const TextStyle(fontSize: 12)),
+            ],
             const SizedBox(height: 4),
             const Text('Tap a name; they bowl the whole over.',
                 style: TextStyle(fontSize: 12)),
@@ -471,6 +505,12 @@ void showBowlerSheet(BuildContext context, MatchStore store,
 }
 
 /// Openers + first bowler, picked once per innings when tracking is on.
+String _oversBowled(InningsSheet sheet, String id) {
+  final c = sheet.bowling[id];
+  if (c == null) return '0';
+  return '${c.balls ~/ 6}.${c.balls % 6}';
+}
+
 void showInningsStartSheet(BuildContext context, MatchStore store) {
   final sheet = store.currentSheet;
   if (sheet == null) return;

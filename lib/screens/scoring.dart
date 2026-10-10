@@ -129,6 +129,36 @@ class ScoringScreen extends StatelessWidget {
                         ),
                       ],
                       if (store.tracking &&
+                          store.currentSheet?.needsNewBowler == true) ...[
+                        const SizedBox(height: 10),
+                        Card(
+                          color: const Color(0xFF1D4ED8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'SELECT THE NEW BOWLER TO CONTINUE',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1),
+                                  ),
+                                ),
+                                RectBtn(
+                                  primary: false,
+                                  onTap: () => showBowlerSheet(context, store,
+                                      auto: true),
+                                  child: const Text('SET'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (store.tracking &&
                           (store.currentSheet?.strikerId == null ||
                               store.currentSheet?.bowlerId == null)) ...[
                         const SizedBox(height: 10),
@@ -272,49 +302,71 @@ class ScoringScreen extends StatelessWidget {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       if (store.tracking) ...[
-                                        SizedBox(
-                                          width: 72,
-                                          height: 72,
-                                          child: FilledButton(
-                                            style: FilledButton.styleFrom(
-                                              backgroundColor:
-                                                  const Color(0xFF1D4ED8),
-                                              foregroundColor: Colors.white,
-                                              padding: EdgeInsets.zero,
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          20)),
+                                        Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SizedBox(
+                                              width: 72,
+                                              height: 72,
+                                              child: FilledButton(
+                                                style: FilledButton.styleFrom(
+                                                  backgroundColor:
+                                                      const Color(0xFF1D4ED8),
+                                                  foregroundColor: Colors.white,
+                                                  padding: EdgeInsets.zero,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              20)),
+                                                ),
+                                                onPressed: () =>
+                                                    showPlayerStatsSheet(
+                                                        context, store),
+                                                child: const Icon(
+                                                    Icons.groups_outlined,
+                                                    size: 28),
+                                              ),
                                             ),
-                                            onPressed: () =>
-                                                showPlayerStatsSheet(
-                                                    context, store),
-                                            child: const Icon(
-                                                Icons.groups_outlined,
-                                                size: 28),
-                                          ),
+                                            const SizedBox(height: 2),
+                                            const Text('PLAYERS',
+                                                style: TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight:
+                                                        FontWeight.w800)),
+                                          ],
                                         ),
                                         const SizedBox(width: 10),
                                       ],
-                                      SizedBox(
-                                        width: 72,
-                                        height: 72,
-                                        child: FilledButton(
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0xFF0A0A0A),
-                                            foregroundColor: Colors.white,
-                                            padding: EdgeInsets.zero,
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(20)),
+                                      Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 72,
+                                            height: 72,
+                                            child: FilledButton(
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0xFF0A0A0A),
+                                                foregroundColor: Colors.white,
+                                                padding: EdgeInsets.zero,
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20)),
+                                              ),
+                                              onPressed: store.canUndo
+                                                  ? () => store.undo()
+                                                  : null,
+                                              child: const Icon(Icons.undo,
+                                                  size: 28),
+                                            ),
                                           ),
-                                          onPressed: store.canUndo
-                                              ? () => store.undo()
-                                              : null,
-                                          child:
-                                              const Icon(Icons.undo, size: 28),
-                                        ),
+                                          const SizedBox(height: 2),
+                                          const Text('UNDO',
+                                              style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800)),
+                                        ],
                                       ),
                                       if (store.advancedExtras) ...[
                                         const SizedBox(width: 10),
@@ -360,23 +412,50 @@ class ScoringScreen extends StatelessWidget {
   }
 
   void _tap(BuildContext ctx, String action, {int runs = 0}) {
+    return _tapInner(ctx, action, runs: runs);
+  }
+
+  void _tapInner(BuildContext ctx, String action, {int runs = 0}) {
     final beforeOver = store.innings?.currentOverNumber ?? 1;
     final beforeLegal = store.innings?.legalDeliveries ?? 0;
     final err = store.score(action: action, runs: runs);
     if (err != null) {
+      // Gated states reopen their picker instead of only snacking: the umpire
+      // is one tap from unblocked, with no hunting for the right sheet.
+      if (err == MatchStore.needBowlerMsg) {
+        showBowlerSheet(ctx, store, auto: true);
+        return;
+      }
+      if (err == MatchStore.needSetupMsg) {
+        showInningsStartSheet(ctx, store);
+        return;
+      }
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(err)));
       return;
     }
     // The over just finished: prompt the next bowler immediately, while the
-    // captain is deciding. Never on innings end.
+    // captain is deciding. Never on innings end, and never twice for the same
+    // over: deferred rollover starts the new over on the NEXT delivery, which
+    // re-fires the overNumber branch after a pick. The latch below is what
+    // stops that — same over + bowler already changed means handled.
     final inn = store.innings;
-    if (store.tracking &&
+    final sheet = store.currentSheet;
+    final completedCount = inn == null ? 0 : inn.legalDeliveries ~/ 6;
+    final overDone = store.tracking &&
         inn != null &&
         !inn.completed &&
         (inn.currentOverNumber != beforeOver ||
             (inn.legalDeliveries - beforeLegal > 0 &&
-                inn.legalDeliveries % 6 == 0))) {
-      showBowlerSheet(ctx, store, auto: true);
+                inn.legalDeliveries % 6 == 0));
+    if (overDone && sheet != null) {
+      final handled = sheet.promptedOver == completedCount &&
+          sheet.bowlerId != sheet.promptedBowler;
+      if (!handled) {
+        sheet.promptedOver = completedCount;
+        sheet.promptedBowler = sheet.bowlerId;
+        store.persistOnly();
+        showBowlerSheet(ctx, store, auto: true);
+      }
     }
   }
 

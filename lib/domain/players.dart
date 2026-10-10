@@ -390,6 +390,26 @@ class InningsSheet {
   int nextPosition = 3;
   int wicketNumber = 0;
 
+  /// Over number (completed count) already prompted for, and who was asked to
+  /// be replaced. Stops the auto sheet re-firing on the first ball of the new
+  /// over after a pick — deferred rollover starts the new over one delivery
+  /// later, which is exactly what re-triggered it.
+  int promptedOver = -1;
+  String? promptedBowler;
+
+  /// Completed-over count already latched for a bowler change. The gate
+  /// re-sees the same pending rollover on every ball until one scores, so
+  /// without this the close (and the maiden) would run repeatedly.
+  int latchedOver = -1;
+
+  /// Who bowled the last completed over. Shown on the picker ("Prev: Ravi")
+  /// so the choice is informed, not just greyed-out.
+  String? lastBowlerId;
+
+  /// Set when an over rolls: scoring is blocked until a different bowler is
+  /// picked. Persisted with the sheet so undo restores it.
+  bool needsNewBowler = false;
+
   InningsSheet({required this.battingTeam, required this.bowlingTeam});
 
   factory InningsSheet.fromJson(Map<String, dynamic> j) {
@@ -425,6 +445,11 @@ class InningsSheet {
     }
     s.nextPosition = (j['nextPosition'] ?? 3) as int;
     s.wicketNumber = (j['wicketNumber'] ?? 0) as int;
+    s.promptedOver = (j['promptedOver'] ?? -1) as int;
+    s.latchedOver = (j['latchedOver'] ?? -1) as int;
+    s.promptedBowler = j['promptedBowler']?.toString();
+    s.lastBowlerId = j['lastBowlerId']?.toString();
+    s.needsNewBowler = (j['needsNewBowler'] ?? false) as bool;
     return s;
   }
 
@@ -443,6 +468,11 @@ class InningsSheet {
         'partnerships': partnerships,
         'nextPosition': nextPosition,
         'wicketNumber': wicketNumber,
+        'promptedOver': promptedOver,
+        'promptedBowler': promptedBowler,
+        'latchedOver': latchedOver,
+        'lastBowlerId': lastBowlerId,
+        'needsNewBowler': needsNewBowler,
       };
 
   String nameOf(String id) => names[id] ?? '?';
@@ -604,6 +634,7 @@ class InningsSheet {
   void closeOver({required int legalBalls}) {
     final b = currentBowler;
     if (b == null) return;
+    if (legalBalls >= 6) lastBowlerId = b.playerId;
     if (legalBalls >= 6 && b.overRuns == 0) b.maidens++;
     b.overRuns = 0;
     b.overBalls = 0;

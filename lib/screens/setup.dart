@@ -21,6 +21,7 @@ class _SetupScreenState extends State<SetupScreen> {
   String _qa = '';
   String _qb = '';
   final Set<String> _expanded = {};
+  final Map<String, TextEditingController> _searchCtrls = {};
   @override
   void initState() {
     super.initState();
@@ -235,8 +236,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Track players + stats'),
-                    subtitle: const Text(
-                        'Squads, striker/bowler, scorecard. Off = fast scoring.'),
+                    subtitle: const Text('Squads + scorecard. Off = fast.'),
                     value: _track,
                     onChanged: (v) => setState(() => _track = v),
                   ),
@@ -293,9 +293,10 @@ class _SetupScreenState extends State<SetupScreen> {
     final sharedOk = cfg.commonPlayers > 0;
     final pool = store.clubRoster.where((p) {
       if (!p.active) return false;
-      if (otherSel.contains(p.id)) {
-        if (!(sharedOk && sel.contains(p.id))) return false;
-      }
+      // Cross-exclusion: picked for the other side stays visible only when a
+      // common player is allowed; otherwise it is hidden, not disabled, so a
+      // shared pick can never be made by accident.
+      if (otherSel.contains(p.id) && !sharedOk) return false;
       return q.isEmpty || p.searchKey.contains(q);
     }).toList();
     // Most frequent first; the picked stay pinned on top so a tap never makes
@@ -308,8 +309,14 @@ class _SetupScreenState extends State<SetupScreen> {
       return freq(b.id).compareTo(freq(a.id));
     });
     final expanded = _expanded.contains(side);
-    final visible = expanded ? pool.take(12).toList() : pool.take(8).toList();
-    final hidden = pool.length - visible.length;
+    // Collapsed until tapped: only picked players show, so a long roster does
+    // not bury the form. Tapping search reveals frequent-first + More.
+    final showPool = expanded || q.isNotEmpty;
+    final listed =
+        showPool ? pool : pool.where((p) => sel.contains(p.id)).toList();
+    final visible =
+        expanded ? listed.take(12).toList() : listed.take(8).toList();
+    final hidden = listed.length - visible.length;
     // The XI can never exceed players-per-side: selected stay tappable so a
     // pick can always be undone, unselected lock with the reason visible.
     final cap = cfg.playersPerSide;
@@ -321,10 +328,22 @@ class _SetupScreenState extends State<SetupScreen> {
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
         const SizedBox(height: 6),
         TextField(
-          decoration: const InputDecoration(
+          controller:
+              _searchCtrls.putIfAbsent(side, () => TextEditingController()),
+          decoration: InputDecoration(
               labelText: 'Select players',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder()),
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      tooltip: 'Clear search',
+                      onPressed: () {
+                        _searchCtrls[side]?.clear();
+                        onQuery('');
+                      },
+                    ),
+              border: const OutlineInputBorder()),
           onChanged: onQuery,
           onTap: () => setState(() => _expanded.add(side)),
         ),
@@ -332,6 +351,9 @@ class _SetupScreenState extends State<SetupScreen> {
         if (pool.isEmpty)
           const Text('No players — add them in CLUB first.',
               style: TextStyle(fontSize: 12)),
+        if (!showPool && pool.isNotEmpty)
+          Text('Tap Select players to choose (${pool.length} in club)',
+              style: const TextStyle(fontSize: 12)),
         for (final p in visible)
           Opacity(
             opacity: (full && !sel.contains(p.id)) ? 0.45 : 1.0,

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../math.dart';
+import '../domain/players.dart';
 import '../models.dart';
 import '../store.dart';
+import 'summary.dart';
 import 'widgets.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -13,11 +15,11 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  late Future<List<Match>> fut;
+  late Future<List<Map<String, dynamic>>> fut;
   @override
   void initState() {
     super.initState();
-    fut = widget.store.history();
+    fut = widget.store.historyRecords();
   }
 
   String _dateLine(Match m) {
@@ -40,14 +42,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
               icon: const Icon(Icons.delete_sweep_outlined),
               onPressed: () async {
                 await widget.store.clearHistory();
-                setState(() => fut = widget.store.history());
+                setState(() => fut = widget.store.historyRecords());
               }),
         ],
       ),
       body: SafeArea(
           child: ResponsiveCenter(
               maxWidth: 640,
-              child: FutureBuilder<List<Match>>(
+              child: FutureBuilder<List<Map<String, dynamic>>>(
                 future: fut,
                 builder: (_, snap) {
                   if (!snap.hasData) {
@@ -61,13 +63,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     padding: const EdgeInsets.all(12),
                     itemCount: h.length,
                     itemBuilder: (_, i) {
-                      final m = h[i];
+                      final m = Match.fromJson(h[i]);
                       return Card(
                         child: ListTile(
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => ArchiveDetail(match: m)),
+                                builder: (_) => ArchiveDetail(
+                                    match: m,
+                                    sheets: MatchStore.sheetsFromRecord(h[i]))),
                           ),
                           title: Row(
                             children: [
@@ -97,7 +101,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               icon: const Icon(Icons.delete_outline),
                               onPressed: () async {
                                 await widget.store.deleteHistoryAt(i);
-                                setState(() => fut = widget.store.history());
+                                setState(
+                                    () => fut = widget.store.historyRecords());
                               }),
                         ),
                       );
@@ -109,13 +114,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
-/// Tap-through over history for both innings of an archived match.
+/// Full archived-match view: hero, innings pills, scorecard, balls,
+/// performers, awards — the same sections as the live result page.
+///
+/// Sheets ride in the archive record (new matches). Records that predate
+/// player tracking render totals + balls only, never empty tables. A throwaway
+/// store carries the archived match so every summary widget reuses verbatim;
+/// awards render read-only so nothing can write prefs through it.
 class ArchiveDetail extends StatelessWidget {
   final Match match;
-  const ArchiveDetail({required this.match, super.key});
+  final Map<String, InningsSheet> sheets;
+  const ArchiveDetail({required this.match, this.sheets = const {}, super.key});
+
+  MatchStore _ghost() {
+    final g = MatchStore();
+    g.match = match;
+    g.sheets = sheets;
+    return g;
+  }
+
   @override
   Widget build(BuildContext context) {
     final m = match;
+    final g = _ghost();
+    final tracked = sheets.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
           title: Text('${m.config.teamA} vs ${m.config.teamB}',
@@ -131,7 +153,12 @@ class ArchiveDetail extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          Text('${m.winner} WON',
+                          Text(
+                              m.winner == null
+                                  ? 'MATCH SAVED'
+                                  : m.winner == 'TIE'
+                                      ? 'MATCH TIED'
+                                      : '${m.winner} WON',
                               style: const TextStyle(
                                   fontSize: 20, fontWeight: FontWeight.w900)),
                           Text(m.winMargin ?? ''),
@@ -144,6 +171,20 @@ class ArchiveDetail extends StatelessWidget {
                   if (m.innings2 != null) ...[
                     const SizedBox(height: 8),
                     _inningsCard(m.innings2!, 2, m.config.totalOvers),
+                  ],
+                  if (tracked) ...[
+                    const SizedBox(height: 8),
+                    ResultScorecard(store: g),
+                    const SizedBox(height: 12),
+                    TopPerformersView(store: g),
+                    const SizedBox(height: 12),
+                    AwardsView(store: g, readOnly: true),
+                    const SizedBox(height: 12),
+                    RectBtn(
+                      primary: false,
+                      onTap: () => shareScorecard(context, g),
+                      child: const Text('COPY SCORECARD (WHATSAPP)'),
+                    ),
                   ],
                 ],
               ))),

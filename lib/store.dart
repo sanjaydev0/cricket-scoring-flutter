@@ -606,6 +606,37 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deletes a club player from the roster AND the stats lists. Refused
+  /// when the player is in a live XI, has batted/bowled, or sits in either
+  /// live sheet — figures already reference them and must not dangle.
+  /// Archived matches keep their name snapshots regardless.
+  String? deletePlayer(String id) {
+    for (final sheet in sheets.values) {
+      final b = sheet.batting[id];
+      final w = sheet.bowling[id];
+      if ((b != null && b.position > 0) ||
+          (w != null && (w.balls > 0 || w.wickets > 0))) {
+        return 'Already played — cannot delete mid-match';
+      }
+    }
+    final m = match;
+    if (m != null &&
+        (m.config.squadA.contains(id) || m.config.squadB.contains(id))) {
+      return 'In a live squad — remove from the XI first';
+    }
+    pushSnapshotSafe();
+    roster.removeWhere((p) => p.id == id);
+    playerAppearances.remove(id);
+    _persist();
+    notifyListeners();
+    return null;
+  }
+
+  /// Snapshot only when a match is live (delete works without one).
+  void pushSnapshotSafe() {
+    if (match != null) pushSnapshot();
+  }
+
   void setPlayerRole(String id, PlayerRole role) {
     for (final p in roster) {
       if (p.id == id) p.role = role;
@@ -674,6 +705,7 @@ class MatchStore extends ChangeNotifier {
     pushSnapshot();
     sheet.closeOver(legalBalls: 0); // reset without maiden: mid-over change
     sheet.setBowler(id);
+    sheet.needsNewBowler = false;
     _persist();
     notifyListeners();
     return null;
@@ -884,6 +916,11 @@ class MatchStore extends ChangeNotifier {
     if (b.extra == 'LB') inn.legByes += b.extraRuns;
   }
 
+  /// Scoring refuses while set: pick the new bowler first. Compared by _tap
+  /// to reopen the picker instead of only showing a snackbar.
+  static const needBowlerMsg = 'Select the new bowler to continue';
+  static const needSetupMsg = 'Set batters + bowler first';
+
   String? score({
     required String
         action, // DOT,RUNS,FOUR,SIX,WIDE,NB_DIRECT,BYE,LEGBYE,WICKET
@@ -897,6 +934,26 @@ class MatchStore extends ChangeNotifier {
     final m = match;
     final inn = innings;
     if (m == null || inn == null || inn.completed) return 'Innings completed';
+    final gate = tracking ? _ensureSheet(m.currentInnings) : null;
+    if (gate != null) {
+      if (gate.strikerId == null || gate.bowlerId == null) {
+        return needSetupMsg;
+      }
+      // Rollover is deferred: the new over starts with THIS delivery, so the
+      // latch must engage here, before the ball — not after it. Guarded by
+      // latchedOver: the same pending rollover reappears on every refused
+      // ball, and re-closing would credit the maiden twice.
+      if (inn.overs.isNotEmpty &&
+          inn.overs.last.balls.where((x) => x.isLegal).length >= 6) {
+        final completed = inn.legalDeliveries ~/ 6;
+        if (gate.latchedOver != completed) {
+          finishOverForSheet();
+          gate.needsNewBowler = true;
+          gate.latchedOver = completed;
+        }
+      }
+      if (gate.needsNewBowler) return needBowlerMsg;
+    }
     pushSnapshot();
     final rules = m.config.rules;
 
@@ -1038,10 +1095,8 @@ class MatchStore extends ChangeNotifier {
     final sheet = tracking ? _ensureSheet(m.currentInnings) : null;
     if (sheet != null) {
       // An over that rolls here ends the previous bowler's figures first.
-      if (inn.overs.isNotEmpty &&
-          inn.overs.last.balls.where((x) => x.isLegal).length >= 6) {
-        finishOverForSheet();
-      }
+      // Rollover + latch already handled at the gate above; the over that
+      // starts here belongs to the newly picked bowler.
       b.strikerId = sheet.strikerId;
       b.nonStrikerId = sheet.nonStrikerId;
       b.bowlerId = sheet.bowlerId;
@@ -1310,9 +1365,37 @@ class MatchStore extends ChangeNotifier {
     } catch (_) {}
     final rec = match!.toJson();
     rec['savedAt'] = DateTime.now().toIso8601String();
+    if (sheets.isNotEmpty) {
+      rec['sheets'] = sheets.map((k, v) => MapEntry(k, v.toJson()));
+    }
     hist.insert(0, rec);
     if (hist.length > 50) hist = hist.sublist(0, 50);
     await p.setString(kHistory, jsonEncode(hist));
+  }
+
+  /// Raw archive records (match + optional sheets), newest first.
+  Future<List<Map<String, dynamic>>> historyRecords() async {
+    final p = await SharedPreferences.getInstance();
+    try {
+      final list = jsonDecode(p.getString(kHistory) ?? '[]') as List;
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Sheets stored with an archive record, or empty when the match predates
+  /// player tracking. Never throws: old archives render totals-only.
+  static Map<String, InningsSheet> sheetsFromRecord(Map<String, dynamic> rec) {
+    final out = <String, InningsSheet>{};
+    try {
+      final sj = Map<String, dynamic>.from((rec['sheets'] ?? {}) as Map);
+      for (final e in sj.entries) {
+        out[e.key.toString()] =
+            InningsSheet.fromJson(Map<String, dynamic>.from(e.value as Map));
+      }
+    } catch (_) {}
+    return out;
   }
 
   Future<List<Match>> history() async {

@@ -34,10 +34,10 @@ void main() async {
   // must not delay the first ball. Sharing enables itself when it arrives.
   unawaited(sync.init().catchError((Object _) {}));
   runApp(CricketApp(store: store));
+  // Portrait only: the keypad grid, strip and hero are laid out for a narrow
+  // portrait column; landscape would crush them and cause fat-finger errors.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight
   ]);
 }
 

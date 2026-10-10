@@ -46,44 +46,37 @@ class _ClubScreenState extends State<ClubScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _clubCard(context, store),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RectBtn(
-                          primary: _tab == 'players',
-                          onTap: () => setState(() => _tab = 'players'),
-                          child: const Text('PLAYERS'),
+                  if (store.activeClubId != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RectBtn(
+                            primary: _tab == 'players',
+                            onTap: () => setState(() => _tab = 'players'),
+                            child: const Text('PLAYERS'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: RectBtn(
-                          primary: _tab == 'stats',
-                          onTap: () => setState(() => _tab = 'stats'),
-                          child: const Text('STATS'),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: RectBtn(
+                            primary: _tab == 'stats',
+                            onTap: () => setState(() => _tab = 'stats'),
+                            child: const Text('STATS'),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (store.activeClubId == null)
-                    Card(
+                    const Card(
                       child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'Create a club first — players belong to a club.',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 10),
-                            RectBtn(
-                              onTap: () => _clubSheet(context, store),
-                              child: const Text('CREATE CLUB'),
-                            ),
-                          ],
+                        padding: EdgeInsets.all(20),
+                        child: Text(
+                          'Players, stats and squads unlock once the club exists.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12),
                         ),
                       ),
                     )
@@ -110,7 +103,7 @@ class _ClubScreenState extends State<ClubScreen> {
             children: [
               const Text('CLUB', style: TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
-              const Text('One club per profile. Players belong to the club.',
+              const Text('Players belong to the club.',
                   style: TextStyle(fontSize: 12)),
               const SizedBox(height: 8),
               RectBtn(
@@ -197,10 +190,17 @@ class _ClubScreenState extends State<ClubScreen> {
       children: [
         TextField(
           controller: _search,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Search players',
-            prefixIcon: Icon(Icons.search),
-            border: OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _search.text.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    tooltip: 'Clear search',
+                    onPressed: () => setState(_search.clear),
+                  ),
+            border: const OutlineInputBorder(),
           ),
           onChanged: (_) => setState(() {}),
         ),
@@ -286,12 +286,19 @@ class _ClubScreenState extends State<ClubScreen> {
           ),
         for (final p in list)
           Card(
+            margin: const EdgeInsets.only(bottom: 6),
             child: ListTile(
-              leading: CircleAvatar(child: Text(_initials(p.name))),
+              dense: true,
+              visualDensity: VisualDensity.compact,
+              leading: CircleAvatar(
+                  radius: 16,
+                  child: Text(_initials(p.name),
+                      style: const TextStyle(fontSize: 12))),
               title: Text(p.name,
                   style: const TextStyle(fontWeight: FontWeight.w800)),
               subtitle: Text(
-                  '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)} • ${store.careerMatches(p.id)} matches'),
+                  '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)} • ${store.careerMatches(p.id)} matches',
+                  style: const TextStyle(fontSize: 11)),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -302,8 +309,14 @@ class _ClubScreenState extends State<ClubScreen> {
                     onPressed: () => store.setPlayerActive(p.id, !p.active),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.edit_outlined),
+                    icon: const Icon(Icons.edit_outlined, size: 20),
                     onPressed: () => _renameSheet(context, store, p),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline,
+                        size: 20, color: Color(0xFFDC143C)),
+                    tooltip: 'Delete player',
+                    onPressed: () => _deleteConfirm(context, store, p),
                   ),
                 ],
               ),
@@ -317,8 +330,8 @@ class _ClubScreenState extends State<ClubScreen> {
   void _add(MatchStore store) {
     if (_name.text.trim().isEmpty) return;
     if (store.duplicateName(_name.text.trim())) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('${_name.text.trim()} already exists')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_name.text.trim()} already exists')));
       return;
     }
     final created = store.addPlayer(
@@ -381,6 +394,38 @@ class _ClubScreenState extends State<ClubScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _deleteConfirm(BuildContext context, MatchStore store, Player p) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('DELETE ${p.name}?'),
+        content: const Text(
+            'Removes them from the roster and club lists. Past matches keep their name.'),
+        actions: [
+          RectBtn(
+            primary: false,
+            onTap: () => Navigator.pop(context),
+            child: const Text('Keep'),
+          ),
+          RectBtn(
+            danger: true,
+            onTap: () {
+              final err = store.deletePlayer(p.id);
+              Navigator.pop(context);
+              if (err != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+              } else {
+                setState(() {});
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }

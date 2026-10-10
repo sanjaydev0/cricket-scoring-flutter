@@ -250,6 +250,91 @@ void main() {
     expect(s.innings!.wickets, before + 1);
   });
 
+  test('deletePlayer refuses in-play picks, deletes the rest', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final a = s.addPlayer(name: 'A1')!.id;
+    final b = s.addPlayer(name: 'B1')!.id;
+    expect(s.deletePlayer(a), isNull);
+    expect(s.clubRoster.map((p) => p.id), isNot(contains(a)));
+    // In a live squad: refused until removed from the XI.
+    s.draft = MatchConfig(
+        teamA: 'A',
+        teamB: 'B',
+        totalOvers: 2,
+        playersPerSide: 4,
+        trackPlayers: true,
+        squadA: [b],
+        squadB: []);
+    s.startMatch(s.draft);
+    expect(s.deletePlayer(b), isNotNull);
+  });
+
+  test('bowler latch fields persist through JSON', () {
+    final sh = InningsSheet(battingTeam: 'A', bowlingTeam: 'B')
+      ..promptedOver = 2
+      ..promptedBowler = 'p1'
+      ..lastBowlerId = 'p1';
+    final back = InningsSheet.fromJson(sh.toJson());
+    expect(back.promptedOver, 2);
+    expect(back.promptedBowler, 'p1');
+    expect(back.lastBowlerId, 'p1');
+  });
+
+  test('tracked scoring waits for openers and bowler', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [
+      for (final n in ['A1', 'A2', 'B1']) s.addPlayer(name: n)!.id
+    ];
+    s.draft = MatchConfig(
+        teamA: 'A',
+        teamB: 'B',
+        totalOvers: 2,
+        playersPerSide: 4,
+        trackPlayers: true,
+        squadA: [ids[0], ids[1]],
+        squadB: [ids[2]]);
+    s.startMatch(s.draft);
+    // No openers yet: the ball is refused, nothing recorded.
+    expect(s.score(action: 'RUNS', runs: 1), MatchStore.needSetupMsg);
+    expect(s.innings!.runs, 0);
+    s.setOpeners(ids[0], ids[1]);
+    expect(s.score(action: 'RUNS', runs: 1), MatchStore.needSetupMsg);
+    s.setBowler(ids[2]);
+    expect(s.score(action: 'RUNS', runs: 1), isNull);
+    expect(s.innings!.runs, 1);
+  });
+
+  test('a new over latches until a different bowler is picked', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [
+      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id
+    ];
+    s.draft = MatchConfig(
+        teamA: 'A',
+        teamB: 'B',
+        totalOvers: 2,
+        playersPerSide: 4,
+        trackPlayers: true,
+        squadA: [ids[0], ids[1]],
+        squadB: [ids[2], ids[3]]);
+    s.startMatch(s.draft);
+    s.setOpeners(ids[0], ids[1]);
+    s.setBowler(ids[2]);
+    for (var i = 0; i < 6; i++) {
+      expect(s.score(action: 'DOT'), isNull);
+    }
+    // Over done, same bowler still assigned: refused, nothing recorded.
+    expect(s.score(action: 'DOT'), MatchStore.needBowlerMsg);
+    expect(s.innings!.legalDeliveries, 6);
+    expect(s.setBowler(ids[2]), isNotNull);
+    expect(s.setBowler(ids[3]), isNull);
+    expect(s.score(action: 'DOT'), isNull);
+    expect(s.innings!.legalDeliveries, 7);
+  });
+
   test('no-ball default is 0', () {
     expect(Rules().noBallPenalty, 0);
     expect(Rules().widePenalty, 1);

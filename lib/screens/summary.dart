@@ -225,7 +225,11 @@ class ScorecardView extends StatelessWidget {
 
 class AwardsView extends StatelessWidget {
   final MatchStore store;
-  const AwardsView({required this.store, super.key});
+
+  /// Archives render read-only: tapping POTM must not write prefs through a
+  /// throwaway store.
+  final bool readOnly;
+  const AwardsView({required this.store, this.readOnly = false, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -285,25 +289,27 @@ class AwardsView extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w800)),
           ],
         ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final id in _candidates())
-              ChoiceChip(
-                label: Text(store.playerName(id)),
-                selected: m?.potmId == id ||
-                    (m?.potmId == null && suggestion == store.playerName(id)),
-                onSelected: (_) {
-                  if (store.match != null) {
-                    store.match!.potmId = id;
-                    store.persistOnly();
-                  }
-                },
-              ),
-          ],
-        ),
+        if (!readOnly) ...[
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final id in _candidates())
+                ChoiceChip(
+                  label: Text(store.playerName(id)),
+                  selected: m?.potmId == id ||
+                      (m?.potmId == null && suggestion == store.playerName(id)),
+                  onSelected: (_) {
+                    if (store.match != null) {
+                      store.match!.potmId = id;
+                      store.persistOnly();
+                    }
+                  },
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
