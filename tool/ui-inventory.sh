@@ -26,7 +26,7 @@ done
 [ "$missing" = 0 ] && echo "    all 17 sources present"
 
 echo "==> element count"
-grep -c 'class="copybtn"' "$PAGE" | sed 's/^/    cards: /'
+grep -cE 'class="(copybtn|cp)"' "$PAGE" | sed 's/^/    static cards: /'; grep -c '"GROUP"' "$PAGE" | sed 's/^/    catalog items: /'
 
 if [ "${1:-}" != "--no-open" ]; then
   echo "==> opening in Firefox"

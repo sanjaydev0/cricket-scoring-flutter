@@ -3,416 +3,173 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CricScore — UI Inventory (static, non-interactive)</title>
+<title>CricScore — UI map (simple)</title>
 <style>
-  :root{
-    --ink:#131316; --paper:#fff; --muted:#64748b; --line:#e2e8f0;
-    --carbon:#131316; --blue:#1d4ed8; --green:#15803d; --magenta:#ec008c;
-    --crimson:#dc143c; --amber:#ffba08; --purple:#7b2cbf; --cyan:#00b4d8;
-  }
   *{box-sizing:border-box}
-  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;background:#f4f5f7;color:var(--ink)}
-  header{position:sticky;top:0;z-index:10;background:var(--carbon);color:#fff;padding:14px 20px}
-  header h1{margin:0;font-size:18px;font-weight:900;letter-spacing:.5px}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;background:#f4f5f7;color:#131316}
+  header{position:sticky;top:0;z-index:10;background:#131316;color:#fff;padding:16px 20px}
+  header h1{margin:0;font-size:17px;font-weight:900}
   header p{margin:4px 0 0;font-size:12px;color:#cbd5e1}
-  .searchbar{display:flex;gap:8px;margin-top:10px}
-  .searchbar input{flex:1;font-size:16px;padding:10px 12px;border-radius:8px;border:2px solid #333;background:#1e1e22;color:#fff}
-  .searchbar input:focus{outline:2px solid var(--amber)}
-  nav.toc{position:sticky;top:132px;background:#fff;border-bottom:1px solid var(--line);padding:8px 20px;display:flex;gap:8px;flex-wrap:wrap;font-size:12px}
-  nav.toc a{color:var(--blue);text-decoration:none;font-weight:700}
-  main{max-width:1060px;margin:0 auto;padding:20px}
-  section{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
-  section h2{margin:0 0 4px;font-size:16px;font-weight:900}
-  section .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-  .card{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}
-  .card h3{margin:0 0 2px;font-size:13px}
-  .card .id{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#0e7490;word-break:break-all}
-  .card .ref{font-size:11px;color:var(--muted);margin:2px 0 8px}
-  .card p{font-size:12px;margin:6px 0 0;color:#334155}
-  .mock{pointer-events:none;user-select:none;border:1px dashed #cbd5e1;border-radius:8px;padding:10px;background:#fafbfc;margin-top:6px}
-  .copybtn{margin-top:8px;font-size:11px;font-weight:800;padding:6px 10px;border-radius:6px;border:1.5px solid #000;background:#fff;cursor:pointer}
+  header input{width:100%;margin-top:10px;font-size:17px;padding:12px;border-radius:10px;border:2px solid #333;background:#1e1e22;color:#fff}
+  header input:focus{outline:2px solid #ffba08}
+  #count{font-size:12px;color:#cbd5e1;margin:6px 0 0}
+  .quick{max-width:1000px;margin:12px auto 0;padding:0 16px;display:flex;gap:8px;flex-wrap:wrap}
+  .quick button{font-size:12px;font-weight:800;padding:8px 12px;border-radius:999px;border:1.5px solid #000;background:#fff;cursor:pointer}
+  main{max-width:1000px;margin:0 auto;padding:12px 16px 40px}
+  h2{font-size:13px;margin:20px 4px 8px;letter-spacing:1px;color:#475569}
+  .row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:9px 12px;margin-bottom:6px}
+  .dot{width:34px;height:34px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#fff;background:#64748b}
+  .txt{flex:1;min-width:0}
+  .txt b{font-size:13px;display:block}
+  .txt code{font-size:11px;color:#0e7490}
+  .txt span{font-size:11px;color:#64748b;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cp{flex:none;font-size:11px;font-weight:800;padding:8px 10px;border-radius:8px;border:1.5px solid #000;background:#fff;cursor:pointer}
   .hidden{display:none!important}
-  /* ------- mock primitives (pictures only) ------- */
-  .m-appbar{background:var(--blue);color:#fff;font-weight:900;font-size:13px;padding:10px 12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
-  .m-appbar .icons{letter-spacing:6px}
-  .m-hero{background:var(--blue);color:#fff;border-radius:8px;padding:14px;text-align:center}
-  .m-hero .score{font-size:44px;font-weight:900;letter-spacing:1px}
-  .m-hero .meta{font-size:11px;opacity:.9}
-  .m-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-  .m-key{border-radius:10px;padding:10px 4px;text-align:center;font-weight:900;font-size:13px;border:2px solid #000}
-  .m-key small{display:block;font-weight:700;font-size:9px}
-  .m-controls{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px}
-  .m-undo{width:56px;height:56px;border-radius:16px;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px}
-  .m-players{width:56px;height:56px;border-radius:16px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900}
-  .m-strip{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;gap:6px;align-items:center}
-  .m-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff}
-  .m-rectbtn{background:var(--carbon);color:#fff;font-weight:800;font-size:12px;padding:10px;border-radius:8px;text-align:center}
-  .m-rectbtn.sec{background:#fff;color:#000;border:1.5px solid #000}
-  .m-chip{display:inline-block;border:1.5px solid #000;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;margin:2px}
-  .m-chip.on{background:var(--carbon);color:#fff}
-  .m-sheet{border:2px solid #000;border-radius:12px 12px 0 0;padding:10px;background:#fff}
-  .m-banner{background:var(--carbon);color:#fff;font-weight:900;font-size:11px;letter-spacing:1px;padding:10px;border-radius:8px}
-  .m-banner.blue{background:var(--blue)}
-  .m-table{width:100%;border-collapse:collapse;font-size:11px}
-  .m-table th{text-align:left;font-size:10px;color:var(--muted);border-bottom:1px solid var(--line);padding:4px}
-  .m-table td{border-bottom:1px solid #f1f5f9;padding:4px}
-  .m-table td.n,.m-table th.n{text-align:right}
-  .sw{display:inline-block;width:34px;height:22px;border-radius:6px;vertical-align:middle;margin-right:6px;border:1px solid #000}
-  .fontrow{padding:8px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
-  .fontrow .big{font-size:26px;font-weight:900}
-  kbd{background:#eee;border:1px solid #ccc;border-radius:4px;padding:0 5px;font-size:11px}
-  footer{color:var(--muted);font-size:12px;text-align:center;padding:20px}
+  footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 </style>
 </head>
 <body>
 <header>
-  <h1>CRICSCORE · UI INVENTORY</h1>
-  <p>Static pictures only — every mock below is non-interactive (<kbd>pointer-events:none</kbd>). Search an element, copy its ID, paste it back to change / modify / remove it.</p>
-  <div class="searchbar">
-    <input id="q" type="search" placeholder="Search: e.g. wicket, keypad, hero, sheet, font, ball badge…" autocomplete="off">
-  </div>
-  <p id="count" style="margin:6px 0 0"></p>
+  <h1>CRICSCORE · UI MAP</h1>
+  <p>Type to find anything. Tap COPY, paste the ID back to request a change. <b>?</b> + Enter = random element.</p>
+  <input id="q" type="search" placeholder="Search… (try: wicket, four, hero, sheet, font, badge)" autocomplete="off">
+  <p id="count"></p>
 </header>
-<nav class="toc">
-  <a href="#screens">Screens</a><a href="#keypad">Keypad</a><a href="#widgets">Widgets</a><a href="#sheets">Sheets &amp; dialogs</a><a href="#type">Typography</a><a href="#theme">Theme presets</a><a href="#badges">Ball badges</a><a href="#states">States &amp; banners</a><a href="#club">Club &amp; players</a><a href="#summary">Summary &amp; awards</a><a href="#viewer">Viewer &amp; rooms</a>
-</nav>
-<main>
-
-<!-- ================= SCREENS ================= -->
-<section id="screens">
-  <h2>1 · Screens / routes</h2>
-  <div class="sub">One card per route in <code>lib/main.dart:57-66</code>. Mock = app bar + hero + body skeleton.</div>
-  <div class="grid">
-    <div class="card" data-tags="home start resume archives watch live club">
-      <h3>Home</h3><div class="id">screen.home</div><div class="ref">lib/screens/home.dart · route <code>/</code></div>
-      <div class="mock"><div class="m-appbar"><span>CRICSCORE</span><span class="icons">◐ ⚙</span></div><div style="height:8px"></div><div class="m-rectbtn">START NEW MATCH</div><div style="height:6px"></div><div class="m-rectbtn sec">RESUME • …</div><div style="height:6px"></div><div class="m-rectbtn sec">WATCH LIVE SCORE</div><div style="height:6px"></div><div class="m-rectbtn sec">CLUB + PLAYERS</div><div style="height:6px"></div><div class="m-rectbtn sec">ARCHIVES</div></div>
-      <p>Entry hub. Settings gear opens the settings sheet (dark mode, ask-fielder).</p>
-      <button class="copybtn" data-id="screen.home">COPY ID</button>
-    </div>
-    <div class="card" data-tags="setup match config teams overs players rules squad track">
-      <h3>Match setup</h3><div class="id">screen.setup</div><div class="ref">lib/screens/setup.dart · route <code>/setup</code></div>
-      <div class="mock"><div class="m-appbar"><span>MATCH SETUP</span><span></span></div><div style="height:8px"></div><div class="m-rectbtn sec">TEAMS A / B + BATTING FIRST</div><div style="height:6px"></div><div class="m-rectbtn sec">FORMAT • overs / players / double-side</div><div style="height:6px"></div><div class="m-rectbtn sec">TRACK PLAYERS + XI PICKERS</div><div style="height:6px"></div><div class="m-rectbtn">START SCORING</div></div>
-      <p>Track-players toggle + Team A/B XI chip pickers with roster search live here.</p>
-      <button class="copybtn" data-id="screen.setup">COPY ID</button>
-    </div>
-    <div class="card" data-tags="scoring keypad hero strip live umpire main">
-      <h3>Scoring (umpire screen)</h3><div class="id">screen.scoring</div><div class="ref">lib/screens/scoring.dart · route <code>/scoring</code></div>
-      <div class="mock"><div class="m-appbar"><span>INN 1 • TEAM</span><span class="icons">⇪ ♪ ☰ 🎨</span></div><div style="height:8px"></div><div class="m-hero"><div class="score">54/1</div><div class="meta">OVERS 3.2/6 · CRR 16.20 · EXTRAS 0</div></div></div>
-      <p>Hero tile, over strip, keypad grid, UNDO + PLAYERS + EXTRAS row. The screen you umpire from.</p>
-      <button class="copybtn" data-id="screen.scoring">COPY ID</button>
-    </div>
-    <div class="card" data-tags="scoreboard hero shared viewer scorer same widget">
-      <h3>Scoreboard (shared hero+strip)</h3><div class="id">screen.scoreboard</div><div class="ref">lib/screens/scoreboard.dart</div>
-      <div class="mock"><div class="m-hero"><div class="score">54/1</div><div class="meta">TARGET Need 12 off 16 · FREE HIT</div></div><div style="height:6px"></div><div class="m-strip"><span class="m-badge" style="background:#15803d">4</span><span class="m-badge" style="background:#131316">0</span><span class="m-badge" style="background:#dc143c">W</span><span style="font-size:11px;font-weight:800">3r • 1w ›</span></div></div>
-      <p>One widget rendered by BOTH scorer and viewer — they can never drift apart.</p>
-      <button class="copybtn" data-id="screen.scoreboard">COPY ID</button>
-    </div>
-    <div class="card" data-tags="break innings target chase commence">
-      <h3>Innings break</h3><div class="id">screen.break</div><div class="ref">lib/screens/break_result.dart:7 · route <code>/break</code></div>
-      <div class="mock"><div class="m-appbar"><span>INNINGS BREAK</span><span></span></div><div style="height:8px"></div><div class="m-hero"><div class="score">78/6</div><div class="meta">CHASE TARGET 79</div></div><div style="height:6px"></div><div class="m-rectbtn">COMMENCE 2ND INNINGS</div></div>
-      <p>Shows innings-1 scorecard when tracking; 10s countdown banner with NEXT lives on scoring.</p>
-      <button class="copybtn" data-id="screen.break">COPY ID</button>
-    </div>
-    <div class="card" data-tags="result finished winner scorecard awards share whatsapp">
-      <h3>Result / match summary</h3><div class="id">screen.result</div><div class="ref">lib/screens/break_result.dart:91 · route <code>/result</code> · tables in <code>summary.dart</code></div>
-      <div class="mock"><div class="m-appbar"><span>MATCH FINISHED</span><span></span></div><div style="height:8px"></div><div class="m-hero"><div class="score">TITANS WON</div><div class="meta">Won by 6 wickets</div></div><div style="height:6px"></div><div class="m-rectbtn sec">COPY SCORECARD (WHATSAPP)</div></div>
-      <p>Scorecard tables, fall of wickets, awards, player-of-match chips, share-copy.</p>
-      <button class="copybtn" data-id="screen.result">COPY ID</button>
-    </div>
-    <div class="card" data-tags="history archives past matches detail delete">
-      <h3>Archives</h3><div class="id">screen.history</div><div class="ref">lib/screens/history.dart · route <code>/history</code></div>
-      <div class="mock"><div class="m-appbar"><span>ARCHIVES</span><span></span></div><div style="height:8px"></div><div class="m-rectbtn sec">78/6 vs TITANS · Oct 4 ▸</div><div style="height:6px"></div><div class="m-rectbtn sec">54/1 vs … · Oct 3 ▸</div></div>
-      <p>Dated list, tap for detail, delete per row.</p>
-      <button class="copybtn" data-id="screen.history">COPY ID</button>
-    </div>
-    <div class="card" data-tags="club roster players profiles search stats career">
-      <h3>Club + players</h3><div class="id">screen.club</div><div class="ref">lib/screens/club.dart · route <code>/club</code></div>
-      <div class="mock"><div class="m-appbar"><span>CLUB</span><span></span></div><div style="height:8px"></div><div class="m-rectbtn sec">PLAYERS | STATS</div><div style="height:6px"></div><div class="m-rectbtn sec">🔍 Search players… · + ADD · BULK ADD</div></div>
-      <p>Local PIN profiles, club, roster rows, career profile sheet per player.</p>
-      <button class="copybtn" data-id="screen.club">COPY ID</button>
-    </div>
-    <div class="card" data-tags="join watch code viewer live readonly">
-      <h3>Watch live (join)</h3><div class="id">screen.join</div><div class="ref">lib/screens/viewer.dart · route <code>/join</code></div>
-      <div class="mock"><div class="m-appbar"><span>WATCH LIVE</span><span></span></div><div style="height:8px"></div><div class="m-rectbtn sec" style="font-size:20px;letter-spacing:8px">K 7 M 2 P</div><div style="height:6px"></div><div class="m-rectbtn">WATCH</div></div>
-      <p>5-char code field (upper-cased, spaced) → read-only ViewerScreen. No keypad by construction.</p>
-      <button class="copybtn" data-id="screen.join">COPY ID</button>
-    </div>
-  </div>
-</section>
-
-<!-- ================= KEYPAD ================= -->
-<section id="keypad">
-  <h2>2 · Scoring keypad</h2>
-  <div class="sub"><code>lib/screens/scoring.dart:150-234</code> — 3-column grid, 72px targets, carbon rect buttons app-wide.</div>
-  <div class="grid">
-    <div class="card" data-tags="keypad grid runs dots fours six wide noball wicket">
-      <h3>Key grid</h3><div class="id">scoring.keypad.grid</div><div class="ref">lib/screens/scoring.dart:150</div>
-      <div class="mock"><div class="m-keypad">
-        <div class="m-key" style="background:#fff">0<small>DOT</small></div><div class="m-key" style="background:#fff">1<small>RUN</small></div><div class="m-key" style="background:#fff">2<small>RUNS</small></div>
-        <div class="m-key" style="background:#fff">3<small>RUNS</small></div><div class="m-key" style="background:#15803d;color:#fff">4<small>FOUR</small></div><div class="m-key" style="background:#ec008c;color:#fff">6<small>SIX</small></div>
-        <div class="m-key" style="background:#ffba08">WD<small>+1</small></div><div class="m-key" style="background:#7b2cbf;color:#fff">NB<small>+0</small></div><div class="m-key" style="background:#dc143c;color:#fff">W<small>WICKET</small></div>
-      </div></div>
-      <p>IDs: <code>scoring.keypad.btn-0 … btn-6, btn-wd, btn-nb, btn-w</code>. NB arms the next ball (label flips to ARMED).</p>
-      <button class="copybtn" data-id="scoring.keypad.grid">COPY ID</button>
-    </div>
-    <div class="card" data-tags="undo extras players controls bottom row">
-      <h3>Control row (below keypad)</h3><div class="id">scoring.controls</div><div class="ref">lib/screens/scoring.dart:236</div>
-      <div class="mock"><div class="m-controls"><div class="m-players">👥</div><div class="m-undo">↩</div><div class="m-rectbtn sec" style="padding:10px 18px">EXTRAS</div></div></div>
-      <p><code>scoring.controls.btn-players</code> (blue, tracking only) · <code>scoring.controls.btn-undo</code> (carbon 72px) · <code>scoring.controls.btn-extras</code> (tonal, advanced-extras setting).</p>
-      <button class="copybtn" data-id="scoring.controls">COPY ID</button>
-    </div>
-    <div class="card" data-tags="appbar actions share sound overs style font room code">
-      <h3>Scoring app bar</h3><div class="id">scoring.appbar</div><div class="ref">lib/screens/scoring.dart:40</div>
-      <div class="mock"><div class="m-appbar"><span>INN 1 • EAGLES XI</span><span class="icons">⇪ ♪ ☰ 🎨</span></div></div>
-      <p>Actions: <code>scoring.appbar.share</code> → room code chip + stop-sharing · <code>scoring.appbar.sound</code> (dynamic on/off icon) · <code>scoring.appbar.overs</code> · <code>scoring.appbar.look</code>.</p>
-      <button class="copybtn" data-id="scoring.appbar">COPY ID</button>
-    </div>
-  </div>
-</section>
-
-<!-- ================= WIDGETS ================= -->
-<section id="widgets">
-  <h2>3 · Shared widgets</h2>
-  <div class="sub"><code>lib/screens/widgets.dart</code> — every mock below is a picture; the real ones are the only buttons in the app.</div>
-  <div class="grid">
-    <div class="card" data-tags="rectbtn button carbon primary secondary danger">
-      <h3>RectBtn</h3><div class="id">widget.rectbtn</div><div class="ref">lib/screens/widgets.dart:10 · 8px corners, min 64×52</div>
-      <div class="mock"><div class="m-rectbtn">PRIMARY</div><div style="height:6px"></div><div class="m-rectbtn sec">SECONDARY</div></div>
-      <p>Variants: primary (carbon/white), secondary (surface + black border), danger (error red).</p>
-      <button class="copybtn" data-id="widget.rectbtn">COPY ID</button>
-    </div>
-    <div class="card" data-tags="keybtn key 72px glare border">
-      <h3>KeyBtn</h3><div class="id">widget.keybtn</div><div class="ref">lib/screens/widgets.dart:187 · 72px, strong borders for glare</div>
-      <div class="mock"><div class="m-key" style="background:#fff">4<small>FOUR</small></div></div>
-      <p>Props: label / sub / armed / color / fg / radius (per preset <code>keyRadius</code>).</p>
-      <button class="copybtn" data-id="widget.keybtn">COPY ID</button>
-    </div>
-    <div class="card" data-tags="teamdot team color blue red">
-      <h3>TeamDot</h3><div class="id">widget.teamdot</div><div class="ref">lib/screens/widgets.dart:46 · store.teamAColor/teamBColor</div>
-      <div class="mock"><span class="m-badge" style="background:#2563eb">●</span> <span class="m-badge" style="background:#dc2626">●</span> <span style="font-size:11px">blue = Team A · red = Team B</span></div>
-      <p>Fixed dots for side differentiation, sunlight-safe.</p>
-      <button class="copybtn" data-id="widget.teamdot">COPY ID</button>
-    </div>
-    <div class="card" data-tags="stepper overs players row minus plus">
-      <h3>StepperRow</h3><div class="id">widget.stepperrow</div><div class="ref">lib/screens/widgets.dart:69</div>
-      <div class="mock"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:12px"><span>OVERS</span><span>− 6 +</span></div></div>
-      <p>Setup + mid-match config numeric rows (overs 1–50, players 2–15).</p>
-      <button class="copybtn" data-id="widget.stepperrow">COPY ID</button>
-    </div>
-    <div class="card" data-tags="overstrip over strip scroll glide fade undo silent frozen">
-      <h3>OverStrip</h3><div class="id">widget.overstrip</div><div class="ref">lib/screens/scoreboard.dart (moved from scoring)</div>
-      <div class="mock"><div class="m-strip"><span class="m-badge" style="background:#131316">0</span><span class="m-badge" style="background:#a5f3fc;color:#000">1</span><span class="m-badge" style="background:#15803d">4</span><span class="m-badge" style="background:#ffba08;color:#000">WD</span><span class="m-badge" style="background:#7b2cbf">NB</span><span class="m-badge" style="background:#dc143c">W</span></div></div>
-      <p>Fixed 6-ball window; 900ms glide; fade on forward rollover only, never on undo (<code>ballGen</code> gate); frozen when innings complete.</p>
-      <button class="copybtn" data-id="widget.overstrip">COPY ID</button>
-    </div>
-    <div class="card" data-tags="celebrate animation pop flash glow shake blink glitch crt slowmo off numerals">
-      <h3>Celebrate (hero numerals)</h3><div class="id">widget.celebrate</div><div class="ref">lib/screens/widgets.dart:271 · modes: off pop flash glow shake blink glitch crt slowmo</div>
-      <div class="mock"><div class="m-hero"><div class="score">54/1</div><div class="meta">runs &amp; wickets animate independently — layout never shifts</div></div></div>
-      <p>Transform/Opacity/ShaderMask only. Eager controller (lazy init crashed on dispose with mode off).</p>
-      <button class="copybtn" data-id="widget.celebrate">COPY ID</button>
-    </div>
-    <div class="card" data-tags="responsive center maxwidth layout">
-      <h3>ResponsiveCenter</h3><div class="id">widget.responsivecenter</div><div class="ref">lib/screens/widgets.dart:238 · maxWidth 640 (480 join)</div>
-      <div class="mock"><div style="border:2px dashed #94a3b8;border-radius:8px;padding:10px;text-align:center;font-size:11px">content column ≤ 640px, centered</div></div>
-      <p>Every screen body sits inside one.</p>
-      <button class="copybtn" data-id="widget.responsivecenter">COPY ID</button>
-    </div>
-  </div>
-</section>
-
-<!-- ================= SHEETS ================= -->
-<section id="sheets">
-  <h2>4 · Sheets &amp; dialogs</h2>
-  <div class="sub">Bottom sheets rise to mid-screen; dialogs center. Wicket family lives in two files.</div>
-  <div class="grid">
-    <div class="card" data-tags="wicket dialog dismissal grid bowled caught runout lbw stumped hit">
-      <h3>Wicket dialog (untracked)</h3><div class="id">sheet.wicket</div><div class="ref">lib/screens/sheets.dart:11 · complex/simple toggle</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">RECORD DISMISSAL</b><div class="m-keypad" style="margin-top:8px"><div class="m-key" style="background:#fff">BOWLED</div><div class="m-key" style="background:#fff">CAUGHT</div><div class="m-key" style="background:#fff">RUN OUT ›</div><div class="m-key" style="background:#fff">LBW</div></div></div></div>
-      <p>Simple mode: Bowled + Run Out only. No-ball armed → run-out only (laws).</p>
-      <button class="copybtn" data-id="sheet.wicket">COPY ID</button>
-    </div>
-    <div class="card" data-tags="runout runs completed direct dialog">
-      <h3>Run-out dialog</h3><div class="id">sheet.runout</div><div class="ref">lib/screens/sheets.dart:79 · W, W+1, W+2, W+3</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">RUN OUT (1+W, 2+W)</b><div class="m-keypad" style="margin-top:8px"><div class="m-key" style="background:#fff">0+W</div><div class="m-key" style="background:#fff">1+W</div><div class="m-key" style="background:#fff">2+W</div><div class="m-key" style="background:#fff">3+W</div></div></div></div>
-      <p>Strip badges read <code>W+n</code>; runs count to team + batter.</p>
-      <button class="copybtn" data-id="sheet.runout">COPY ID</button>
-    </div>
-    <div class="card" data-tags="dismissal tracked one tap next batter fielder catcher crossed">
-      <h3>Dismissal sheet (tracked, one-tap)</h3><div class="id">sheet.dismissal</div><div class="ref">lib/screens/player_sheets.dart</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">OUT • ROHIT ★ — tap a name to commit</b><div style="margin-top:6px"><span class="m-chip on">Bowled</span><span class="m-chip">Caught</span><span class="m-chip">Run out</span><span class="m-chip">LBW</span></div><div style="margin-top:6px"><div class="m-rectbtn sec">1 · Vikram (waiting)</div><div style="height:4px"></div><div class="m-rectbtn sec">2 · Deepak (waiting)</div></div></div></div>
-      <p>Type chips (Bowled preselected) + optional fielder (caught/stumped/run-out, <code>askFielder</code> OFF by default) + crossed toggle for run-outs. Tapping a name commits wicket + incoming batter together.</p>
-      <button class="copybtn" data-id="sheet.dismissal">COPY ID</button>
-    </div>
-    <div class="card" data-tags="bowler picker over done figures econ consecutive grey">
-      <h3>Bowler picker (auto after over)</h3><div class="id">sheet.bowler</div><div class="ref">lib/screens/player_sheets.dart · auto=true on over end</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">OVER DONE — NEXT BOWLER</b><div style="margin-top:6px"><div class="m-rectbtn sec">Ravi 1-0-14-1 · Econ 14.00</div><div style="height:4px"></div><div class="m-rectbtn sec">Amit 0-1-6-0 · Econ 12.00</div></div></div></div>
-      <p>Just-bowled player greyed (consecutive overs illegal). One tap assigns the whole over. Manual via CHANGE BOWLER / SET BOWLER.</p>
-      <button class="copybtn" data-id="sheet.bowler">COPY ID</button>
-    </div>
-    <div class="card" data-tags="openers strikers innings start squad">
-      <h3>Innings-start picker</h3><div class="id">sheet.openers</div><div class="ref">lib/screens/player_sheets.dart · banner SET BATTERS + BOWLER</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">START INNINGS • EAGLES XI</b><div style="margin-top:6px"><span class="m-chip on">Rohit ★</span><span class="m-chip">Vikram</span><span class="m-chip">Deepak</span></div></div></div>
-      <p>Striker + non-striker + opening bowler chips, START commits. Blue banner prompts until set.</p>
-      <button class="copybtn" data-id="sheet.openers">COPY ID</button>
-    </div>
-    <div class="card" data-tags="player stats bottom sheet striker nonstriker partnership swap">
-      <h3>Player stats sheet</h3><div class="id">sheet.playerstats</div><div class="ref">lib/screens/player_sheets.dart:12 · opened left of UNDO</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">PLAYERS</b><div style="margin-top:6px"><div class="m-rectbtn sec">STRIKER ★ Rohit 24 (18) · 4s 3 6s 1 SR 133.3</div><div style="height:4px"></div><div class="m-rectbtn sec">BOWLER Ravi 1-0-14-1 · Econ 14.00</div></div></div></div>
-      <p>Read-only numbers; only SWAP ENDS / CHANGE BOWLER mutate. Partnership line below.</p>
-      <button class="copybtn" data-id="sheet.playerstats">COPY ID</button>
-    </div>
-    <div class="card" data-tags="overs history list badges">
-      <h3>Overs history</h3><div class="id">sheet.overs</div><div class="ref">lib/screens/sheets.dart:135</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">OVERS HISTORY // INNINGS 1</b><div style="margin-top:6px"><div class="m-strip"><span class="m-badge" style="background:#131316">0</span><span class="m-badge" style="background:#15803d">4</span><span class="m-badge" style="background:#dc143c">W</span></div></div></div></div>
-      <p>Per-over cards with badge wraps + totals.</p>
-      <button class="copybtn" data-id="sheet.overs">COPY ID</button>
-    </div>
-    <div class="card" data-tags="extras byes legbyes wide noball pills">
-      <h3>Extras sheet</h3><div class="id">sheet.extras</div><div class="ref">lib/screens/sheets.dart:197 · advanced-extras setting</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">BYES · LEG-BYES · WIDE+ · NO-BALL+</b><div style="margin-top:6px"><span class="m-chip">B1</span><span class="m-chip">LB1</span><span class="m-chip">WD+1</span><span class="m-chip">NB+4</span></div></div></div>
-      <p>Pill groups B1/B2/B4, LB1/2/4, WD(+n), NB(+n).</p>
-      <button class="copybtn" data-id="sheet.extras">COPY ID</button>
-    </div>
-    <div class="card" data-tags="settings midmatch config overs players declare abandon">
-      <h3>Mid-match settings</h3><div class="id">sheet.settings</div><div class="ref">lib/screens/sheets.dart:259</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">MID-MATCH CONFIG</b><div style="margin-top:6px"><div class="m-rectbtn sec">OVERS / PLAYERS / DOUBLE-SIDE / WIDE / NB / FREE HIT / LAST MAN</div><div style="height:4px"></div><div class="m-rectbtn">✓ SAVE</div></div></div></div>
-      <p>Steppers + segmented ON/OFF, SAVE validates, declare-winner + abandon below.</p>
-      <button class="copybtn" data-id="sheet.settings">COPY ID</button>
-    </div>
-    <div class="card" data-tags="look style font celebration preset palette">
-      <h3>Look sheet</h3><div class="id">sheet.look</div><div class="ref">lib/screens/sheets.dart:525 · palette icon</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">STYLE · SCORE FONT · CELEBRATION</b><div style="margin-top:6px"><span class="m-chip on">Umpire Pro</span><span class="m-chip">Solar</span><span class="m-chip">Game Boy</span></div></div></div>
-      <p>ChoiceChips for 7 presets, 10 fonts (rendered 142/7), 9 celebrations.</p>
-      <button class="copybtn" data-id="sheet.look">COPY ID</button>
-    </div>
-  </div>
-</section>
-
-<!-- ================= TYPE ================= -->
-<section id="type">
-  <h2>5 · Typography &amp; fonts</h2>
-  <div class="sub"><code>lib/theme.dart:18-41</code> — 10 bundled OFL faces for score numerals; UI text is system + w800/w900.</div>
-  <div class="grid" id="fontgrid">
-    <div class="card" data-tags="font stadium default score numerals"><h3>Stadium Sans (default)</h3><div class="id">font.stadium</div><div class="ref">family null → system fallback</div><div class="mock"><div class="fontrow"><div class="big">142/7</div><div style="font-size:11px">Hero 68px w900 tabular · card 18px · badge 12px</div></div></div><button class="copybtn" data-id="font.stadium">COPY ID</button></div>
-    <div class="card" data-tags="font anton condensed"><h3>Condensed Punch</h3><div class="id">font.condensed</div><div class="ref">AntonCond</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.condensed">COPY ID</button></div>
-    <div class="card" data-tags="font archivo block heavy"><h3>Block Heavy</h3><div class="id">font.block</div><div class="ref">ArchivoBlack</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.block">COPY ID</button></div>
-    <div class="card" data-tags="font plex mono ledger"><h3>Mono Ledger</h3><div class="id">font.ledger</div><div class="ref">PlexMono</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.ledger">COPY ID</button></div>
-    <div class="card" data-tags="font chakra tech"><h3>Tech Board</h3><div class="id">font.tech</div><div class="ref">ChakraPetch</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.tech">COPY ID</button></div>
-    <div class="card" data-tags="font bebas tall"><h3>Tall Ticket</h3><div class="id">font.tall</div><div class="ref">BebasTall</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.tall">COPY ID</button></div>
-    <div class="card" data-tags="font alfa slab"><h3>Ultra Slab</h3><div class="id">font.slab</div><div class="ref">AlfaSlab</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.slab">COPY ID</button></div>
-    <div class="card" data-tags="font audiowide"><h3>Wide Circuit</h3><div class="id">font.wide</div><div class="ref">Audiowide</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.wide">COPY ID</button></div>
-    <div class="card" data-tags="font barlow broadcast"><h3>Broadcast</h3><div class="id">font.broadcast</div><div class="ref">BarlowCond</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.broadcast">COPY ID</button></div>
-    <div class="card" data-tags="font fjalla ticket narrow"><h3>Narrow Board</h3><div class="id">font.ticket</div><div class="ref">Fjalla</div><div class="mock"><div class="fontrow"><div class="big">142/7</div></div></div><button class="copybtn" data-id="font.ticket">COPY ID</button></div>
-  </div>
-</section>
-
-<!-- ================= THEME ================= -->
-<section id="theme">
-  <h2>6 · Style presets</h2>
-  <div class="sub"><code>lib/theme.dart:72+</code> — 7 presets. Every one glare-proof: saturated fills, near-black/white text, no pastels.</div>
-  <div class="grid">
-    <div class="card" data-tags="preset umpire pro blue default"><h3>Umpire Pro</h3><div class="id">theme.umpire</div><div class="mock"><span class="sw" style="background:#1d4ed8"></span><span class="sw" style="background:#fff"></span>hero blue / white · keys default · radius 14</div><button class="copybtn" data-id="theme.umpire">COPY ID</button></div>
-    <div class="card" data-tags="preset solar flare"><h3>Solar Flare</h3><div class="id">theme.solar</div><div class="mock"><span class="sw" style="background:#f97316"></span><span class="sw" style="background:#131316"></span>high-sun preset</div><button class="copybtn" data-id="theme.solar">COPY ID</button></div>
-    <div class="card" data-tags="preset pure white"><h3>Pure White</h3><div class="id">theme.purewhite</div><div class="mock"><span class="sw" style="background:#fff"></span><span class="sw" style="background:#131316"></span>max-glare preset</div><button class="copybtn" data-id="theme.purewhite">COPY ID</button></div>
-    <div class="card" data-tags="preset crimson court red"><h3>Crimson Court</h3><div class="id">theme.crimson</div><div class="mock"><span class="sw" style="background:#dc143c"></span><span class="sw" style="background:#fff"></span>red hero</div><button class="copybtn" data-id="theme.crimson">COPY ID</button></div>
-    <div class="card" data-tags="preset nothing mono"><h3>Nothing Mono</h3><div class="id">theme.nothing</div><div class="mock"><span class="sw" style="background:#e5e5e5"></span><span class="sw" style="background:#131316"></span>mono minimal</div><button class="copybtn" data-id="theme.nothing">COPY ID</button></div>
-    <div class="card" data-tags="preset game boy retro green"><h3>Game Boy</h3><div class="id">theme.gameboy</div><div class="mock"><span class="sw" style="background:#9bbc0f"></span><span class="sw" style="background:#0f380f"></span>retro handheld</div><button class="copybtn" data-id="theme.gameboy">COPY ID</button></div>
-    <div class="card" data-tags="preset pro red"><h3>Pro Red</h3><div class="id">theme.prored</div><div class="mock"><span class="sw" style="background:#8b0000"></span><span class="sw" style="background:#fff"></span>deep red</div><button class="copybtn" data-id="theme.prored">COPY ID</button></div>
-  </div>
-</section>
-
-<!-- ================= BADGES ================= -->
-<section id="badges">
-  <h2>7 · Ball badges (over strip language)</h2>
-  <div class="sub"><code>lib/screens/widgets.dart:123</code> — 36px circles, fixed colors. Ask before changing: badge colors are load-bearing.</div>
-  <div class="grid">
-    <div class="card" data-tags="badge dot carbon black 0"><h3>Dot</h3><div class="id">badge.0</div><div class="mock"><span class="m-badge" style="background:#131316">0</span> carbon #131316 / white</div><button class="copybtn" data-id="badge.0">COPY ID</button></div>
-    <div class="card" data-tags="badge runs cyan 1 2 3"><h3>Runs 1/2/3</h3><div class="id">badge.runs</div><div class="mock"><span class="m-badge" style="background:#a5f3fc;color:#000">1</span> <span class="m-badge" style="background:#22d3ee">2</span> <span class="m-badge" style="background:#0e7490">3</span></div><button class="copybtn" data-id="badge.runs">COPY ID</button></div>
-    <div class="card" data-tags="badge four green boundary"><h3>Four / N4</h3><div class="id">badge.4</div><div class="mock"><span class="m-badge" style="background:#15803d">4</span> deep green / white</div><button class="copybtn" data-id="badge.4">COPY ID</button></div>
-    <div class="card" data-tags="badge six magenta"><h3>Six / N6</h3><div class="id">badge.6</div><div class="mock"><span class="m-badge" style="background:#ec008c">6</span> hyper magenta / white</div><button class="copybtn" data-id="badge.6">COPY ID</button></div>
-    <div class="card" data-tags="badge wicket crimson w runout"><h3>Wicket / W+n</h3><div class="id">badge.w</div><div class="mock"><span class="m-badge" style="background:#dc143c">W</span> <span class="m-badge" style="background:#dc143c;font-size:8px">W+2</span> crimson / white</div><button class="copybtn" data-id="badge.w">COPY ID</button></div>
-    <div class="card" data-tags="badge wide yellow wd"><h3>Wide</h3><div class="id">badge.wd</div><div class="mock"><span class="m-badge" style="background:#ffba08;color:#000">WD</span> amber / black</div><button class="copybtn" data-id="badge.wd">COPY ID</button></div>
-    <div class="card" data-tags="badge noball purple nb n"><h3>No-ball</h3><div class="id">badge.nb</div><div class="mock"><span class="m-badge" style="background:#7b2cbf">NB</span> purple / white</div><button class="copybtn" data-id="badge.nb">COPY ID</button></div>
-    <div class="card" data-tags="badge bye legbye cyan"><h3>Bye / Leg-bye</h3><div class="id">badge.bye</div><div class="mock"><span class="m-badge" style="background:#00b4d8;color:#000">B1</span> sky / black</div><button class="copybtn" data-id="badge.bye">COPY ID</button></div>
-  </div>
-</section>
-
-<!-- ================= STATES ================= -->
-<section id="states">
-  <h2>8 · States &amp; banners</h2>
-  <div class="sub">Transient UI — the things screenshots miss.</div>
-  <div class="grid">
-    <div class="card" data-tags="nb armed purple banner"><h3>NB ARMED</h3><div class="id">state.nbarmed</div><div class="mock"><div class="m-banner" style="background:#7b2cbf">NB ARMED</div></div><p>Next ball resolves as no-ball; wicket grid collapses to run-out only.</p><button class="copybtn" data-id="state.nbarmed">COPY ID</button></div>
-    <div class="card" data-tags="free hit badge"><h3>FREE HIT</h3><div class="id">state.freehit</div><div class="mock"><span class="m-chip on">FREE HIT</span></div><p>Badge under hero numerals; only run-out dismisses.</p><button class="copybtn" data-id="state.freehit">COPY ID</button></div>
-    <div class="card" data-tags="break countdown next innings complete match over"><h3>Break countdown</h3><div class="id">state.breakwait</div><div class="mock"><div class="m-banner">INNINGS COMPLETE — BREAK IN 7s &nbsp; [NEXT →]</div></div><p>10s pause, NEXT skips, undo cancels. Same for MATCH OVER → result.</p><button class="copybtn" data-id="state.breakwait">COPY ID</button></div>
-    <div class="card" data-tags="snackbar error toast inline"><h3>Snackbars</h3><div class="id">state.snackbar</div><div class="mock"><div class="m-banner">Only run-out possible on no-ball</div></div><p>Inline errors only — no silent failures (unknown action, validation, share reasons).</p><button class="copybtn" data-id="state.snackbar">COPY ID</button></div>
-    <div class="card" data-tags="empty roster no players no matches yet"><h3>Empty states</h3><div class="id">state.empty</div><div class="mock"><div class="m-rectbtn sec">No players yet — add your first above.</div></div><p>Never a blank card: roster, stats, archives all invite action.</p><button class="copybtn" data-id="state.empty">COPY ID</button></div>
-  </div>
-</section>
-
-<!-- ================= CLUB ================= -->
-<section id="club">
-  <h2>9 · Club &amp; player UI</h2>
-  <div class="sub"><code>lib/screens/club.dart</code> — all local, all offline.</div>
-  <div class="grid">
-    <div class="card" data-tags="profile pin unlock local create continue without"><h3>Profiles</h3><div class="id">club.profile</div><div class="mock"><div class="m-rectbtn">CREATE PROFILE</div><div style="height:4px"></div><div class="m-rectbtn sec">CONTINUE WITHOUT</div></div><p>Name + 4-digit PIN chips; never a hard lock.</p><button class="copybtn" data-id="club.profile">COPY ID</button></div>
-    <div class="card" data-tags="roster row avatar role active rename search add bulk"><h3>Roster rows</h3><div class="id">club.roster</div><div class="mock"><div class="m-rectbtn sec">RS · Rohit Sharma — Batter · 3 matches ✓ ✎</div></div><p>Search field, +ADD, role chips, BULK ADD paste-a-list, active toggle, rename.</p><button class="copybtn" data-id="club.roster">COPY ID</button></div>
-    <div class="card" data-tags="career batting bowling fielding tabs average economy strike"><h3>Career profile sheet</h3><div class="id">club.career</div><div class="mock"><table class="m-table"><tr><th>BATTING</th><th class="n">Runs 120</th><th class="n">Avg 40.0</th><th class="n">SR 133.3</th></tr><tr><td>BOWLING</td><td class="n">6 wkts</td><td class="n">Econ 7.50</td><td class="n">Best 3/12</td></tr></table></div><p>Undefined stats show <b>—</b>, never 0. Matches/W/L, fielding counts included.</p><button class="copybtn" data-id="club.career">COPY ID</button></div>
-    <div class="card" data-tags="setup squad xi picker chips validation"><h3>Squad pickers (setup)</h3><div class="id">club.squad</div><div class="mock"><div class="m-sheet"><b style="font-size:12px">TEAM A XI (5 picked)</b><div style="margin-top:6px"><span class="m-chip on">Rohit</span><span class="m-chip">Vikram</span><span class="m-chip">Deepak</span></div></div></div><p>FilterChips + search per side; ≥2 per side or tracking stays off.</p><button class="copybtn" data-id="club.squad">COPY ID</button></div>
-  </div>
-</section>
-
-<!-- ================= SUMMARY ================= -->
-<section id="summary">
-  <h2>10 · Summary &amp; awards</h2>
-  <div class="sub"><code>lib/screens/summary.dart</code> — rendered on break (inns 1) + result (both).</div>
-  <div class="grid">
-    <div class="card" data-tags="scorecard batting bowling table dismissal fall wickets"><h3>Scorecard tables</h3><div class="id">summary.scorecard</div><div class="mock"><table class="m-table"><tr><th>BATTER</th><th class="n">R(B)</th><th class="n">4s/6s</th><th class="n">SR</th></tr><tr><td>Rohit<br><small>c b Ravi</small></td><td class="n">34 (21)</td><td class="n">4/1</td><td class="n">161.9</td></tr><tr><td>Ravi</td><td class="n">2/18 (4 ov)</td><td class="n">—</td><td class="n">4.50</td></tr></table></div><p>Batting in order, bowling W-then-R, fall-of-wickets line.</p><button class="copybtn" data-id="summary.scorecard">COPY ID</button></div>
-    <div class="card" data-tags="awards best batter bowler destructive tightest partnership potm"><h3>Awards + POTM</h3><div class="id">summary.awards</div><div class="mock"><div class="m-rectbtn sec">Best batter · Rohit 34 (21)</div><div style="height:4px"></div><div class="m-rectbtn sec">PLAYER OF THE MATCH: Rohit ●</div></div><p>Guards: economy needs 2 overs, SR needs 6 balls. POTM suggested, tappable override.</p><button class="copybtn" data-id="summary.awards">COPY ID</button></div>
-    <div class="card" data-tags="share whatsapp copy text link"><h3>Share copy</h3><div class="id">summary.share</div><div class="mock"><div class="m-rectbtn">COPY SCORECARD (WHATSAPP)</div></div><p>Text block to clipboard — pastes into WhatsApp, no screenshot service.</p><button class="copybtn" data-id="summary.share">COPY ID</button></div>
-  </div>
-</section>
-
-<!-- ================= VIEWER ================= -->
-<section id="viewer">
-  <h2>11 · Viewer &amp; rooms</h2>
-  <div class="sub">Same Scoreboard widget as the scorer; read-only by construction.</div>
-  <div class="grid">
-    <div class="card" data-tags="viewer readonly staleness live chip frozen"><h3>Viewer screen</h3><div class="id">viewer.screen</div><div class="mock"><div class="m-appbar"><span>LIVE</span><span style="background:#dc143c;border-radius:6px;padding:2px 8px">3m ago</span></div></div><p>Staleness chip (LIVE / Ns ago / Nm ago, grey after 45s). No keypad callbacks wired.</p><button class="copybtn" data-id="viewer.screen">COPY ID</button></div>
-    <div class="card" data-tags="share room code banner stop sharing snackbar"><h3>Share affordance</h3><div class="id">viewer.share</div><div class="mock"><div class="m-banner blue">K7M2P &nbsp; [■ stop]</div></div><p>App-bar code chip + snackbar with the real failure reason (never a generic "unavailable").</p><button class="copybtn" data-id="viewer.share">COPY ID</button></div>
-    <div class="card" data-tags="settings status backend error diagnostics connect"><h3>Backend status row</h3><div class="id">viewer.status</div><div class="mock"><div class="m-rectbtn sec">Live sharing: Connected / Error — …</div></div><p>Settings row showing <code>SyncState</code> + last error verbatim — diagnosable without a laptop.</p><button class="copybtn" data-id="viewer.status">COPY ID</button></div>
-  </div>
-</section>
-
-</main>
-<footer>Generated from the repo — IDs mirror code names. To request a change, paste an ID: “make <b>scoring.keypad.btn-w</b> bigger”. Regenerate with <code>tool/ui-inventory.sh</code> after UI changes.</footer>
+<div class="quick" id="quick"></div>
+<main id="main"></main>
+<footer>Paste an ID like <b>key.four</b> — e.g. “make <b>key.four</b> bigger”. Regenerate check: <code>tool/ui-inventory.sh</code></footer>
 <script>
+// name | id | where (file) | color key for the dot
+const ITEMS = [
+["GROUP","— SCREENS —","",""],
+["Home","screen.home","home.dart","#1d4ed8"],
+["Match setup","screen.setup","setup.dart","#1d4ed8"],
+["Scoring (umpire)","screen.scoring","scoring.dart","#1d4ed8"],
+["Scoreboard hero+strip","screen.scoreboard","scoreboard.dart","#1d4ed8"],
+["Innings break","screen.break","break_result.dart","#1d4ed8"],
+["Result + summary","screen.result","break_result.dart","#1d4ed8"],
+["Archives","screen.history","history.dart","#64748b"],
+["Club + players","screen.club","club.dart","#64748b"],
+["Watch live (join)","screen.join","viewer.dart","#64748b"],
+["GROUP","— KEYPAD (scoring.dart) —","",""],
+["Key 0 (dot)","key.0","scoring.dart","#ffffff"],
+["Key 1","key.1","scoring.dart","#ffffff"],
+["Key 2","key.2","scoring.dart","#ffffff"],
+["Key 3","key.3","scoring.dart","#ffffff"],
+["Key 4 (four)","key.four","scoring.dart","#15803d"],
+["Key 6 (six)","key.six","scoring.dart","#ec008c"],
+["Key WD","key.wd","scoring.dart","#ffba08"],
+["Key NB","key.nb","scoring.dart","#7b2cbf"],
+["Key W (wicket)","key.w","scoring.dart","#dc143c"],
+["UNDO button","key.undo","scoring.dart","#131316"],
+["PLAYERS button","key.players","scoring.dart","#1d4ed8"],
+["EXTRAS button","key.extras","scoring.dart","#64748b"],
+["NB ARMED banner","state.nb","scoring.dart","#7b2cbf"],
+["Break countdown + NEXT","state.break","scoring.dart","#131316"],
+["GROUP","— HERO + STRIP —","",""],
+["Hero score (big number)","hero.score","scoreboard.dart","#1d4ed8"],
+["Hero meta (overs/crr/extras)","hero.meta","scoreboard.dart","#1d4ed8"],
+["Target line","hero.target","scoreboard.dart","#1d4ed8"],
+["Over strip (6 balls)","strip.row","scoreboard.dart","#ffffff"],
+["Strip total (3r • 1w ›)","strip.total","scoreboard.dart","#ffffff"],
+["Badge: 0 / 1 / 2 / 3","badge.runs","widgets.dart","#22d3ee"],
+["Badge: 4","badge.four","widgets.dart","#15803d"],
+["Badge: 6","badge.six","widgets.dart","#ec008c"],
+["Badge: W / W+2","badge.wicket","widgets.dart","#dc143c"],
+["Badge: WD / NB / B","badge.extra","widgets.dart","#ffba08"],
+["Celebration style","fx.celebrate","widgets.dart","#ec008c"],
+["GROUP","— SHEETS (popups) —","",""],
+["Wicket dialog","sheet.wicket","sheets.dart","#dc143c"],
+["Run-out picker","sheet.runout","sheets.dart","#dc143c"],
+["Dismissal + next batter","sheet.dismissal","player_sheets.dart","#dc143c"],
+["Bowler picker","sheet.bowler","player_sheets.dart","#1d4ed8"],
+["Openers picker","sheet.openers","player_sheets.dart","#1d4ed8"],
+["Player stats sheet","sheet.stats","player_sheets.dart","#1d4ed8"],
+["Overs history","sheet.overs","sheets.dart","#64748b"],
+["Extras (byes/wides)","sheet.extras","sheets.dart","#ffba08"],
+["Mid-match settings","sheet.settings","sheets.dart","#64748b"],
+["Look (style/font)","sheet.look","sheets.dart","#64748b"],
+["GROUP","— CLUB + SUMMARY —","",""],
+["Roster row","club.row","club.dart","#64748b"],
+["Career profile","club.career","club.dart","#64748b"],
+["Squad picker (setup)","club.squad","setup.dart","#64748b"],
+["Scorecard tables","sum.scorecard","summary.dart","#1d4ed8"],
+["Awards + POTM","sum.awards","summary.dart","#ec008c"],
+["WhatsApp copy","sum.share","summary.dart","#15803d"],
+["GROUP","— FONTS + THEMES —","",""],
+["Font: Stadium (default)","font.stadium","theme.dart","#131316"],
+["Font: Condensed","font.condensed","theme.dart","#131316"],
+["Font: Block","font.block","theme.dart","#131316"],
+["Font: Mono Ledger","font.ledger","theme.dart","#131316"],
+["Font: Tech","font.tech","theme.dart","#131316"],
+["Font: Tall","font.tall","theme.dart","#131316"],
+["Font: Slab","font.slab","theme.dart","#131316"],
+["Font: Wide","font.wide","theme.dart","#131316"],
+["Font: Broadcast","font.broadcast","theme.dart","#131316"],
+["Font: Ticket","font.ticket","theme.dart","#131316"],
+["Theme: Umpire Pro","theme.umpire","theme.dart","#1d4ed8"],
+["Theme: Solar","theme.solar","theme.dart","#f97316"],
+["Theme: Pure White","theme.purewhite","theme.dart","#94a3b8"],
+["Theme: Crimson","theme.crimson","theme.dart","#dc143c"],
+["Theme: Nothing","theme.nothing","theme.dart","#64748b"],
+["Theme: Game Boy","theme.gameboy","theme.dart","#65a30d"],
+["Theme: Pro Red","theme.prored","theme.dart","#8b0000"],
+["GROUP","— VIEWER + MISC —","",""],
+["Viewer score","viewer.score","viewer.dart","#dc143c"],
+["Staleness chip","viewer.stale","viewer.dart","#dc143c"],
+["Share code chip","viewer.share","scoring.dart","#1d4ed8"],
+["App-bar icons","nav.actions","screens","#1d4ed8"],
+["Snackbar errors","state.error","screens","#dc143c"],
+];
+const main = document.getElementById('main');
 const q = document.getElementById('q');
 const count = document.getElementById('count');
-const cards = [...document.querySelectorAll('.card')];
+let gid = 0;
+const rows = [];
+for(const [name,id,where,color] of ITEMS){
+  if(name==="GROUP"){ const h=document.createElement('h2'); h.textContent=id.replace(/— /g,'').replace(/ —/g,''); h.dataset.group=id; main.appendChild(h); continue; }
+  const d=document.createElement('div'); d.className='row';
+  const initial = name.replace(/^Key /,'').trim().charAt(0).toUpperCase();
+  d.innerHTML = '<div class="dot" style="background:'+color+';'+(color==='#ffffff'?'color:#000;border:1.5px solid #000':'')+'">'+initial+'</div>'
+    +'<div class="txt"><b></b><code></code><span></span></div>'
+    +'<button class="cp">COPY</button>';
+  d.querySelector('b').textContent = name;
+  d.querySelector('code').textContent = id;
+  d.querySelector('span').textContent = where;
+  const btn = d.querySelector('button');
+  btn.onclick = ()=>{ navigator.clipboard.writeText(id).then(()=>{ btn.textContent='✓'; setTimeout(()=>btn.textContent='COPY',1000); }); };
+  d.dataset.hay = (name+' '+id+' '+where).toLowerCase();
+  main.appendChild(d); rows.push(d);
+}
+// quick filters for the most-changed things
+const QUICK = ['four','wicket','hero','sheet','font','badge'];
+const quick = document.getElementById('quick');
+for(const k of QUICK){ const b=document.createElement('button'); b.textContent=k; b.onclick=()=>{ q.value=k; apply(); q.focus(); }; quick.appendChild(b); }
+const rb=document.createElement('button'); rb.textContent='🎲 random'; rb.onclick=()=>{ q.value='?'; apply(); }; quick.appendChild(rb);
 function apply(){
   const v = q.value.trim().toLowerCase();
-  let n = 0;
-  // random discovery: "?" or "random" jumps to a random element
-  cards.forEach(c=>{
-    const hay = (c.querySelector('h3').textContent + ' ' + c.querySelector('.id').textContent + ' ' + (c.dataset.tags||'')).toLowerCase();
-    const show = !v || v==='?' || v==='random' ? true : hay.includes(v);
-    c.classList.toggle('hidden', !show);
-    if(show) n++;
-  });
-  count.textContent = v ? n + ' match' + (n===1?'':'es') + ' — tip: type "?" and press Enter for a random element' : cards.length + ' elements total';
-  if((v==='?'||v==='random') && document.activeElement===q){
-    const vis = cards.filter(c=>!c.classList.contains('hidden'));
-    if(vis.length){ vis[Math.floor(Math.random()*vis.length)].scrollIntoView({behavior:'smooth',block:'center'}); }
+  let n=0, first=null;
+  // hide group headers with no visible rows (two-pass)
+  const groups=[...main.querySelectorAll('h2')];
+  groups.forEach(g=>g.classList.add('hidden'));
+  let cur=null, curN=0;
+  const all=[...main.children];
+  for(const el of all){
+    if(el.tagName==='H2'){ if(cur&&curN===0) cur.classList.add('hidden'); cur=el; curN=0; continue; }
+    const show = !v || v==='?' || v==='random' ? true : el.dataset.hay.includes(v);
+    el.classList.toggle('hidden',!show);
+    if(show){ n++; curN++; if(!first) first=el; }
+  }
+  if(cur&&curN===0) cur.classList.add('hidden');
+  count.textContent = v ? n+' match'+(n===1?'':'es') : rows.length+' items — type to filter';
+  if((v==='?'||v==='random')){
+    const vis=rows.filter(r=>!r.classList.contains('hidden'));
+    if(vis.length) vis[Math.floor(Math.random()*vis.length)].scrollIntoView({behavior:'smooth',block:'center'});
   }
 }
-q.addEventListener('input', apply);
-q.addEventListener('keydown', e=>{ if(e.key==='Enter'){ apply(); } });
-document.addEventListener('keydown', e=>{ if(e.key==='/' && document.activeElement!==q){ e.preventDefault(); q.focus(); } });
-document.querySelectorAll('.copybtn').forEach(b=>b.addEventListener('click', ()=>{
-  navigator.clipboard.writeText(b.dataset.id).then(()=>{ b.textContent='COPIED ✓'; setTimeout(()=>b.textContent='COPY ID',1200); });
-}));
+q.addEventListener('input',apply);
+q.addEventListener('keydown',e=>{ if(e.key==='Enter') apply(); });
+document.addEventListener('keydown',e=>{ if(e.key==='/'&&document.activeElement!==q){ e.preventDefault(); q.focus(); } });
 apply();
 </script>
 </body>
