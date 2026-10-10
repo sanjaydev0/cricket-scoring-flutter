@@ -62,10 +62,12 @@ grep -q "android.permission.ACCESS_NETWORK_STATE" <<<"$PERMS" ||
 echo "    permissions ok"
 
 if [ -n "$SUPA_KEY" ]; then
-  unzip -p "$APK" lib/arm64-v8a/libapp.so 2>/dev/null | strings |
-    grep -qF "$SUPA_KEY" || fail "Supabase key is not baked into libapp.so"
-  unzip -p "$APK" lib/arm64-v8a/libapp.so 2>/dev/null | strings |
-    grep -qF "$SUPA_URL" || fail "Supabase URL is not baked into libapp.so"
+  # NOTE: do not pipe unzip straight into `grep -q` here. grep -q exits at the
+  # first match while unzip is still streaming 52 MB, so unzip dies of SIGPIPE
+  # and `pipefail` turns a successful match into a failure. Capture first.
+  SO_STRINGS="$(unzip -p "$APK" lib/arm64-v8a/libapp.so 2>/dev/null | strings)"
+  grep -qF "$SUPA_KEY" <<<"$SO_STRINGS" || fail "Supabase key is not baked into libapp.so"
+  grep -qF "$SUPA_URL" <<<"$SO_STRINGS" || fail "Supabase URL is not baked into libapp.so"
   echo "    backend keys baked in"
 else
   echo "    WARNING: no SUPABASE_PUBLISHABLE_KEY — live rooms will be off"
