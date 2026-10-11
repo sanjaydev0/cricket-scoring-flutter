@@ -1292,8 +1292,11 @@ class MatchStore extends ChangeNotifier {
         // end silently, corrupting every later ball.
         // The ends move on odd runs, and on a run-out at the non-striker's
         // end (which the batters can only have reached by crossing).
-        final swappedOnBall = b.runs % 2 == 1;
-        final endsChanged = outIsNonStriker || swappedOnBall;
+        // An odd number of completed runs means the batters crossed, so the
+        // ends moved ON THE BALL. applyDelivery already swapped for that on a
+        // non-wicket ball; on a wicket it returns before the swap, so it is
+        // accounted for below when deciding where the newcomer stands.
+        final crossedOnBall = b.runs % 2 == 1;
         // Dismissal is attributed by applyDelivery to the striker, so a
         // non-striker run-out is moved across here.
         if (outIsNonStriker) _moveDismissalToNonStriker(sheet, b);
@@ -1307,7 +1310,17 @@ class MatchStore extends ChangeNotifier {
             ? newBatterId
             : (opts.isEmpty ? null : opts.first);
         if (next != null) {
-          if (endsChanged) {
+          if (outIsNonStriker) {
+            // The man at the non-striker's end was put out there. He never
+            // crossed, so nobody moved: the batter who completed his run keeps
+            // the striker's end and the newcomer fills the gap opposite him.
+            //
+            // This was the bug - a swap here left the DISMISSED batter sitting
+            // in the striker slot, listed on strike after being bowled.
+            sheet.bringInAtNonStrikerEnd(next);
+          } else if (crossedOnBall) {
+            // The striker was out at the far end having crossed, so the man who
+            // crossed is now on strike and the newcomer takes his old end.
             sheet.crossedRunOutFix(next);
           } else {
             sheet.bringIn(next);

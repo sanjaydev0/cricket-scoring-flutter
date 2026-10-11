@@ -637,10 +637,9 @@ class InningsSheet {
   }
 
   /// Bring in [nextId] at the striker's end. Returns false when nobody is left.
-  bool bringIn(String nextId) {
-    if (!names.containsKey(nextId)) return false;
-    _bankPartnership();
-    strikerId = nextId;
+  /// Scores a new arrival onto the card: takes the next batting position, or
+  /// restores the original one for a retired-hurt returnee.
+  void _seat(String nextId) {
     final c = batting[nextId];
     if (c != null && c.position == 0) {
       _enter(nextId, nextPosition);
@@ -649,6 +648,13 @@ class InningsSheet {
       // A resumed innings (retired-hurt return): original position stands.
       reEnter(nextId);
     }
+  }
+
+  bool bringIn(String nextId) {
+    if (!names.containsKey(nextId)) return false;
+    _bankPartnership();
+    strikerId = nextId;
+    _seat(nextId);
     partnershipRuns = 0;
     partnershipBalls = 0;
     return true;
@@ -665,10 +671,31 @@ class InningsSheet {
   /// The incoming batter goes to that far end, which becomes the non-striker's
   /// end; the man who crossed keeps the strike.
   void crossedRunOutFix(String incomingId) {
-    // The dismissed striker crossed to the far end, so clear him from the
-    // striker slot before the roles are rewritten.
+    // Only correct when the STRIKER was dismissed after crossing: he is out at
+    // the far end, the man who crossed is now striker, and the newcomer takes
+    // the striker's vacated end (the non-striker's end after the swap).
+    //
+    // This must never run for a NON-STRIKER dismissal. He was out at his own
+    // end, so nothing moved: the safe batter keeps the striker's end and the
+    // newcomer simply fills the vacated non-striker's end. Swapping here left
+    // the struck-off man sitting in the striker slot - dismissed but still
+    // listed on strike.
     swapEnds();
     nonStrikerId = incomingId;
+  }
+
+  /// Seats [incomingId] at the NON-STRIKER's end, leaving the striker alone.
+  ///
+  /// Used when the batter at that end was dismissed and the man on strike
+  /// completed his run and stayed where he was: nobody moved ends, so the
+  /// newcomer just fills the gap opposite him.
+  void bringInAtNonStrikerEnd(String incomingId) {
+    if (!names.containsKey(incomingId)) return;
+    _bankPartnership();
+    _seat(incomingId);
+    nonStrikerId = incomingId;
+    partnershipRuns = 0;
+    partnershipBalls = 0;
   }
 
   void swapEnds() {

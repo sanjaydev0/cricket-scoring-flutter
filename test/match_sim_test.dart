@@ -783,6 +783,136 @@ void main() {
     });
   });
 
+  group('the non-striker run-out case, end to end', () {
+    // A strikes, completes ONE run, attempts a second and reaches the
+    // striker's end. B is short of the non-striker's end and the stumps are
+    // broken. One run completed, B is out, and A - who completed his run and
+    // stayed - is still on strike. Confirmed by the user.
+    test('B is out, A stays on strike, newcomer fills the far end', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+
+      s.score(
+          action: 'WICKET',
+          runs: 1,
+          wicketType: 'Run Out',
+          dismissal: DismissalType.runOut.name,
+          outAtNonStrikerEnd: true);
+
+      expect(s.innings!.runs, 1, reason: 'one run completed');
+      expect(s.innings!.wickets, 1);
+      expect(s.innings!.overs.last.balls.last.badge, 'W+1');
+      expect(sheet.batting[a[1]]!.isNotOut, isFalse, reason: 'B is out');
+      expect(sheet.batting[a[0]]!.isNotOut, isTrue, reason: 'A survived');
+      expect(sheet.strikerId, a[0],
+          reason: 'A completed his run and stays on strike');
+      expect(sheet.strikerId, isNot(a[1]),
+          reason: 'the dismissed batter must never be listed on strike');
+      expect(sheet.nonStrikerId, a[2], reason: 'the newcomer fills the gap');
+      expect(sheet.batting[a[0]]!.runs, 1);
+      expect(sheet.batting[a[0]]!.balls, 1);
+    });
+
+    test('on the last ball the newcomer becomes striker next over', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      for (var i = 0; i < 5; i++) {
+        s.score(action: 'DOT');
+      }
+      // Sixth ball: the same run-out, and the over ends with it.
+      s.score(
+          action: 'WICKET',
+          runs: 1,
+          wicketType: 'Run Out',
+          dismissal: DismissalType.runOut.name,
+          outAtNonStrikerEnd: true);
+      expect(s.currentSheet!.needsNewBowler, isTrue);
+      // The wicket ball is the SIXTH legal ball, so the over closes in the same
+      // commit: A1 completes his run and is safe, A3 fills the gap opposite
+      // him, and then Law 41.6 changes the ends - which puts the newcomer, who
+      // was at the non-striker's end, on strike for the new over. This is
+      // exactly the case the user described.
+      expect(sheet.strikerId, a[2],
+          reason: 'newcomer was at the non-striker end, ends now change');
+      expect(sheet.nonStrikerId, a[0],
+          reason: 'A completed his run and ends changed once');
+      expect(sheet.batting[a[1]]!.isNotOut, isFalse, reason: 'B is still out');
+      s.setBowler(b[1]);
+      expect(s.score(action: 'DOT'), isNull);
+      expect(sheet.batting[a[2]]!.balls, 1);
+    });
+
+    test('the dismissed batter is off both ends in every run-out shape', () {
+      for (final runs in [0, 1, 2]) {
+        for (final nonStriker in [true, false]) {
+          final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+          final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+          final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+          s.setOpeners(a[0], a[1]);
+          s.setBowler(b[0]);
+          final sheet = s.currentSheet!;
+          final outId = nonStriker ? a[1] : a[0];
+
+          s.score(
+              action: 'WICKET',
+              runs: runs,
+              wicketType: 'Run Out',
+              dismissal: DismissalType.runOut.name,
+              outAtNonStrikerEnd: nonStriker);
+
+          expect(sheet.strikerId, isNot(outId),
+              reason: 'runs=$runs nonStriker=$nonStriker: out man on strike');
+          expect(sheet.nonStrikerId, isNot(outId),
+              reason: 'runs=$runs nonStriker=$nonStriker: out man at the end');
+          expect(sheet.batting[outId]!.isNotOut, isFalse);
+          expect(sheet.strikerId, isNotNull);
+        }
+      }
+    });
+
+    test('striker out on an odd run puts the crosser on strike', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      s.score(
+          action: 'WICKET',
+          runs: 1,
+          wicketType: 'Run Out',
+          dismissal: DismissalType.runOut.name,
+          outAtNonStrikerEnd: false);
+      expect(sheet.strikerId, a[1], reason: 'A1 crossed and is out; A2 is on');
+      expect(sheet.batting[a[0]]!.isNotOut, isFalse);
+    });
+
+    test('striker out with no runs keeps the partner at the far end', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      s.score(
+          action: 'WICKET',
+          runs: 0,
+          wicketType: 'Run Out',
+          dismissal: DismissalType.runOut.name,
+          outAtNonStrikerEnd: false);
+      expect(sheet.strikerId, a[2], reason: 'newcomer takes the striker end');
+      expect(sheet.nonStrikerId, a[1], reason: 'partner stays put');
+    });
+  });
+
   test('a full 5-a-side, 3-over match stays consistent end to end', () {
     final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 3);
     final lions = s.squadForTeam('Lions').map((p) => p.id).toList();

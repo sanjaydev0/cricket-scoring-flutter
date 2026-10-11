@@ -498,10 +498,18 @@ class ScoringScreen extends StatelessWidget {
       onTap: () {
         Navigator.pop(context);
         // [type] is the dismissal LABEL, not the enum — comparing it to
-        // DismissalType never matched, so Run Out still opened the full
-        // dismissal sheet with every wicket-type pill above the two questions.
-        if (DismissalType.fromId(type) == DismissalType.runOut) {
+        // DismissalType directly never matched, so Run Out still opened the
+        // full dismissal sheet with every wicket-type pill above the two
+        // questions that actually matter.
+        final t = DismissalType.fromId(type);
+        if (t == DismissalType.runOut) {
           showRunOutSheet(context, store);
+          return;
+        }
+        // A plain dismissal asks one question: who comes next. Going through
+        // the full sheet for it cost taps and showed options that do not apply.
+        if (t == DismissalType.bowled && store.tracking) {
+          showNextBatterSheet(context, store, wicketType: type);
           return;
         }
         showDismissalSheet(context, store, type);

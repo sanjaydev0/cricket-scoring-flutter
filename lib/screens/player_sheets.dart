@@ -509,6 +509,92 @@ void showBowlerSheet(BuildContext context, MatchStore store,
   );
 }
 
+/// Who comes next — the only question a plain dismissal leaves open.
+///
+/// Bowled needs no runs count and no end choice, so the full dismissal sheet
+/// was pure friction: seven wicket-type pills to answer a single question.
+void showNextBatterSheet(BuildContext context, MatchStore store,
+    {required String wicketType}) {
+  final sheet = store.currentSheet;
+  if (sheet == null) {
+    store.score(action: 'WICKET', wicketType: wicketType);
+    return;
+  }
+  final type = DismissalType.fromId(wicketType);
+  final outId = sheet.strikerId ?? '';
+  final waiting = sheet.nextBatterOptions(outId);
+  final outName = sheet.nameOf(outId);
+  String? fielder;
+
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (ctx, setSheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('$outName — ${type.label.toUpperCase()}',
+                  style: const TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 10),
+              const RowSectionLabel('NEXT BATTER', color: Color(0xFF1D4ED8)),
+              if (waiting.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child:
+                      Text('No batters left.', style: TextStyle(fontSize: 12)),
+                )
+              else
+                for (final id in waiting)
+                  Builder(builder: (_) {
+                    final returning = (sheet.batting[id]?.position ?? 0) > 0;
+                    return PlayerRow(
+                      name: sheet.nameOf(id),
+                      subtitle: returning
+                          ? 'Retired hurt — coming back in'
+                          : 'Yet to bat • ${sheet.battingTeam}',
+                      selected: false,
+                      onTap: () {
+                        Navigator.pop(sheetCtx);
+                        final err = store.score(
+                          action: 'WICKET',
+                          wicketType: wicketType,
+                          dismissal: type.name,
+                          fielderName:
+                              fielder == null ? null : sheet.nameOf(fielder!),
+                          newBatterId: id,
+                        );
+                        if (err != null && context.mounted) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(err)));
+                        }
+                      },
+                    );
+                  }),
+              if (store.askFielder && type.hasFielder) ...[
+                const RowSectionLabel('WHO TOOK IT? (optional)',
+                    color: Color(0xFFDC143C)),
+                for (final id in _fieldingIds(store, sheet))
+                  PlayerRow(
+                    name: sheet.nameOf(id),
+                    subtitle: sheet.bowlingTeam,
+                    selected: fielder == id,
+                    onTap: () =>
+                        setSheet(() => fielder = fielder == id ? null : id),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// Run-out: exactly two questions, no dismissal-type grid.
 ///
 /// Opening the full dismissal sheet for a run-out buried both questions under
