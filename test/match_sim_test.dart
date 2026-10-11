@@ -334,6 +334,295 @@ void main() {
     });
   });
 
+  group('Law 41.6: the ends change at the end of every over', () {
+    // The regression: an over of six dots left the SAME batter on strike for
+    // ball 7, because the swap only ever fired on an odd number of runs and a
+    // maiden has none. Found by simulating, not by reading.
+    test('six dots changes the ends', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      final opener = a[0];
+      final partner = a[1];
+
+      for (var i = 0; i < 6; i++) {
+        expect(s.score(action: 'DOT'), isNull);
+      }
+      expect(sheet.bowling[b[0]]!.maidens, 1, reason: 'a maiden');
+      expect(sheet.strikerId, partner,
+          reason: 'Law 41.6: ends switch after a completed over');
+      expect(sheet.nonStrikerId, opener);
+
+      s.setBowler(b[1]);
+      expect(s.score(action: 'DOT'), isNull);
+      expect(sheet.batting[partner]!.balls, 1,
+          reason: 'the non-opener faces the first ball of the next over');
+      expect(sheet.batting[opener]!.balls, 6);
+    });
+
+    test('six boundaries also change the ends', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      for (var i = 0; i < 6; i++) {
+        expect(s.score(action: 'FOUR'), isNull);
+      }
+      expect(sheet.strikerId, a[1], reason: 'even runs never swap mid-over');
+    });
+
+    test('an over containing an odd run changes ends exactly once', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      // Three singles: ends change on ball 1 and again on ball 3.
+      s.score(action: 'RUNS', runs: 1);
+      s.score(action: 'RUNS', runs: 1);
+      s.score(action: 'RUNS', runs: 1);
+      for (var i = 0; i < 3; i++) {
+        s.score(action: 'DOT');
+      }
+      // Odd total (3): the batters are back where they started, so the
+      // over-boundary change must put the other one on strike once.
+      expect(sheet.strikerId, a[1]);
+    });
+
+    test('no manual swap is ever needed', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 3);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+
+      // Track the expected striker by hand, straight from the Laws, and assert
+      // the store agrees on every single delivery.
+      var expectStriker = a[0];
+      var expectNon = a[1];
+      var bi = 1;
+      final seq = [
+        'DOT',
+        'RUNS',
+        'DOT',
+        'FOUR',
+        'DOT',
+        'SIX',
+        'RUNS',
+        'DOT',
+        'DOT',
+        'DOT',
+        'RUNS',
+        'WIDE'
+      ];
+      var li = 0;
+      while (s.innings!.legalDeliveries < 12 && li < 200) {
+        final err = s.score(action: seq[li % seq.length]);
+        if (err == MatchStore.needBowlerMsg) {
+          s.setBowler(b[bi % b.length]);
+          bi++;
+        }
+        li++;
+        final sheet = s.currentSheet!;
+        if (err != null) continue;
+        final last = s.innings!.overs.last.balls.last;
+        if (last.isLegal) {
+          // The ball itself records WHO faced it, which is the only
+          // ground truth that is not re-derived by this test. Assert against
+          // that, then apply the Laws to the expectation for the next ball.
+          expect(last.strikerId, expectStriker,
+              reason: 'ball $li: wrong striker faced it');
+          expect(last.nonStrikerId, expectNon,
+              reason: 'ball $li: wrong non-striker');
+        }
+        if (last.runs % 2 == 1) {
+          final t = expectStriker;
+          expectStriker = expectNon;
+          expectNon = t;
+        }
+        // Over boundary: ends switch whatever the over scored.
+        if (s.innings!.overs.last.balls.where((x) => x.isLegal).length >= 6) {
+          final hadOdd =
+              s.innings!.overs.last.balls.any((x) => x.runs % 2 == 1);
+          if (!hadOdd) {
+            final t = expectStriker;
+            expectStriker = expectNon;
+            expectNon = t;
+          }
+          // After the boundary the store must already agree with the model.
+          expect(sheet.strikerId, expectStriker,
+              reason: 'ball $li: wrong striker after the over ended');
+        }
+      }
+      expect(s.innings!.legalDeliveries, 12);
+    });
+  });
+
+  group('innings completion owes nothing', () {
+    test('the last ball of an innings does not prompt for a bowler', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 1);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      for (var i = 0; i < 5; i++) {
+        s.score(action: 'DOT');
+      }
+      expect(s.currentSheet!.needsNewBowler, isFalse, reason: 'still playing');
+      s.score(action: 'DOT'); // sixth legal ball: innings over
+      expect(s.innings!.completed, isTrue);
+      expect(s.currentSheet!.needsNewBowler, isFalse,
+          reason: 'no next over to bowl, so no bowler prompt');
+    });
+
+    test('8 players, 7 wickets: all out with no batter prompt', () {
+      final s = MatchStore(sync: FakeSync());
+      s.hapticsOn = false;
+      s.createClub(name: 'Gully Kings');
+      final a = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'A$i')!.id];
+      final b = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'B$i')!.id];
+      s.draft = MatchConfig(
+          teamA: 'Lions',
+          teamB: 'Tigers',
+          totalOvers: 20,
+          playersPerSide: 8,
+          trackPlayers: true,
+          squadA: a,
+          squadB: b);
+      s.startMatch(s.draft);
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+
+      // Seven wickets: with 8 players and no last-man-standing the innings is
+      // all out at 7, and there is no 8th batter to seat.
+      //
+      // Dots are mixed in so the wickets do not all land in one over: six
+      // wicket-balls would legitimately complete an over and owe a bowler
+      // change, which is correct cricket and not what this test is about.
+      var seated = 0;
+      var bi = 1;
+      for (var w = 0; w < 7; w++) {
+        s.score(action: 'DOT');
+        if (s.innings!.completed) break;
+        if (s.currentSheet!.needsNewBowler) {
+          s.setBowler(b[bi % b.length]);
+          bi++;
+          s.score(action: 'DOT');
+        }
+        if (s.innings!.completed) break;
+        final err = s.score(action: 'WICKET', wicketType: 'Bowled');
+        expect(err, isNull, reason: 'wicket ${w + 1} should be recordable');
+        if (!s.innings!.completed) {
+          final opts = s.currentSheet!
+              .nextBatterOptions(s.currentSheet!.strikerId ?? '');
+          if (opts.isNotEmpty) {
+            s.currentSheet!.bringIn(opts.first);
+            seated++;
+          }
+        }
+      }
+      expect(s.innings!.wickets, 7);
+      expect(s.innings!.completed, isTrue, reason: 'all out at 7 of 8 players');
+      expect(seated, 6, reason: 'six replacements for seven wickets');
+      expect(s.currentSheet!.needsNewBowler, isFalse);
+    });
+
+    test('last-man-standing makes 8 wickets available', () {
+      final s = MatchStore(sync: FakeSync());
+      s.hapticsOn = false;
+      s.createClub(name: 'Gully Kings');
+      final a = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'A$i')!.id];
+      final b = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'B$i')!.id];
+      s.draft = MatchConfig(
+          teamA: 'Lions',
+          teamB: 'Tigers',
+          totalOvers: 20,
+          playersPerSide: 8,
+          trackPlayers: true,
+          squadA: a,
+          squadB: b,
+          rules: Rules(lastManStanding: true));
+      s.startMatch(s.draft);
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      for (var w = 0; w < 7; w++) {
+        s.score(action: 'WICKET', wicketType: 'Bowled');
+        if (!s.innings!.completed) {
+          final opts = s.currentSheet!
+              .nextBatterOptions(s.currentSheet!.strikerId ?? '');
+          if (opts.isNotEmpty) s.currentSheet!.bringIn(opts.first);
+        }
+      }
+      expect(s.innings!.completed, isFalse, reason: 'the last man is still in');
+    });
+  });
+
+  group('run-out at either end', () {
+    test('the non-striker can be dismissed, and the ends change', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+
+      expect(
+          s.score(
+              action: 'WICKET',
+              wicketType: 'Run Out',
+              dismissal: DismissalType.runOut.name,
+              fielderName: 'Keeper',
+              outAtNonStrikerEnd: true),
+          isNull);
+
+      expect(sheet.batting[a[1]]!.isNotOut, isFalse,
+          reason: 'the NON-striker is out');
+      expect(sheet.batting[a[1]]!.dismissal, DismissalType.runOut);
+      expect(sheet.batting[a[0]]!.isNotOut, isTrue,
+          reason: 'the striker survives');
+      expect(s.innings!.wickets, 1);
+    });
+
+    test('a striker run-out on an odd run changes the ends', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      s.score(
+          action: 'WICKET',
+          runs: 1,
+          wicketType: 'Run Out',
+          dismissal: DismissalType.runOut.name);
+      expect(sheet.batting[a[0]]!.isNotOut, isFalse);
+      // Odd runs changed the ends, so the incoming batter is at the striker's
+      // end and the partner (a[1]) is now the non-striker.
+      expect(sheet.strikerId == a[0], isFalse);
+      expect(sheet.nonStrikerId == a[0], isFalse,
+          reason: 'the dismissed striker is not left on either end');
+    });
+
+    test('a run-out never credits the bowler', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      s.score(
+          action: 'WICKET',
+          wicketType: 'Run Out',
+          dismissal: DismissalType.runOut.name);
+      expect(s.currentSheet!.bowling[b[0]]!.wickets, 0);
+    });
+  });
+
   test('a full 5-a-side, 3-over match stays consistent end to end', () {
     final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 3);
     final lions = s.squadForTeam('Lions').map((p) => p.id).toList();

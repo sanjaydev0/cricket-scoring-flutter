@@ -630,9 +630,20 @@ class InningsSheet {
   }
 
   /// Crossed run-out correction: new batter goes to the other end.
+  /// Seats the incoming batter after a dismissal on which the ends changed.
+  ///
+  /// Order matters and was previously wrong: it swapped and then overwrote the
+  /// striker, which left the DISMISSED batter on the non-striker's end - a
+  /// wicket that never happened as far as the scorecard was concerned.
+  ///
+  /// Cricket: the batters crossed, so the striker is dismissed at the FAR end.
+  /// The incoming batter goes to that far end, which becomes the non-striker's
+  /// end; the man who crossed keeps the strike.
   void crossedRunOutFix(String incomingId) {
+    // The dismissed striker crossed to the far end, so clear him from the
+    // striker slot before the roles are rewritten.
     swapEnds();
-    strikerId = incomingId;
+    nonStrikerId = incomingId;
   }
 
   void swapEnds() {

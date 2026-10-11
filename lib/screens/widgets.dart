@@ -496,25 +496,47 @@ class PlayerRow extends StatelessWidget {
   }
 }
 
-/// Small uppercase heading above a group of rows.
+/// Heading above a group of rows.
+///
+/// The plain form was 11px/w900 directly above 14px/w800 player names — the
+/// heading was SMALLER than the content it introduced and one weight step
+/// apart, so a picker read as one flat list of names. [color] turns it into a
+/// filled band, which separates the group by size, weight AND colour at once
+/// (colour alone fails the sunlight rule).
 class RowSectionLabel extends StatelessWidget {
   final String text;
   final Color? color;
-  const RowSectionLabel(this.text, {super.key, this.color});
+
+  /// Render as a filled band with white text rather than a plain caption.
+  final bool filled;
+  const RowSectionLabel(this.text,
+      {super.key, this.color, this.filled = false});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 2, left: 10),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontWeight: FontWeight.w900,
-          fontSize: 11,
-          letterSpacing: 1.2,
-          color: color ?? Theme.of(context).colorScheme.onSurface,
-        ),
+    final label = Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.w900,
+        fontSize: 11,
+        letterSpacing: 1.2,
+        color: filled
+            ? Colors.white
+            : (color ?? Theme.of(context).colorScheme.onSurface),
       ),
+    );
+    if (!filled) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 2, left: 10),
+        child: label,
+      );
+    }
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12, bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      color: color ?? Theme.of(context).colorScheme.primary,
+      child: label,
     );
   }
 }

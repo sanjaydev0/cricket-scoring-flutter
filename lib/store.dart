@@ -827,13 +827,36 @@ class MatchStore extends ChangeNotifier {
   void _closeCompletedOvers(Innings inn, InningsSheet sheet) {
     final done = sheet.completedOverCount(inn);
     if (done <= sheet.closedOvers) return;
+
+    // Law 41.6: the ends switch at the end of every over, whatever was
+    // scored. An over of six dots left the same batter on strike for ball 7
+    // until this was fixed - the swap only ever fired on an ODD number of
+    // runs, and a maiden has none.
+    //
+    // An over that contained an odd run already changed ends on that ball, so
+    // swapping again here would change them twice. Hence the parity check.
     for (var i = sheet.closedOvers; i < done; i++) {
+      final over = i < inn.overs.length ? inn.overs[i] : null;
+      final hadOddRun =
+          (over?.balls ?? const <Ball>[]).any((b) => b.runs % 2 == 1);
+      if (!hadOddRun) sheet.swapEnds();
       finishOverForSheet();
     }
     sheet.closedOvers = done;
-    // Only ask for a change when play continues: on the final wicket or the
-    // final ball of the innings there is no next over to bowl.
-    sheet.needsNewBowler = !inn.completed;
+
+    // Only ask for a change when play actually continues. `inn.completed` is
+    // read defensively as well as relied on, because the ordering fix in
+    // score() is what makes it trustworthy and this must not silently regress
+    // into prompting for a bowler who will never bowl again.
+    final m = match;
+    final maxBalls =
+        m == null ? 0 : CricketMath.totalBalls(m.config.totalOvers);
+    final maxW = m == null
+        ? 0
+        : CricketMath.getMaxWickets(
+            m.config.playersPerSide, m.config.rules.lastManStanding);
+    final over = inn.legalDeliveries >= maxBalls || inn.wickets >= maxW;
+    sheet.needsNewBowler = !inn.completed && !over;
   }
 
   void finishOverForSheet() {
@@ -1057,7 +1080,13 @@ class MatchStore extends ChangeNotifier {
     String? dismissal, // DismissalType.name when tracking players
     String? fielderName,
     String? newBatterId,
-    bool crossed = false,
+
+    /// Run-out dismissed the batter at the NON-STRIKER's end. A short ball
+    /// run, a direct hit at the other end. Replaces the old free-floating
+    /// `crossed` flag: choosing the end determines crossedness, so the umpire
+    /// can no longer mistap it and silently seat the new batter at the wrong
+    /// end.
+    bool outAtNonStrikerEnd = false,
   }) {
     final m = match;
     final inn = innings;
@@ -1211,6 +1240,9 @@ class MatchStore extends ChangeNotifier {
     // Player attribution: stamp who faced and who bowled before the ball
     // lands, so the sheet and the strip never disagree.
     final sheet = tracking ? _ensureSheet(m.currentInnings) : null;
+    final type = dismissal != null
+        ? DismissalType.fromId(dismissal)
+        : DismissalType.fromId(b.wicketType);
     if (sheet != null) {
       b.strikerId = sheet.strikerId;
       b.nonStrikerId = sheet.nonStrikerId;
@@ -1221,39 +1253,88 @@ class MatchStore extends ChangeNotifier {
     }
     _addBall(inn, b);
     if (sheet != null) {
-      final type = dismissal != null
-          ? DismissalType.fromId(dismissal)
-          : DismissalType.fromId(b.wicketType);
       sheet.applyDelivery(b,
           dismissalType: b.isWicket ? type : null, fielderName: fielderName);
+    }
+
+    // Settle the innings BEFORE deciding whether anything is owed. The old
+    // order asked the two questions while `inn.completed` was still false, so
+    // the final delivery of an innings armed the bowler prompt and the last
+    // wicket tried to seat a batter who no longer existed (8 players, 7
+    // wickets: all out, yet it still asked for the next man).
+    _checkEnd();
+
+    if (sheet != null) {
       if (b.isWicket && !inn.completed) {
+        // Run-out can dismiss either end. Which one decides whether the ends
+        // changed, so it also decides who faces the next ball.
+        final outIsNonStriker =
+            outAtNonStrikerEnd && type == DismissalType.runOut;
+        final outId =
+            outIsNonStriker ? (sheet.nonStrikerId ?? '') : (b.strikerId ?? '');
+        // Crossing is DERIVED, never a manual toggle: dismissing the
+        // non-striker means the batters must have crossed for him to be out
+        // at that end, and an odd number of completed runs always changes
+        // the ends. A missed toggle used to seat the new batter at the wrong
+        // end silently, corrupting every later ball.
+        final swappedOnBall = b.runs % 2 == 1;
+        final endsChanged = outIsNonStriker || swappedOnBall;
+        // Dismissal is attributed by applyDelivery to the striker, so a
+        // non-striker run-out is moved across here.
+        if (outIsNonStriker) _moveDismissalToNonStriker(sheet, b);
+
         // Bring the new batter in at the striker's end in the same commit, so
         // a dismissal is always resolved: one sheet, one tap, no limbo.
-        // Options exclude the out batter, the non-striker and the dismissed;
+        // Options exclude the OUT batter and the man at the other end;
         // retired-hurt returnees stay eligible.
-        final opts = sheet.nextBatterOptions(b.strikerId ?? '');
+        final opts = sheet.nextBatterOptions(outId);
         final next = (newBatterId != null && newBatterId.isNotEmpty)
             ? newBatterId
             : (opts.isEmpty ? null : opts.first);
         if (next != null) {
-          sheet.bringIn(next);
-          if (crossed) sheet.crossedRunOutFix(next);
+          if (endsChanged) {
+            sheet.crossedRunOutFix(next);
+          } else {
+            sheet.bringIn(next);
+          }
         }
       }
+
+      // The over has now ended (if this was its sixth legal ball): credit the
+      // maiden, change the ends per Law 41.6, name the previous bowler, and
+      // ask for a change — only if play continues.
+      _closeCompletedOvers(inn, sheet);
     }
-    // The over has now ended (if this was its sixth legal ball): credit the
-    // maiden, name the previous bowler, and ask for a change. Runs on the
-    // delivery that completes it, so the umpire is prompted while the ball is
-    // still fresh — never on the next tap, which used to refuse the delivery.
-    if (sheet != null) _closeCompletedOvers(inn, sheet);
 
     ballGen++; // strip animates on generation change only — undo is silent
     _feedback(b);
     _publishRoom(); // viewers see the ball; scoring never waits on this
-    _checkEnd();
     _persist();
     notifyListeners();
     return null;
+  }
+
+  /// Moves a run-out recorded against the striker onto the non-striker.
+  /// `applyDelivery` credits the wicket to whoever is on strike; a run-out at
+  /// the non-striker's end must credit the non-striker instead.
+  void _moveDismissalToNonStriker(InningsSheet sheet, Ball b) {
+    final outId = sheet.nonStrikerId;
+    if (outId == null) return;
+    final bat = sheet.striker;
+    final nst = sheet.batting[outId];
+    if (bat == null || nst == null) return;
+    // Hand the dismissal across: number, dismissed flag and credit.
+    nst.dismissal = bat.dismissal;
+    nst.isNotOut = false;
+    nst.wicketNumber = bat.wicketNumber;
+    nst.bowlerName = bat.bowlerName;
+    nst.dismissedByName = bat.dismissedByName;
+    bat.dismissal = null;
+    bat.isNotOut = true;
+    bat.wicketNumber = 0;
+    bat.bowlerName = null;
+    bat.dismissedByName = null;
+    b.strikerId = outId;
   }
 
   /// Haptics + arcade SFX by impact tier. Decoration only — scoring

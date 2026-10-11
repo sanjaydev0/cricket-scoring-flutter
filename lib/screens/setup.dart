@@ -314,13 +314,18 @@ class _SetupScreenState extends State<SetupScreen> {
     final showPool = expanded || q.isNotEmpty;
     final listed =
         showPool ? pool : pool.where((p) => sel.contains(p.id)).toList();
-    final visible =
-        expanded ? listed.take(12).toList() : listed.take(8).toList();
-    final hidden = listed.length - visible.length;
-    // The XI can never exceed players-per-side: selected stay tappable so a
-    // pick can always be undone, unselected lock with the reason visible.
+    // The XI can never exceed players-per-side. Once it is full the remaining
+    // players are HIDDEN, not greyed out: a row you cannot tap is noise on a
+    // phone, and a dimmed row still invites mis-taps between matches. The
+    // picked ones stay listed so a pick can always be undone. Raising
+    // players-per-side brings the rest straight back.
     final cap = cfg.playersPerSide;
     final full = sel.length >= cap;
+    final listedFull =
+        full ? listed.where((p) => sel.contains(p.id)).toList() : listed;
+    final visible =
+        expanded ? listedFull.take(12).toList() : listedFull.take(8).toList();
+    final hidden = listedFull.length - visible.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -352,46 +357,44 @@ class _SetupScreenState extends State<SetupScreen> {
           const Text('No players — add them in CLUB first.',
               style: TextStyle(fontSize: 12)),
         if (!showPool && pool.isNotEmpty)
-          Text('Tap Select players to choose (${pool.length} in club)',
+          Text(
+              full
+                  ? 'XI full at $cap. Raise players/side to pick more, or tap one to remove.'
+                  : 'Tap Select players to choose (${pool.length} in club)',
               style: const TextStyle(fontSize: 12)),
         for (final p in visible)
-          Opacity(
-            opacity: (full && !sel.contains(p.id)) ? 0.45 : 1.0,
-            child: InkWell(
-              onTap: (full && !sel.contains(p.id))
-                  ? null
-                  : () => setState(() {
-                        if (sel.contains(p.id)) {
-                          sel.remove(p.id);
-                        } else {
-                          sel.add(p.id);
-                        }
-                      }),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(p.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w800)),
-                          Text(
-                              '${_roleName(p.role)} | ${battingStyleLabel(p.battingStyle)} ${bowlingStyleLabel(p.bowlingStyle)}${freq(p.id) > 0 ? ' | ${freq(p.id)} played' : ''}',
-                              style: const TextStyle(fontSize: 11)),
-                        ],
-                      ),
+          InkWell(
+            onTap: () => setState(() {
+              if (sel.contains(p.id)) {
+                sel.remove(p.id);
+              } else {
+                sel.add(p.id);
+              }
+            }),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
+                        Text(
+                            '${_roleName(p.role)} | ${battingStyleLabel(p.battingStyle)} ${bowlingStyleLabel(p.bowlingStyle)}${freq(p.id) > 0 ? ' | ${freq(p.id)} played' : ''}',
+                            style: const TextStyle(fontSize: 11)),
+                      ],
                     ),
-                    Icon(
-                      sel.contains(p.id)
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: sel.contains(p.id) ? Colors.green : Colors.grey,
-                    ),
-                  ],
-                ),
+                  ),
+                  Icon(
+                    sel.contains(p.id)
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: sel.contains(p.id) ? Colors.green : Colors.grey,
+                  ),
+                ],
               ),
             ),
           ),

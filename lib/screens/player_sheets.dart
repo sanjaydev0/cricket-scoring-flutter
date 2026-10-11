@@ -238,7 +238,9 @@ void showDismissalSheet(
   }
   var type = DismissalType.fromId(wicketType);
   String? fielder;
-  var crossed = false;
+  // Run-out can dismiss either end. Choosing the end is what decides whether
+  // the batters crossed, so there is no separate toggle to mistap.
+  var outAtNonStrikerEnd = false;
   var runOutRuns = 0;
   // Explicit exclusion: the out batter, the non-striker, the dismissed and
   // the retired-out never appear. Retired-hurt returnees do.
@@ -346,15 +348,26 @@ void showDismissalSheet(
                       ),
                   ],
                 ),
-                Row(
-                  children: [
-                    const Expanded(
-                        child: Text('Batters crossed?',
-                            style: TextStyle(fontSize: 12))),
-                    Switch(
-                        value: crossed,
-                        onChanged: (v) => setSheet(() => crossed = v)),
-                  ],
+                const RowSectionLabel('WHICH BATTER IS OUT?',
+                    color: Color(0xFFDC143C)),
+                PlayerRow(
+                  name: sheet.nameOf(sheet.strikerId ?? ''),
+                  subtitle: "Facing, at the striker's end",
+                  selected: !outAtNonStrikerEnd,
+                  onTap: () => setSheet(() => outAtNonStrikerEnd = false),
+                ),
+                PlayerRow(
+                  name: sheet.nameOf(sheet.nonStrikerId ?? ''),
+                  subtitle: "At the non-striker's end",
+                  selected: outAtNonStrikerEnd,
+                  onTap: () => setSheet(() => outAtNonStrikerEnd = true),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  outAtNonStrikerEnd
+                      ? "Non-striker out — the batters crossed, so the new batter takes the striker's end."
+                      : 'Striker out. Ends change only if an odd number of runs was completed.',
+                  style: const TextStyle(fontSize: 11),
                 ),
               ],
               const SizedBox(height: 12),
@@ -382,7 +395,7 @@ void showDismissalSheet(
                           dismissal: type.name,
                           fielderName: fielder,
                           newBatterId: id,
-                          crossed: crossed,
+                          outAtNonStrikerEnd: outAtNonStrikerEnd,
                         );
                         if (err != null && context.mounted) {
                           ScaffoldMessenger.of(context)
@@ -538,7 +551,8 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
                     style: TextStyle(fontSize: 12)),
                 const SizedBox(height: 6),
                 _pickGroup(
-                  label: 'STRIKER — ON THE STRIKE',
+                  label: 'STRIKER — FACING',
+                  accent: const Color(0xFF1D4ED8),
                   people: batting,
                   selected: a,
                   enabledFor: (p) => true,
@@ -551,6 +565,7 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
                 ),
                 _pickGroup(
                   label: 'NON-STRIKER',
+                  accent: const Color(0xFF0F766E),
                   people: batting,
                   selected: b,
                   enabledFor: (p) => p.id != a,
@@ -559,6 +574,7 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
                 ),
                 _pickGroup(
                   label: 'OPENING BOWLER',
+                  accent: const Color(0xFFDC143C),
                   people: bowling,
                   selected: bowl,
                   enabledFor: (p) => true,
@@ -592,16 +608,29 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
 /// row of chips on a phone hides whole squads behind a scroll.
 Widget _pickGroup({
   required String label,
+  required Color accent,
   required List<Player> people,
   required String? selected,
   required bool Function(Player) enabledFor,
   required void Function(Player) onPick,
   String? emptyNote,
+  void Function()? onReopen,
 }) {
+  // Once a pick is made, show only that pick: this sheet is three choices, so
+  // a full roster of names that cannot be selected is just noise. Tapping the
+  // chosen row reopens the list to change it.
+  final chosen = selected == null
+      ? null
+      : [
+          for (final p in people)
+            if (p.id == selected) p
+        ];
+  final shown = chosen ?? people;
+
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      RowSectionLabel(label),
+      RowSectionLabel(label, color: accent, filled: true),
       if (people.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -609,15 +638,21 @@ Widget _pickGroup({
               style: const TextStyle(fontSize: 12)),
         )
       else
-        for (final p in people)
+        for (final p in shown)
           PlayerRow(
             name: p.name,
-            subtitle:
-                '${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}',
+            subtitle: chosen != null
+                ? 'Tap to change'
+                : '${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}',
             selected: selected == p.id,
             enabled: enabledFor(p),
             blockedReason: enabledFor(p) ? null : 'already the striker',
-            onTap: () => onPick(p),
+            onTap: chosen != null
+                ? () {
+                    onReopen?.call();
+                    onPick(p);
+                  }
+                : () => onPick(p),
           ),
     ],
   );
