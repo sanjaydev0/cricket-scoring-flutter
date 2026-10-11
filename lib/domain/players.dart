@@ -308,6 +308,19 @@ class BowlingCard {
   int overBalls = 0; // bowler balls (incl wides/nb) in the current over
   int overLegal = 0; // legal balls in the current over
 
+  /// Legal deliveries bowled. Distinct from [balls], which counts EVERY
+  /// delivery including wides and no-balls.
+  ///
+  /// Cricket: an over is six legal deliveries. A wide or no-ball does not
+  /// consume one, so neither advances the bowler's overs, and economy is
+  /// conventionally runs per SIX LEGAL BALLS. Deriving either from [balls]
+  /// inflated a bowler's overs and economy by every penalty they conceded -
+  /// a bowler who sent 6 legal + 2 wides read "8.2 ov" instead of "6.0 ov".
+  ///
+  /// Saves written before this field existed fall back to [balls], which is
+  /// the old (slightly high) figure rather than a wrong-looking blank.
+  int legalBalls = 0;
+
   BowlingCard({required this.playerId, required this.name});
 
   factory BowlingCard.fromJson(Map<String, dynamic> j) {
@@ -323,6 +336,9 @@ class BowlingCard {
     c.overRuns = (j['overRuns'] ?? 0) as int;
     c.overBalls = (j['overBalls'] ?? 0) as int;
     c.overLegal = (j['overLegal'] ?? 0) as int;
+    // Legacy saves have no legalBalls: fall back to the total they recorded
+    // rather than showing 0.0 ov for a bowler who actually bowled.
+    c.legalBalls = (j['legalBalls'] ?? j['balls'] ?? 0) as int;
     return c;
   }
 
@@ -338,12 +354,23 @@ class BowlingCard {
         'overRuns': overRuns,
         'overBalls': overBalls,
         'overLegal': overLegal,
+        'legalBalls': legalBalls,
       };
 
-  String get oversDisplay => '${balls ~/ 6}.${balls % 6}';
+  /// Overs from LEGAL balls only - `2.4` is two overs and four legal balls,
+  /// never a decimal fraction.
+  String get oversDisplay => '${legalBalls ~/ 6}.${legalBalls % 6}';
+
+  /// Penalty runs charged to this bowler, for the "incl" sub-line. Wides and
+  /// no-ball penalties are ALREADY inside [runsConceded] (Law 41.14) - this
+  /// only breaks them out for display so the total is never read twice.
+  int get penaltyRuns => wides + noBalls;
+
+  bool get bowledAny => legalBalls > 0 || balls > 0;
+
   double? get average => wickets == 0 ? null : runsConceded / wickets;
-  double? get economy => balls == 0 ? null : runsConceded * 6 / balls;
-  double? get strikeRate => wickets == 0 ? null : balls / wickets;
+  double? get economy => legalBalls == 0 ? null : runsConceded * 6 / legalBalls;
+  double? get strikeRate => wickets == 0 ? null : legalBalls / wickets;
 }
 
 class FieldingCard {
@@ -390,25 +417,30 @@ class InningsSheet {
   int nextPosition = 3;
   int wicketNumber = 0;
 
-  /// Over number (completed count) already prompted for, and who was asked to
-  /// be replaced. Stops the auto sheet re-firing on the first ball of the new
-  /// over after a pick — deferred rollover starts the new over one delivery
-  /// later, which is exactly what re-triggered it.
-  int promptedOver = -1;
-  String? promptedBowler;
-
-  /// Completed-over count already latched for a bowler change. The gate
-  /// re-sees the same pending rollover on every ball until one scores, so
-  /// without this the close (and the maiden) would run repeatedly.
-  int latchedOver = -1;
+  /// Completed over already credited to the bowlers' figures. Counts overs
+  /// that have reached six legal balls, so it is idempotent: re-deriving it
+  /// on every delivery closes each over exactly once (a second close would
+  /// hand the same bowler a second maiden).
+  int closedOvers = 0;
 
   /// Who bowled the last completed over. Shown on the picker ("Prev: Ravi")
   /// so the choice is informed, not just greyed-out.
   String? lastBowlerId;
 
-  /// Set when an over rolls: scoring is blocked until a different bowler is
-  /// picked. Persisted with the sheet so undo restores it.
+  /// Set the instant an over ends, cleared by picking the next bowler.
+  ///
+  /// This is the ONLY bowler latch. It previously shared the job with
+  /// `promptedOver`/`promptedBowler` and `latchedOver`, and the three
+  /// disagreed: the store armed its latch on the *seventh* tap (the tap after
+  /// the over ended) while the screen prompted on the sixth, so the same over
+  /// asked twice, the first ball of the new over was refused, and picking a
+  /// bowler for it went unrecorded. One field, armed by the delivery that
+  /// completes the over, disarmed by the pick.
   bool needsNewBowler = false;
+
+  /// Number of completed overs this bowler may not bowl: Law 17.4 forbids two
+  /// consecutive overs. -1 when there is no previous over.
+  int get consecutiveBlocked => lastBowlerId == null ? -1 : 0;
 
   InningsSheet({required this.battingTeam, required this.bowlingTeam});
 
@@ -445,9 +477,7 @@ class InningsSheet {
     }
     s.nextPosition = (j['nextPosition'] ?? 3) as int;
     s.wicketNumber = (j['wicketNumber'] ?? 0) as int;
-    s.promptedOver = (j['promptedOver'] ?? -1) as int;
-    s.latchedOver = (j['latchedOver'] ?? -1) as int;
-    s.promptedBowler = j['promptedBowler']?.toString();
+    s.closedOvers = (j['closedOvers'] ?? 0) as int;
     s.lastBowlerId = j['lastBowlerId']?.toString();
     s.needsNewBowler = (j['needsNewBowler'] ?? false) as bool;
     return s;
@@ -468,9 +498,7 @@ class InningsSheet {
         'partnerships': partnerships,
         'nextPosition': nextPosition,
         'wicketNumber': wicketNumber,
-        'promptedOver': promptedOver,
-        'promptedBowler': promptedBowler,
-        'latchedOver': latchedOver,
+        'closedOvers': closedOvers,
         'lastBowlerId': lastBowlerId,
         'needsNewBowler': needsNewBowler,
       };
@@ -620,12 +648,39 @@ class InningsSheet {
   }
 
   /// The law forbids consecutive overs.
-  bool canBowl(String id) => id != bowlerId;
+  /// Law 17.4: a bowler may not bowl two overs in succession.
+  ///
+  /// `bowlerId` alone was not enough — it only blocked whoever is bowling
+  /// *right now*. A mid-over change (legal only for injury, and offered by
+  /// the app) could hand the over to the player who bowled the previous one,
+  /// letting them bowl consecutive overs. `lastBowlerId` is set whenever an
+  /// over closes, so both are now refused.
+  bool canBowl(String id) => id != bowlerId && id != lastBowlerId;
+
+  /// Why a player cannot bowl right now, for the picker's disabled reason.
+  String? bowlBlockReason(String id) {
+    if (id == bowlerId) return 'already bowling';
+    if (id == lastBowlerId) return 'bowled the last over';
+    return null;
+  }
 
   void setBowler(String id) {
     // No reset here: whoever ends an over must close it first, so the maiden
     // credit and the counter reset always travel together (see closeOver).
     bowlerId = id;
+  }
+
+  /// Overs that have reached six legal balls, counted from the delivery list.
+  ///
+  /// Derived rather than assumed so it is idempotent: calling it on every
+  /// delivery closes each over exactly once, and a second close would hand the
+  /// same bowler a duplicate maiden.
+  int completedOverCount(Innings inn) {
+    var n = 0;
+    for (final o in inn.overs) {
+      if (o.balls.where((x) => x.isLegal).length >= 6) n++;
+    }
+    return n;
   }
 
   /// Closes the current bowler's over: maiden credit plus counter reset, in one
@@ -649,6 +704,8 @@ class InningsSheet {
     if (bat == null || bowl == null) return;
 
     if (ball.extra == 'WD') {
+      // A wide is charged to the bowler (Law 41.14) but is NOT a legal
+      // delivery: no legalBalls, so the bowler's overs do not advance.
       bowl.balls++;
       bowl.overBalls++;
       bowl.wides++;
@@ -663,6 +720,8 @@ class InningsSheet {
       bowl.balls++;
       bowl.overBalls++;
       bowl.noBalls++;
+      // Only the PENALTY is charged to the bowler; runs off the bat belong to
+      // the batter and are never the bowler's figures.
       bowl.runsConceded += ball.extraRuns;
       bowl.overRuns += ball.extraRuns;
       if (ball.runs > 0) {
@@ -678,10 +737,13 @@ class InningsSheet {
     }
 
     if (ball.extra == 'B' || ball.extra == 'LB') {
+      // Byes and leg-byes ARE legal deliveries (they consume one of the six)
+      // but are NOT charged to the bowler - they were not his fault.
       bat.balls++;
       bowl.balls++;
       bowl.overBalls++;
       bowl.overLegal++;
+      bowl.legalBalls++;
       partnershipRuns += ball.extraRuns;
       partnershipBalls++;
       return;
@@ -692,6 +754,7 @@ class InningsSheet {
     bowl.balls++;
     bowl.overBalls++;
     bowl.overLegal++;
+    bowl.legalBalls++;
     bat.runs += ball.runs;
     bowl.runsConceded += ball.runs;
     bowl.overRuns += ball.runs;

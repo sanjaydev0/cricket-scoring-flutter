@@ -467,34 +467,26 @@ void showBowlerSheet(BuildContext context, MatchStore store,
               Builder(builder: (_) {
                 final c = sheet.bowling[id]!;
                 final allowed = sheet.canBowl(id);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: RectBtn(
-                    primary: false,
-                    onTap: allowed
-                        ? () {
-                            final err = store.setBowler(id);
-                            if (err != null) {
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(content: Text(err)));
-                              return;
-                            }
-                            Navigator.pop(context);
+                return PlayerRow(
+                  name: c.name,
+                  selected: false,
+                  enabled: allowed,
+                  blockedReason: allowed
+                      ? null
+                      : sheet.bowlBlockReason(id) ?? 'unavailable',
+                  subtitle: bowlerFigureLine(c),
+                  trailing: BowlerFigureBlock(c),
+                  onTap: allowed
+                      ? () {
+                          final err = store.setBowler(id);
+                          if (err != null) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(content: Text(err)));
+                            return;
                           }
-                        : null,
-                    child: Row(
-                      children: [
-                        Expanded(
-                            child: Text(
-                                '${c.name}${allowed ? "" : " (just bowled)"}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800))),
-                        Text(
-                            '${c.oversDisplay}-${c.maidens}-${c.runsConceded}-${c.wickets}  Econ ${fmt2(c.economy)}',
-                            style: const TextStyle(fontSize: 12)),
-                      ],
-                    ),
-                  ),
+                          Navigator.pop(context);
+                        }
+                      : null,
                 );
               }),
           ],
@@ -519,79 +511,115 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
   String? a;
   String? b;
   String? bowl;
+  // The first two who have not batted are the sensible defaults, but nothing
+  // is pre-committed: a wrong auto-picked striker silently corrupts figures,
+  // so START stays disabled until all three are chosen on purpose.
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheetCtx) => StatefulBuilder(
       builder: (ctx, setSheet) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('START INNINGS • ${sheet.battingTeam}',
-                  style: const TextStyle(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 8),
-              const Text('STRIKER',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final p in batting)
-                    ChoiceChip(
-                      label: Text(p.name),
-                      selected: a == p.id,
-                      onSelected: (_) => setSheet(() => a = p.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Text('NON-STRIKER',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final p in batting)
-                    if (p.id != a)
-                      ChoiceChip(
-                        label: Text(p.name),
-                        selected: b == p.id,
-                        onSelected: (_) => setSheet(() => b = p.id),
-                      ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Text('OPENING BOWLER',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final p in bowling)
-                    ChoiceChip(
-                      label: Text(p.name),
-                      selected: bowl == p.id,
-                      onSelected: (_) => setSheet(() => bowl = p.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              RectBtn(
-                onTap: (a != null && b != null && bowl != null)
-                    ? () {
-                        store.setOpeners(a!, b!);
-                        store.setBowler(bowl!);
-                        Navigator.pop(sheetCtx);
-                      }
-                    : null,
-                child: const Text('START'),
-              ),
-            ],
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.82,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('START INNINGS • ${sheet.battingTeam}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 2),
+                const Text('Pick the two batters and the opening bowler.',
+                    style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 6),
+                _pickGroup(
+                  label: 'STRIKER — ON THE STRIKE',
+                  people: batting,
+                  selected: a,
+                  enabledFor: (p) => true,
+                  emptyNote:
+                      'No squad for ${sheet.battingTeam} — add players mid-match.',
+                  onPick: (p) => setSheet(() {
+                    a = p.id;
+                    if (b == p.id) b = null; // never both ends the same batter
+                  }),
+                ),
+                _pickGroup(
+                  label: 'NON-STRIKER',
+                  people: batting,
+                  selected: b,
+                  enabledFor: (p) => p.id != a,
+                  emptyNote: null,
+                  onPick: (p) => setSheet(() => b = p.id),
+                ),
+                _pickGroup(
+                  label: 'OPENING BOWLER',
+                  people: bowling,
+                  selected: bowl,
+                  enabledFor: (p) => true,
+                  emptyNote:
+                      'No squad for ${sheet.bowlingTeam} — add players mid-match.',
+                  onPick: (p) => setSheet(() => bowl = p.id),
+                ),
+                const SizedBox(height: 14),
+                RectBtn(
+                  onTap: (a != null && b != null && bowl != null)
+                      ? () {
+                          store.setOpeners(a!, b!);
+                          store.setBowler(bowl!);
+                          Navigator.pop(sheetCtx);
+                        }
+                      : null,
+                  child: Text(a == null || b == null || bowl == null
+                      ? 'PICK ALL THREE'
+                      : 'START INNINGS'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     ),
+  );
+}
+
+/// One labelled group of name rows. Names are rows, never pills — a wrapped
+/// row of chips on a phone hides whole squads behind a scroll.
+Widget _pickGroup({
+  required String label,
+  required List<Player> people,
+  required String? selected,
+  required bool Function(Player) enabledFor,
+  required void Function(Player) onPick,
+  String? emptyNote,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      RowSectionLabel(label),
+      if (people.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Text(emptyNote ?? 'No players.',
+              style: const TextStyle(fontSize: 12)),
+        )
+      else
+        for (final p in people)
+          PlayerRow(
+            name: p.name,
+            subtitle:
+                '${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}',
+            selected: selected == p.id,
+            enabled: enabledFor(p),
+            blockedReason: enabledFor(p) ? null : 'already the striker',
+            onTap: () => onPick(p),
+          ),
+    ],
   );
 }
 

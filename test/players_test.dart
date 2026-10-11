@@ -108,7 +108,22 @@ void main() {
   test('overs display is cricket notation, never decimal', () {
     final c = BowlingCard(playerId: 'r', name: 'Ravi');
     c.balls = 27;
+    c.legalBalls = 27;
     expect(c.oversDisplay, '4.3');
+  });
+
+  test('overs come from legal balls, so wides do not inflate them', () {
+    final c = BowlingCard(playerId: 'r', name: 'Ravi');
+    c.balls = 29; // 27 legal + 2 wides sent down
+    c.legalBalls = 27;
+    c.wides = 2;
+    c.runsConceded = 30;
+    expect(c.oversDisplay, '4.3', reason: '6 legal balls make an over');
+    expect(c.economy, closeTo(30 * 6 / 27, 1e-9),
+        reason: 'economy is per six LEGAL balls');
+    expect(c.penaltyRuns, 2);
+    expect(c.runsConceded, 30,
+        reason: 'runs given already contains the wide penalties');
   });
 
   test('undefined stats are null, never zero', () {

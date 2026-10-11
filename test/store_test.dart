@@ -272,13 +272,13 @@ void main() {
 
   test('bowler latch fields persist through JSON', () {
     final sh = InningsSheet(battingTeam: 'A', bowlingTeam: 'B')
-      ..promptedOver = 2
-      ..promptedBowler = 'p1'
-      ..lastBowlerId = 'p1';
+      ..closedOvers = 2
+      ..lastBowlerId = 'p1'
+      ..needsNewBowler = true;
     final back = InningsSheet.fromJson(sh.toJson());
-    expect(back.promptedOver, 2);
-    expect(back.promptedBowler, 'p1');
+    expect(back.closedOvers, 2);
     expect(back.lastBowlerId, 'p1');
+    expect(back.needsNewBowler, isTrue);
   });
 
   test('tracked scoring waits for openers and bowler', () {

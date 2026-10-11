@@ -637,6 +637,64 @@ class MatchStore extends ChangeNotifier {
     if (match != null) pushSnapshot();
   }
 
+  /// Renames a club and regenerates its handle, which is derived from the
+  /// name. Null when the id is unknown or the name is blank.
+  String? renameClub(String id, String name) {
+    final t = name.trim();
+    if (t.isEmpty) return 'Enter a club name';
+    Club? target;
+    for (final c in clubs) {
+      if (c.id == id) target = c;
+    }
+    if (target == null) return 'Club not found';
+    pushSnapshotSafe();
+    target.name = t;
+    target.handle = Club.create(name: t).handle;
+    _persist();
+    notifyListeners();
+    return null;
+  }
+
+  /// Deletes a club and every player registered to it.
+  ///
+  /// Refused while a live match uses one of its players in an XI, or while any
+  /// of them has recorded figures in a live sheet: those rows are referenced by
+  /// balls already on the strip and by the current striker/bowler, and
+  /// orphaning them corrupts the scorecard. Archived matches are unaffected —
+  /// they carry their own name snapshots.
+  String? deleteClub(String id) {
+    final members = roster.where((p) => p.clubId == id).toList();
+    final ids = members.map((p) => p.id).toSet();
+    final m = match;
+    if (m != null) {
+      final inSquad = ids.any((pid) =>
+          m.config.squadA.contains(pid) || m.config.squadB.contains(pid));
+      if (inSquad) return 'Players are in the live XI — remove them first';
+      for (final sheet in sheets.values) {
+        final played = ids.any((pid) {
+          final b = sheet.batting[pid];
+          final w = sheet.bowling[pid];
+          if (sheet.strikerId == pid || sheet.bowlerId == pid) return true;
+          return (b != null && b.position > 0) ||
+              (w != null && (w.balls > 0 || w.wickets > 0));
+        });
+        if (played) return 'A player has already batted or bowled this match';
+      }
+    }
+    pushSnapshotSafe();
+    roster.removeWhere((p) => p.clubId == id);
+    for (final pid in ids) {
+      playerAppearances.remove(pid);
+    }
+    clubs.removeWhere((c) => c.id == id);
+    if (activeClubId == id) {
+      activeClubId = clubs.isEmpty ? null : clubs.first.id;
+    }
+    _persist();
+    notifyListeners();
+    return null;
+  }
+
   void setPlayerRole(String id, PlayerRole role) {
     for (final p in roster) {
       if (p.id == id) p.role = role;
@@ -695,16 +753,23 @@ class MatchStore extends ChangeNotifier {
   }
 
   /// Assigns the over's bowler. Returns an error when the Laws forbid it —
-  /// the picker greys the just-bowled player, but the store is the enforcer.
+  /// the picker greys the just-bowled player, but the store is the enforcer
+  /// (Law 17.4: no two consecutive overs).
   String? setBowler(String id) {
     final sheet = currentSheet;
     if (sheet == null) return 'Player tracking is off';
-    if (!sheet.canBowl(id)) {
-      return '${sheet.nameOf(id)} bowled the last over';
-    }
+    final block = sheet.bowlBlockReason(id);
+    if (block != null) return '${sheet.nameOf(id)} $block';
     pushSnapshot();
-    sheet.closeOver(legalBalls: 0); // reset without maiden: mid-over change
+    // Mid-over change: reset the live over counters without crediting a
+    // maiden. The over that already completed was closed when it completed.
+    final live = sheet.currentBowler;
+    if (live != null && (live.overLegal > 0 || live.overBalls > 0)) {
+      sheet.closeOver(legalBalls: 0);
+    }
     sheet.setBowler(id);
+    // Disarms the latch: the very next delivery is the first of the new over
+    // and must never be refused.
     sheet.needsNewBowler = false;
     _persist();
     notifyListeners();
@@ -749,6 +814,28 @@ class MatchStore extends ChangeNotifier {
 
   /// The over just finished: maiden accounting happens here, where the legal
   /// count is known. Delegates to the sheet's single close path.
+  /// Closes every over that has completed since the last call: credits the
+  /// maiden, records who bowled it, and arms the single bowler latch.
+  ///
+  /// Called from `score` immediately after the delivery lands, so the latch is
+  /// armed by the sixth ball. The old code armed it lazily on the *next* tap,
+  /// which refused that delivery and then re-prompted for an over the umpire
+  /// had already answered — the stuck loop.
+  ///
+  /// The strip keeps the finished over visible (deferred rollover); the new one
+  /// appears when the first ball of it is recorded.
+  void _closeCompletedOvers(Innings inn, InningsSheet sheet) {
+    final done = sheet.completedOverCount(inn);
+    if (done <= sheet.closedOvers) return;
+    for (var i = sheet.closedOvers; i < done; i++) {
+      finishOverForSheet();
+    }
+    sheet.closedOvers = done;
+    // Only ask for a change when play continues: on the final wicket or the
+    // final ball of the innings there is no next over to bowl.
+    sheet.needsNewBowler = !inn.completed;
+  }
+
   void finishOverForSheet() {
     final sheet = currentSheet;
     final inn = innings;
@@ -887,11 +974,52 @@ class MatchStore extends ChangeNotifier {
     return roster.where((p) => p.clubId == cid).toList();
   }
 
+  /// Roster search. INCLUDES inactive players.
+  ///
+  /// It used to filter them out, while [duplicateName] (correctly) checked the
+  /// whole roster. So an inactive player blocked their own name with "already
+  /// exists" and was impossible to find, edit or delete — visible only in
+  /// STATS, which read the unfiltered list. Callers order active first and
+  /// mark the rest; hiding a name that still blocks that name is the bug.
   List<Player> searchRoster(String q) {
     final query = q.toLowerCase().trim();
-    final base = clubRoster.where((p) => p.active).toList();
-    if (query.isEmpty) return base;
-    return base.where((p) => p.searchKey.contains(query)).toList();
+    final all = clubRoster.toList()
+      ..sort((a, b) {
+        if (a.active != b.active) return a.active ? -1 : 1;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    if (query.isEmpty) return all;
+    return all.where((p) => p.searchKey.contains(query)).toList();
+  }
+
+  /// The currently selected club, or null before one is created.
+  Club? get activeClub {
+    final id = activeClubId;
+    if (id == null) return null;
+    for (final c in clubs) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  /// The roster player with [id], or null. Needed when the XI holds ids that
+  /// predate the roster entry (mid-match adds, imported squads).
+  Player? playerById(String id) {
+    for (final p in roster) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  /// The roster player already using [name], active or not — so the UI can
+  /// offer "open that player" instead of a dead-end warning.
+  Player? playerByName(String name) {
+    final q = name.trim().toLowerCase();
+    if (q.isEmpty) return null;
+    for (final p in clubRoster) {
+      if (p.name.trim().toLowerCase() == q) return p;
+    }
+    return null;
   }
 
   void _addBall(Innings inn, Ball b) {
@@ -939,19 +1067,9 @@ class MatchStore extends ChangeNotifier {
       if (gate.strikerId == null || gate.bowlerId == null) {
         return needSetupMsg;
       }
-      // Rollover is deferred: the new over starts with THIS delivery, so the
-      // latch must engage here, before the ball — not after it. Guarded by
-      // latchedOver: the same pending rollover reappears on every refused
-      // ball, and re-closing would credit the maiden twice.
-      if (inn.overs.isNotEmpty &&
-          inn.overs.last.balls.where((x) => x.isLegal).length >= 6) {
-        final completed = inn.legalDeliveries ~/ 6;
-        if (gate.latchedOver != completed) {
-          finishOverForSheet();
-          gate.needsNewBowler = true;
-          gate.latchedOver = completed;
-        }
-      }
+      // The only bowler latch. Armed by the delivery that COMPLETES an over
+      // (see _closeCompletedOvers below), disarmed by picking a bowler — so
+      // the first delivery of the new over is never refused.
       if (gate.needsNewBowler) return needBowlerMsg;
     }
     pushSnapshot();
@@ -1094,9 +1212,6 @@ class MatchStore extends ChangeNotifier {
     // lands, so the sheet and the strip never disagree.
     final sheet = tracking ? _ensureSheet(m.currentInnings) : null;
     if (sheet != null) {
-      // An over that rolls here ends the previous bowler's figures first.
-      // Rollover + latch already handled at the gate above; the over that
-      // starts here belongs to the newly picked bowler.
       b.strikerId = sheet.strikerId;
       b.nonStrikerId = sheet.nonStrikerId;
       b.bowlerId = sheet.bowlerId;
@@ -1126,6 +1241,12 @@ class MatchStore extends ChangeNotifier {
         }
       }
     }
+    // The over has now ended (if this was its sixth legal ball): credit the
+    // maiden, name the previous bowler, and ask for a change. Runs on the
+    // delivery that completes it, so the umpire is prompted while the ball is
+    // still fresh — never on the next tap, which used to refuse the delivery.
+    if (sheet != null) _closeCompletedOvers(inn, sheet);
+
     ballGen++; // strip animates on generation change only — undo is silent
     _feedback(b);
     _publishRoom(); // viewers see the ball; scoring never waits on this
@@ -1192,8 +1313,15 @@ class MatchStore extends ChangeNotifier {
     }
     pushSnapshot();
     mine.add(playerId);
-    final p = roster.where((e) => e.id == playerId);
-    if (p.isNotEmpty) sheet.register(p.first);
+    // Register on the live sheet AND every other innings sheet, so a player
+    // added during innings 1 is still selectable in innings 2 (whose sheet is
+    // built lazily from the squads and would otherwise miss them).
+    final p = playerById(playerId);
+    if (p != null) {
+      for (final sh in sheets.values) {
+        sh.register(p);
+      }
+    }
     _persist();
     notifyListeners();
     return null;
@@ -1201,14 +1329,14 @@ class MatchStore extends ChangeNotifier {
 
   /// Type-a-name mid-match add: roster hit joins the XI, a new name is created
   /// in the club (name-only; styles later) and joins. Duplicates warn.
+  /// Adds a mid-match player by typed name: an existing roster player (inactive
+  /// or not) is added as-is; an unknown name is created in the club first.
   String? addSquadByName(String team, String name) {
     final t = name.trim();
     if (t.isEmpty) return 'Type a name';
-    for (final p in clubRoster) {
-      if (p.name.trim().toLowerCase() == t.toLowerCase()) {
-        return addToSquad(team, p.id);
-      }
-    }
+    final existing = playerByName(t);
+    if (existing != null) return addToSquad(team, existing.id);
+    if (activeClubId == null) return 'Create a club first';
     final created = addPlayer(name: t);
     if (created == null) return 'Create a club first';
     return addToSquad(team, created.id);

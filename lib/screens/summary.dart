@@ -33,41 +33,122 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// One bowler per two lines: figures large right, wides/no-balls + economy
-/// small below. Roomier than the old 3-column table, same numbers.
+/// Bowling figures in the newspaper scorecard convention: `O M R W` under a
+/// labelled header row, with `WD NB` appended so the penalty breakdown stays
+/// visible.
+///
+/// The header is what makes the single letters honest - `26-1-2-1` with no
+/// legend is guesswork. Runs (`R`) already contain the wides and no-ball
+/// penalties (Law 41.14), which is exactly why they sit in their own columns
+/// rather than being added on: the total never moves.
+///
+/// Overs count legal balls only, so a bowler who sent six legal plus two
+/// wides reads `6.0`, not `8.2`.
 class BowlerRows extends StatelessWidget {
   final List<BowlingCard> bowlers;
   const BowlerRows(this.bowlers, {super.key});
+
+  Widget _cell(String v,
+      {Color? color, bool header = false, double width = 34}) {
+    return SizedBox(
+      width: width,
+      child: Text(
+        v,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        style: header
+            ? const TextStyle(
+                fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+            : TextStyle(
+                fontWeight: FontWeight.w900, fontSize: 14, color: color),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final faint = cs.onSurface.withValues(alpha: 0.6);
+    final hasExtras = bowlers.any((c) => c.wides > 0 || c.noBalls > 0);
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header: O M R W (+ WD NB) so the letters need no legend.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text('BOWLING',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: faint)),
+              ),
+              _cell('O', color: faint, header: true),
+              _cell('M', color: faint, header: true),
+              _cell('R', color: faint, header: true),
+              _cell('W', color: faint, header: true),
+              if (hasExtras) ...[
+                _cell('WD', color: faint, header: true, width: 26),
+                _cell('NB', color: faint, header: true, width: 26),
+              ],
+              const SizedBox(width: 2),
+            ],
+          ),
+        ),
         for (final c in bowlers)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: cs.outlineVariant)),
             ),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(c.name,
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      Text(
-                          'Wd ${c.wides} Nb ${c.noBalls} • Econ ${c.economy == null ? '—' : c.economy!.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 11)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 14)),
+                      if (c.economy != null)
+                        const Text('Econ',
+                            style: TextStyle(fontSize: 9, height: 1.1)),
+                      if (c.economy != null)
+                        Text(c.economy!.toStringAsFixed(2),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFF59E0B))),
                     ],
                   ),
                 ),
-                Text(
-                    '${c.oversDisplay}-${c.maidens}-${c.runsConceded}-${c.wickets}',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 16)),
+                _cell(c.oversDisplay),
+                _cell('${c.maidens}'),
+                _cell('${c.runsConceded}'),
+                _cell('${c.wickets}',
+                    color: c.wickets > 0 ? const Color(0xFF22C55E) : null),
+                if (hasExtras) ...[
+                  _cell(c.wides > 0 ? '${c.wides}' : '·',
+                      color: faint, width: 26),
+                  _cell(c.noBalls > 0 ? '${c.noBalls}' : '·',
+                      color: faint, width: 26),
+                ],
+                const SizedBox(width: 2),
               ],
+            ),
+          ),
+        if (hasExtras)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Text(
+              'R (runs) already includes the wides and no-balls beside it.',
+              style: TextStyle(fontSize: 10, color: faint),
             ),
           ),
       ],

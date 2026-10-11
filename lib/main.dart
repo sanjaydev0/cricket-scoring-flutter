@@ -30,15 +30,21 @@ void main() async {
   // very first boundary/wicket of the match is never swallowed by an
   // audio pool that is still warming up.
   await store.load();
+  // Portrait only: the keypad grid, strip and hero are laid out for a narrow
+  // portrait column; landscape would crush them and cause fat-finger errors.
+  //
+  // Set BEFORE runApp so the very first frame is already portrait - Android
+  // reads the orientation when the activity is created, and calling this
+  // after runApp raced the first frame. The AndroidManifest
+  // `screenOrientation="portrait"` is the authoritative lock (see the note
+  // there); this call covers web/desktop and keeps the two platforms agreed.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   // Signing in is deliberately not awaited: a slow or unreachable backend
   // must not delay the first ball. Sharing enables itself when it arrives.
   unawaited(sync.init().catchError((Object _) {}));
   runApp(CricketApp(store: store));
-  // Portrait only: the keypad grid, strip and hero are laid out for a narrow
-  // portrait column; landscape would crush them and cause fat-finger errors.
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
 }
 
 class CricketApp extends StatelessWidget {

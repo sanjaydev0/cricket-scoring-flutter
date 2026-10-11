@@ -412,12 +412,6 @@ class ScoringScreen extends StatelessWidget {
   }
 
   void _tap(BuildContext ctx, String action, {int runs = 0}) {
-    return _tapInner(ctx, action, runs: runs);
-  }
-
-  void _tapInner(BuildContext ctx, String action, {int runs = 0}) {
-    final beforeOver = store.innings?.currentOverNumber ?? 1;
-    final beforeLegal = store.innings?.legalDeliveries ?? 0;
     final err = store.score(action: action, runs: runs);
     if (err != null) {
       // Gated states reopen their picker instead of only snacking: the umpire
@@ -433,29 +427,13 @@ class ScoringScreen extends StatelessWidget {
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(err)));
       return;
     }
-    // The over just finished: prompt the next bowler immediately, while the
-    // captain is deciding. Never on innings end, and never twice for the same
-    // over: deferred rollover starts the new over on the NEXT delivery, which
-    // re-fires the overNumber branch after a pick. The latch below is what
-    // stops that — same over + bowler already changed means handled.
-    final inn = store.innings;
-    final sheet = store.currentSheet;
-    final completedCount = inn == null ? 0 : inn.legalDeliveries ~/ 6;
-    final overDone = store.tracking &&
-        inn != null &&
-        !inn.completed &&
-        (inn.currentOverNumber != beforeOver ||
-            (inn.legalDeliveries - beforeLegal > 0 &&
-                inn.legalDeliveries % 6 == 0));
-    if (overDone && sheet != null) {
-      final handled = sheet.promptedOver == completedCount &&
-          sheet.bowlerId != sheet.promptedBowler;
-      if (!handled) {
-        sheet.promptedOver = completedCount;
-        sheet.promptedBowler = sheet.bowlerId;
-        store.persistOnly();
-        showBowlerSheet(ctx, store, auto: true);
-      }
+    // The store arms ONE latch when the sixth legal ball completes an over.
+    // Ask here — right after that ball — and nowhere else. The previous code
+    // also derived "the over ended" from the strip's over number, which
+    // re-fired on the first ball of the new over and asked a second time for
+    // an over the umpire had already answered.
+    if (store.tracking && store.currentSheet?.needsNewBowler == true) {
+      showBowlerSheet(ctx, store, auto: true);
     }
   }
 

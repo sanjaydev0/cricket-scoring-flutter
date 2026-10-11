@@ -18,12 +18,23 @@
         android:label="CricScore"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Portrait only. This is the AUTHORITATIVE lock: the keypad grid,
+             over strip and hero tile are laid out for a narrow portrait
+             column, and in landscape they crush into fat-finger errors.
+
+             `setPreferredOrientations` alone was not enough on a release APK:
+             `configChanges` below includes `orientation`, so Android never
+             recreates the activity on rotation - it only relayouts - and the
+             Dart preference (which applies on activity creation) is never
+             re-applied. The phone stayed landscape. Declaring it here makes
+             the system refuse the rotation at the platform level. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
+            android:screenOrientation="portrait"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">

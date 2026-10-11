@@ -266,6 +266,9 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
   int noball = cfg.rules.noBallPenalty;
   bool freeHit = cfg.rules.freeHit;
   bool lms = cfg.rules.lastManStanding;
+  // Owned by the sheet so the mid-match "add a player" field survives
+  // rebuilds and can be cleared after each add.
+  final squadField = TextEditingController();
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
@@ -365,7 +368,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   onSelectionChanged: (s) => setSheet(() => lms = s.first),
                 ),
               ),
-              if (store.tracking) _squadSection(context, store, setSheet),
+              if (store.tracking)
+                _squadSection(context, store, setSheet, squadField),
               if (store.tracking) const Divider(height: 24),
               const Divider(height: 24),
               Row(
@@ -598,8 +602,8 @@ void showLookSheet(BuildContext context, MatchStore store) {
 
 /// Mid-match XI management: rows per side, search-to-add from the roster,
 /// type-a-name to create + add. Same cap and cross-exclusion as setup.
-Widget _squadSection(
-    BuildContext context, MatchStore store, StateSetter setSheet) {
+Widget _squadSection(BuildContext context, MatchStore store,
+    StateSetter setSheet, TextEditingController squadField) {
   final m = store.match!;
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,13 +612,13 @@ Widget _squadSection(
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
       const SizedBox(height: 8),
       for (final team in [m.config.teamA, m.config.teamB])
-        _sideBlock(context, store, setSheet, team),
+        _sideBlock(context, store, setSheet, team, squadField),
     ],
   );
 }
 
-Widget _sideBlock(
-    BuildContext context, MatchStore store, StateSetter setSheet, String team) {
+Widget _sideBlock(BuildContext context, MatchStore store, StateSetter setSheet,
+    String team, TextEditingController squadField) {
   final m = store.match!;
   final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
   final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
@@ -655,50 +659,66 @@ Widget _sideBlock(
           ],
         ),
       const SizedBox(height: 4),
-      TextField(
-        decoration: InputDecoration(
-          labelText:
-              mine.length >= cap ? 'XI full' : 'Add from roster / type a name',
-          prefixIcon: const Icon(Icons.search),
-          border: const OutlineInputBorder(),
-        ),
-        enabled: mine.length < cap,
-        onSubmitted: (v) {
-          final err = store.addSquadByName(team, v);
-          setSheet(() {});
-          if (err != null) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(err)));
-          }
-        },
+      // Explicit button, not just onSubmitted: typing a name and tapping away
+      // used to do nothing at all, which read as "adding mid-match is broken".
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: squadField,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                labelText: mine.length >= cap
+                    ? 'XI full ($cap)'
+                    : 'Roster name, or type a new one',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              enabled: mine.length < cap,
+              onSubmitted: (_) => _addByName(context, store, team, squadField),
+            ),
+          ),
+          const SizedBox(width: 8),
+          RectBtn(
+            primary: false,
+            onTap: mine.length >= cap
+                ? null
+                : () => _addByName(context, store, team, squadField),
+            child: const Text('ADD'),
+          ),
+        ],
       ),
       const SizedBox(height: 4),
       for (final p in cands.take(4))
-        InkWell(
-          onTap: mine.length >= cap
-              ? null
-              : () {
-                  final err = store.addToSquad(team, p.id);
-                  setSheet(() {});
-                  if (err != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(err)));
-                  }
-                },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(p.name,
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                ),
-                const Icon(Icons.add_circle_outline, size: 20),
-              ],
-            ),
-          ),
+        PlayerRow(
+          name: p.name,
+          subtitle: '${store.playerAppearances[p.id] ?? 0} appearances',
+          selected: false,
+          enabled: mine.length < cap,
+          blockedReason: mine.length >= cap ? 'XI full ($cap)' : null,
+          onTap: () {
+            final err = store.addToSquad(team, p.id);
+            setSheet(() {});
+            if (err != null) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(err)));
+            }
+          },
+          trailing: const Icon(Icons.add_circle_outline, size: 20),
         ),
       const SizedBox(height: 10),
     ],
   );
+}
+
+/// Adds by typed name and clears the field either way, so the next player can
+/// be typed straight away.
+void _addByName(BuildContext context, MatchStore store, String team,
+    TextEditingController squadField) {
+  final err = store.addSquadByName(team, squadField.text);
+  squadField.clear();
+  if (err != null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+  }
 }

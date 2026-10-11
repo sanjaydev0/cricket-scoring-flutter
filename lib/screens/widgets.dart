@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' show sin;
+import '../domain/players.dart';
 import '../models.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -390,3 +391,281 @@ class _CelebrateState extends State<Celebrate>
     );
   }
 }
+
+/// The single name-picker row: name on the left, selection affordance on the
+/// right. Every picker that offers a person uses this, so a name is never a
+/// pill and every list scans the same way.
+class PlayerRow extends StatelessWidget {
+  final String name;
+
+  /// Secondary line under the name (role, style, figures). Null hides it.
+  final String? subtitle;
+
+  /// True when this row is the chosen one — renders the filled indicator.
+  final bool selected;
+
+  /// Tapping does nothing and the row is dimmed (XI full, just bowled, …).
+  final bool enabled;
+
+  /// Why the row is disabled. Shown in the subtitle when there is no other
+  /// subtitle, so a dimmed row always explains itself.
+  final String? blockedReason;
+
+  /// Trailing widget replaces the default indicator (e.g. a "+" affordance).
+  final Widget? trailing;
+
+  final VoidCallback? onTap;
+
+  const PlayerRow({
+    super.key,
+    required this.name,
+    this.subtitle,
+    this.selected = false,
+    this.enabled = true,
+    this.blockedReason,
+    this.trailing,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final dim = !enabled;
+    final sub = subtitle ?? blockedReason;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          // Selection is a filled slab, not a tint: readable in sunlight.
+          color: selected ? const Color(0xFF131316) : Colors.transparent,
+          border: Border(
+            bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: dim
+                          ? cs.onSurface.withValues(alpha: 0.45)
+                          : (selected ? Colors.white : cs.onSurface),
+                    ),
+                  ),
+                  if (sub != null)
+                    Text(
+                      sub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: selected
+                            ? Colors.white70
+                            : cs.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (trailing != null)
+              trailing!
+            else
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                size: 20,
+                color: selected
+                    ? const Color(0xFF22C55E)
+                    : cs.onSurface.withValues(alpha: dim ? 0.25 : 0.5),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small uppercase heading above a group of rows.
+class RowSectionLabel extends StatelessWidget {
+  final String text;
+  final Color? color;
+  const RowSectionLabel(this.text, {super.key, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 2, left: 10),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          fontSize: 11,
+          letterSpacing: 1.2,
+          color: color ?? Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
+    );
+  }
+}
+
+/// One-line bowler summary for use as a row subtitle.
+///
+/// Spelled out rather than `2.4-0-26-1`: that string needs a legend, and a
+/// umpire reading it mid-over should not have to remember which position is
+/// which. The penalty runs are named as being INCLUDED, because they are
+/// inside the runs total (Law 41.14) and showing them separately without
+/// saying so reads as double counting.
+String bowlerFigureLine(BowlingCard c) {
+  if (!c.bowledAny) return 'Yet to bowl';
+  final parts = <String>[
+    '${c.oversDisplay} ov',
+    '${c.runsConceded} runs',
+    if (c.wickets > 0) '${c.wickets} ${c.wickets == 1 ? 'wicket' : 'wickets'}',
+    if (c.maidens > 0) '${c.maidens} ${c.maidens == 1 ? 'maiden' : 'maidens'}',
+  ];
+  final extras = <String>[];
+  if (c.wides > 0) extras.add('${c.wides} wd');
+  if (c.noBalls > 0) extras.add('${c.noBalls} nb');
+  if (extras.isNotEmpty) parts.add('incl ${extras.join(', ')}');
+  return parts.join(' • ');
+}
+
+/// Right-hand figure cluster: overs and economy as two labelled readouts.
+class BowlerFigureBlock extends StatelessWidget {
+  final BowlingCard c;
+  final bool compact;
+  const BowlerFigureBlock(this.c, {super.key, this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              c.oversDisplay,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: compact ? 13 : 15,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Text('OV',
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurface.withValues(alpha: 0.55))),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.trending_down, size: 11, color: Color(0xFFF59E0B)),
+            const SizedBox(width: 2),
+            Text(
+              fmt2(c.economy),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+                color: Color(0xFFF59E0B),
+              ),
+            ),
+            Text(' ECON',
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurface.withValues(alpha: 0.55))),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Full bowling card, shown after the match: every figure named, nothing
+/// encoded. Extras stay broken out under the runs they are already inside.
+class BowlingFiguresPanel extends StatelessWidget {
+  final BowlingCard c;
+  const BowlingFiguresPanel(this.c, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    Widget cell(String label, String value, {Color? color, bool big = false}) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 96,
+              child: Text(
+                label,
+                style: TextStyle(
+                    fontSize: 11, color: cs.onSurface.withValues(alpha: 0.65)),
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: big ? 16 : 13,
+                color: color ?? cs.onSurface,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final extras = <String>[];
+    if (c.wides > 0) extras.add('${c.wides} wd');
+    if (c.noBalls > 0) extras.add('${c.noBalls} nb');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        cell('Overs', c.oversDisplay, big: true),
+        cell('Runs given', '${c.runsConceded}'),
+        cell('Wickets', '${c.wickets}',
+            color: c.wickets > 0 ? const Color(0xFF22C55E) : null),
+        cell('Maidens', '${c.maidens}'),
+        cell('Average', fmt2(c.average)),
+        cell('Economy', fmt2(c.economy)),
+        cell('Strike rate', fmt2(c.strikeRate)),
+        cell('Wides', '${c.wides}'),
+        cell('No balls', '${c.noBalls}'),
+        if (extras.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Runs given already includes ${extras.join(' and ')}',
+              style: TextStyle(
+                  fontSize: 11, color: cs.onSurface.withValues(alpha: 0.6)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Two-decimal stat with an em-dash for "not applicable" (0 wickets, no overs).
+String fmt2(double? v) => v == null ? '—' : v.toStringAsFixed(2);

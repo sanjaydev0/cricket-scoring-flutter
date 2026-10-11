@@ -115,6 +115,8 @@ class _ClubScreenState extends State<ClubScreen> {
         ),
       );
     }
+    // Clubs are rows, not chips: a club is a name you pick, and the list must
+    // carry the edit and delete actions that chips have no room for.
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -122,25 +124,125 @@ class _ClubScreenState extends State<ClubScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('CLUB', style: TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final c in store.clubs)
-                  ChoiceChip(
-                    label: Text(c.name),
-                    selected: store.activeClubId == c.id,
-                    onSelected: (_) => store.selectClub(c.id),
-                  ),
-                ActionChip(
-                  label: const Text('+ New'),
-                  onPressed: () => _clubSheet(context, store),
+            const SizedBox(height: 4),
+            for (final c in store.clubs)
+              PlayerRow(
+                name: c.name,
+                subtitle: store.activeClubId == c.id ? 'ACTIVE CLUB' : null,
+                selected: store.activeClubId == c.id,
+                enabled: store.activeClubId != c.id,
+                blockedReason: 'ACTIVE CLUB',
+                onTap: () => store.selectClub(c.id),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Rename club',
+                      onPressed: () => _renameClubSheet(context, store, c),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline,
+                          size: 18, color: Color(0xFFDC143C)),
+                      tooltip: 'Delete club',
+                      onPressed: () => _deleteClubConfirm(context, store, c),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      store.activeClubId == c.id
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: store.activeClubId == c.id
+                          ? const Color(0xFF22C55E)
+                          : const Color(0xFF94A3B8),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            const SizedBox(height: 8),
+            RectBtn(
+              primary: false,
+              onTap: () => _clubSheet(context, store),
+              child: const Text('+ NEW CLUB'),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Renames a club and regenerates its handle.
+  void _renameClubSheet(BuildContext context, MatchStore store, Club c) {
+    final name = TextEditingController(text: c.name);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('RENAME CLUB'),
+        content: TextField(
+          controller: name,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+              labelText: 'Club name', border: OutlineInputBorder()),
+        ),
+        actions: [
+          RectBtn(
+            primary: false,
+            onTap: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          RectBtn(
+            onTap: () {
+              final err = store.renameClub(c.id, name.text);
+              Navigator.pop(context);
+              if (err != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+              } else {
+                setState(() {});
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Deleting a club deletes its players too, so this states the blast radius
+  /// and the store still refuses while a live match needs them.
+  void _deleteClubConfirm(BuildContext context, MatchStore store, Club c) {
+    final members = store.clubRoster.where((p) => p.clubId == c.id).length;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('DELETE ${c.name}?'),
+        content: Text(
+          members == 0
+              ? 'This club is empty. Nothing else is removed.'
+              : 'This also deletes $members player${members == 1 ? '' : 's'} from the club, and their career stats. Saved matches keep their names. This cannot be undone.',
+        ),
+        actions: [
+          RectBtn(
+            primary: false,
+            onTap: () => Navigator.pop(context),
+            child: const Text('Keep'),
+          ),
+          RectBtn(
+            danger: true,
+            onTap: () {
+              final err = store.deleteClub(c.id);
+              Navigator.pop(context);
+              if (err != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+              } else {
+                setState(() {});
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -285,42 +387,54 @@ class _ClubScreenState extends State<ClubScreen> {
             ),
           ),
         for (final p in list)
-          Card(
-            margin: const EdgeInsets.only(bottom: 6),
-            child: ListTile(
-              dense: true,
-              visualDensity: VisualDensity.compact,
-              leading: CircleAvatar(
-                  radius: 16,
-                  child: Text(_initials(p.name),
-                      style: const TextStyle(fontSize: 12))),
-              title: Text(p.name,
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text(
-                  '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)} • ${store.careerMatches(p.id)} matches',
-                  style: const TextStyle(fontSize: 11)),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                        p.active ? Icons.check_circle : Icons.cancel_outlined),
-                    tooltip: p.active ? 'Active' : 'Inactive',
-                    onPressed: () => store.setPlayerActive(p.id, !p.active),
+          Opacity(
+            // Inactive players stay LISTED. They still hold their name, so
+            // hiding them made the name look free and then refuse to be used.
+            opacity: p.active ? 1.0 : 0.62,
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 6),
+              child: ListTile(
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                leading: CircleAvatar(
+                    radius: 16,
+                    child: Text(_initials(p.name),
+                        style: const TextStyle(fontSize: 12))),
+                title: Text(
+                  p.active ? p.name : '${p.name}  •  INACTIVE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: p.active ? null : const Color(0xFF94A3B8),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    onPressed: () => _renameSheet(context, store, p),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        size: 20, color: Color(0xFFDC143C)),
-                    tooltip: 'Delete player',
-                    onPressed: () => _deleteConfirm(context, store, p),
-                  ),
-                ],
+                ),
+                subtitle: Text(
+                    '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)} • ${store.careerMatches(p.id)} matches',
+                    style: const TextStyle(fontSize: 11)),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(p.active
+                          ? Icons.check_circle
+                          : Icons.cancel_outlined),
+                      tooltip: p.active ? 'Active' : 'Inactive',
+                      onPressed: () => store.setPlayerActive(p.id, !p.active),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      tooltip: 'Rename player',
+                      onPressed: () => _renameSheet(context, store, p),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline,
+                          size: 20, color: Color(0xFFDC143C)),
+                      tooltip: 'Delete player',
+                      onPressed: () => _deleteConfirm(context, store, p),
+                    ),
+                  ],
+                ),
+                onTap: () => _playerSheet(context, store, p),
               ),
-              onTap: () => _playerSheet(context, store, p),
             ),
           ),
       ],
@@ -329,9 +443,14 @@ class _ClubScreenState extends State<ClubScreen> {
 
   void _add(MatchStore store) {
     if (_name.text.trim().isEmpty) return;
-    if (store.duplicateName(_name.text.trim())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_name.text.trim()} already exists')));
+    // "Already exists" used to be a dead end: the blocking player was often
+    // INACTIVE, which the list filtered out, so the name looked free and was
+    // not. Offer the player instead of only naming them.
+    final clash = store.playerByName(_name.text.trim());
+    if (clash != null) {
+      _name.clear();
+      setState(() {});
+      _duplicateSheet(context, store, clash);
       return;
     }
     final created = store.addPlayer(
@@ -426,6 +545,58 @@ class _ClubScreenState extends State<ClubScreen> {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Resolves a name clash by showing the player that holds the name, with
+  /// the two actions that actually clear it.
+  void _duplicateSheet(BuildContext context, MatchStore store, Player clash) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('NAME ALREADY TAKEN',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text(
+                '${clash.name} is already in ${store.activeClub?.name ?? 'the club'}'
+                '${clash.active ? '' : ' (marked INACTIVE)'}'
+                '${store.careerMatches(clash.id) > 0 ? ' • ${store.careerMatches(clash.id)} matches played' : ''}.',
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              RectBtn(
+                onTap: () {
+                  Navigator.pop(context);
+                  _renameSheet(context, store, clash);
+                },
+                child: const Text('RENAME THAT PLAYER'),
+              ),
+              const SizedBox(height: 8),
+              RectBtn(
+                primary: false,
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteConfirm(context, store, clash);
+                },
+                child: const Text('DELETE THAT PLAYER'),
+              ),
+              const SizedBox(height: 8),
+              RectBtn(
+                primary: false,
+                onTap: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
