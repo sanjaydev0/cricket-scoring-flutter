@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../domain/players.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
@@ -443,7 +444,7 @@ class ScoringScreen extends StatelessWidget {
       return;
     }
     if (store.nbArmed || (store.innings?.isFreeHitActive ?? false)) {
-      showDismissalSheet(context, store, 'Run Out');
+      showRunOutSheet(context, store);
       return;
     }
     final simple = !store.complexWickets;
@@ -496,6 +497,13 @@ class ScoringScreen extends StatelessWidget {
       primary: false,
       onTap: () {
         Navigator.pop(context);
+        // [type] is the dismissal LABEL, not the enum — comparing it to
+        // DismissalType never matched, so Run Out still opened the full
+        // dismissal sheet with every wicket-type pill above the two questions.
+        if (DismissalType.fromId(type) == DismissalType.runOut) {
+          showRunOutSheet(context, store);
+          return;
+        }
         showDismissalSheet(context, store, type);
       },
       child: Text(label),

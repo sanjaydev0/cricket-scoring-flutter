@@ -509,6 +509,127 @@ void showBowlerSheet(BuildContext context, MatchStore store,
   );
 }
 
+/// Run-out: exactly two questions, no dismissal-type grid.
+///
+/// Opening the full dismissal sheet for a run-out buried both questions under
+/// seven wicket-type pills. This sheet answers only what a run-out actually
+/// needs: how many runs were completed, and which batter was out.
+void showRunOutSheet(BuildContext context, MatchStore store) {
+  final sheet = store.currentSheet;
+  if (sheet == null) return;
+  var runs = 0;
+  var nonStrikerOut = false;
+  String? fielder;
+
+  final strikerName = sheet.nameOf(sheet.strikerId ?? '');
+  final nonStrikerName = sheet.nameOf(sheet.nonStrikerId ?? '');
+  final battingSide = sheet.battingTeam;
+  final bowlingSide = sheet.bowlingTeam;
+
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (ctx, setSheet) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const RowSectionLabel('RUN OUT', color: Color(0xFFDC143C)),
+              const SizedBox(height: 6),
+
+              const RowSectionLabel('1. RUNS COMPLETED'),
+              for (final n in [0, 1, 2, 3])
+                PlayerRow(
+                  name: n == 0
+                      ? 'No runs — out at his own end'
+                      : '$n run${n == 1 ? '' : 's'} completed',
+                  subtitle:
+                      n == 0 ? 'Wicket only' : 'W$n — Wicket, $n runs added',
+                  selected: runs == n,
+                  onTap: () => setSheet(() => runs = n),
+                ),
+
+              const RowSectionLabel('2. WHO IS OUT?', color: Color(0xFFDC143C)),
+              PlayerRow(
+                name: strikerName,
+                subtitle: "$battingSide • on strike at the bowler's end",
+                selected: !nonStrikerOut,
+                onTap: () => setSheet(() => nonStrikerOut = false),
+              ),
+              PlayerRow(
+                name: nonStrikerName,
+                subtitle: '$battingSide • at the other end',
+                selected: nonStrikerOut,
+                onTap: () => setSheet(() => nonStrikerOut = true),
+              ),
+              const SizedBox(height: 6),
+              // Say what will happen, so the choice is not a guess.
+              Text(
+                nonStrikerOut
+                    ? "$nonStrikerName is out at the far end — the batters must have crossed. The new batter takes the striker's end and $strikerName goes to the bowler's end."
+                    : (runs % 2 == 1)
+                        ? "$strikerName is out on an odd run — the ends change, so the new batter takes the other end and $nonStrikerName stays at the bowler's end."
+                        : "$strikerName is out. No odd run, so the new batter takes the striker's end and $nonStrikerName stays put.",
+                style: const TextStyle(fontSize: 11),
+              ),
+
+              if (store.askFielder) ...[
+                const RowSectionLabel('WHO TOOK IT? (optional)',
+                    color: Color(0xFFDC143C)),
+                for (final id in _fieldingIds(store, sheet))
+                  PlayerRow(
+                    name: sheet.nameOf(id),
+                    subtitle: bowlingSide,
+                    selected: fielder == id,
+                    onTap: () =>
+                        setSheet(() => fielder = fielder == id ? null : id),
+                  ),
+              ],
+
+              const SizedBox(height: 14),
+              RectBtn(
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  final err = store.score(
+                    action: 'WICKET',
+                    runs: runs,
+                    wicketType: 'Run Out',
+                    dismissal: DismissalType.runOut.name,
+                    fielderName:
+                        fielder == null ? null : sheet.nameOf(fielder!),
+                    outAtNonStrikerEnd: nonStrikerOut,
+                  );
+                  if (err != null && context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(err)));
+                  }
+                },
+                child:
+                    Text('${nonStrikerOut ? nonStrikerName : strikerName} OUT'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Fielding side's XI, for the optional fielder credit.
+List<String> _fieldingIds(MatchStore store, InningsSheet sheet) {
+  final m = store.match!;
+  final ids =
+      sheet.bowlingTeam == m.config.teamA ? m.config.squadA : m.config.squadB;
+  return [
+    for (final id in ids)
+      if (id != sheet.strikerId && id != sheet.nonStrikerId) id
+  ];
+}
+
 /// Openers + first bowler, picked once per innings when tracking is on.
 String _oversBowled(InningsSheet sheet, String id) {
   final c = sheet.bowling[id];

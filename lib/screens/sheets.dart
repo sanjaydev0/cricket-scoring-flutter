@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../math.dart';
 import '../store.dart';
 import '../theme.dart';
+import 'player_sheets.dart';
 import 'widgets.dart';
 
 /// Scoring dialogs & sheets in the reference layout:
@@ -77,57 +78,69 @@ Widget _wicketKey(
 }
 
 void showRunOutDialog(BuildContext context, MatchStore store) {
-  const opts = [
-    ['0 + W', 'DIRECT (0)'],
-    ['1 + W', '1 COMPLETED'],
-    ['2 + W', '2 COMPLETED'],
-    ['3 + W', '3 COMPLETED'],
-  ];
-  showDialog(
+  // Untracked matches ask BOTH questions too. The old 4-button grid never
+  // asked the end and always dismissed the striker, so the same physical
+  // run-out scored differently depending on whether tracking was on.
+  if (store.tracking && store.currentSheet != null) {
+    showRunOutSheet(context, store);
+    return;
+  }
+  var runs = 0;
+  var nonStrikerOut = false;
+  showModalBottomSheet(
     context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('RUN OUT (1+W, 2+W)'),
-      content: SizedBox(
-        width: 340,
-        child: GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: 1.7,
-          children: [
-            for (var i = 0; i < 4; i++)
+    showDragHandle: true,
+    builder: (_) => StatefulBuilder(
+      builder: (ctx, setSheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const RowSectionLabel('RUN OUT', color: Color(0xFFDC143C)),
+              const SizedBox(height: 6),
+              const RowSectionLabel('1. RUNS COMPLETED'),
+              for (final n in [0, 1, 2, 3])
+                PlayerRow(
+                  name: n == 0
+                      ? 'No runs — out at his own end'
+                      : '$n run${n == 1 ? '' : 's'} completed',
+                  subtitle:
+                      n == 0 ? 'Wicket only' : 'W$n — Wicket, $n runs added',
+                  selected: runs == n,
+                  onTap: () => setSheet(() => runs = n),
+                ),
+              const RowSectionLabel('2. WHO IS OUT?', color: Color(0xFFDC143C)),
+              PlayerRow(
+                name: 'Striker — on strike',
+                subtitle: "Out at the bowler's end",
+                selected: !nonStrikerOut,
+                onTap: () => setSheet(() => nonStrikerOut = false),
+              ),
+              PlayerRow(
+                name: 'Non-striker — the other end',
+                subtitle: 'Out at the far end, so the batters crossed',
+                selected: nonStrikerOut,
+                onTap: () => setSheet(() => nonStrikerOut = true),
+              ),
+              const SizedBox(height: 14),
               RectBtn(
-                primary: false,
                 onTap: () {
                   Navigator.pop(context);
-                  store.score(action: 'WICKET', runs: i, wicketType: 'Run Out');
+                  store.score(
+                    action: 'WICKET',
+                    runs: runs,
+                    wicketType: 'Run Out',
+                    outAtNonStrikerEnd: nonStrikerOut,
+                  );
                 },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(opts[i][0],
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: Theme.of(context).colorScheme.error)),
-                    Text(opts[i][1], style: const TextStyle(fontSize: 9)),
-                  ],
-                ),
+                child: Text(runs == 0 ? 'WICKET' : 'W$runs'),
               ),
-          ],
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            showWicketDialog(context, store);
-          },
-          child: const Text('← BACK'),
-        ),
-      ],
     ),
   );
 }

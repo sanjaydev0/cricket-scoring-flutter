@@ -828,18 +828,19 @@ class MatchStore extends ChangeNotifier {
     final done = sheet.completedOverCount(inn);
     if (done <= sheet.closedOvers) return;
 
-    // Law 41.6: the ends switch at the end of every over, whatever was
-    // scored. An over of six dots left the same batter on strike for ball 7
-    // until this was fixed - the swap only ever fired on an ODD number of
-    // runs, and a maiden has none.
+    // Law 41.6: the ends change at the end of EVERY over, unconditionally.
     //
-    // An over that contained an odd run already changed ends on that ball, so
-    // swapping again here would change them twice. Hence the parity check.
+    // This used to carry a parity guard that skipped the swap when the over
+    // contained an odd run, on the theory that the batters had "already"
+    // changed ends. That conflated two different things: odd runs swap the
+    // ends because the batters physically crossed, while the over ending
+    // swaps them because a new over starts from the other end. Both happen.
+    //
+    // So a single on the last ball sends the batter to the non-striker's end
+    // AND the over ending brings him straight back on strike. Six dots have no
+    // odd run, and the single boundary swap gives the partner the strike.
     for (var i = sheet.closedOvers; i < done; i++) {
-      final over = i < inn.overs.length ? inn.overs[i] : null;
-      final hadOddRun =
-          (over?.balls ?? const <Ball>[]).any((b) => b.runs % 2 == 1);
-      if (!hadOddRun) sheet.swapEnds();
+      sheet.swapEnds();
       finishOverForSheet();
     }
     sheet.closedOvers = done;
