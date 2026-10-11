@@ -61,6 +61,20 @@ grep -q "android.permission.ACCESS_NETWORK_STATE" <<<"$PERMS" ||
   fail "release apk has no ACCESS_NETWORK_STATE (realtime push)"
 echo "    permissions ok"
 
+# Portrait lock, asserted in the PACKAGED manifest. Release-only: on web and in
+# `flutter run` the Dart setPreferredOrientations call is enough, so a missing
+# manifest attribute is invisible everywhere except a release APK on a phone.
+#
+# `aapt2 dump badging` does NOT print screenOrientation, so read the XML tree.
+# The compiled attribute is the platform integer: 1 = portrait. Anything else
+# (2 = landscape, 0 = unspecified, 6 = sensor) lets the phone rotate.
+MANIFEST_TREE="$("$AAPT" dump xmltree "$APK" --file AndroidManifest.xml 2>/dev/null)"
+ORIENT="$(grep -o 'android:screenOrientation([^)]*)=[0-9-]*' <<<"$MANIFEST_TREE" |
+  head -n 1 | grep -o '=[0-9-]*$' | tr -d '=')"
+[ "$ORIENT" = "1" ] ||
+  fail "release apk is not portrait-locked (screenOrientation=${ORIENT:-unset}) — the phone can rotate"
+echo "    portrait lock ok"
+
 if [ -n "$SUPA_KEY" ]; then
   # NOTE: do not pipe unzip straight into `grep -q` here. grep -q exits at the
   # first match while unzip is still streaming 52 MB, so unzip dies of SIGPIPE
