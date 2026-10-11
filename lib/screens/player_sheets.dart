@@ -241,9 +241,6 @@ void showDismissalSheet(
   // Run-out can dismiss either end. Choosing the end is what decides whether
   // the batters crossed, so there is no separate toggle to mistap.
   var outAtNonStrikerEnd = false;
-  // Batters crossed on a NON-run-out dismissal (a catch, or bowled while
-  // running). A catch carries zero runs, so parity cannot reveal this.
-  var crossed = false;
   var runOutRuns = 0;
   // Explicit exclusion: the out batter, the non-striker, the dismissed and
   // the retired-out never appear. Retired-hurt returnees do.
@@ -373,29 +370,6 @@ void showDismissalSheet(
                   style: const TextStyle(fontSize: 11),
                 ),
               ],
-              // A catch or a bowled dismissal usually carries no runs, so
-              // nothing in the score reveals whether the batters crossed. This
-              // is the only signal, and it decides who faces the next ball.
-              if (type != DismissalType.runOut &&
-                  type != DismissalType.retiredHurt &&
-                  type != DismissalType.retiredOut) ...[
-                const RowSectionLabel('DID THE BATTERS CROSS?',
-                    color: Color(0xFF0F766E)),
-                PlayerRow(
-                  name: 'Yes — they crossed',
-                  subtitle:
-                      'Dismissed at the far end. New batter takes the striker\'s end, crosser goes to the bowler\'s end',
-                  selected: crossed,
-                  onTap: () => setSheet(() => crossed = true),
-                ),
-                PlayerRow(
-                  name: 'No — they did not cross',
-                  subtitle:
-                      'Dismissed where he stood. New batter takes the striker\'s end',
-                  selected: !crossed,
-                  onTap: () => setSheet(() => crossed = false),
-                ),
-              ],
               const SizedBox(height: 12),
               const Text('NEXT BATTER',
                   style: TextStyle(fontWeight: FontWeight.w900)),
@@ -422,7 +396,6 @@ void showDismissalSheet(
                           fielderName: fielder,
                           newBatterId: id,
                           outAtNonStrikerEnd: outAtNonStrikerEnd,
-                          crossed: crossed,
                         );
                         if (err != null && context.mounted) {
                           ScaffoldMessenger.of(context)

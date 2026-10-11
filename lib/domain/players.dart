@@ -408,6 +408,12 @@ class InningsSheet {
   String? nonStrikerId;
   String? bowlerId;
   final Map<String, String> names = {};
+
+  /// The BATTING side's XI. `names` holds both squads (the sheet registers
+  /// both so figures can be attributed), which meant `nextBatterOptions`
+  /// offered the entire fielding side as batters - a Tigers player could be
+  /// brought on to bat for the Lions. Only this set is eligible to come in.
+  final Set<String> battingXI = {};
   final Map<String, BattingCard> batting = {};
   final Map<String, BowlingCard> bowling = {};
   final Map<String, FieldingCard> fielding = {};
@@ -456,6 +462,9 @@ class InningsSheet {
     for (final e in names.entries) {
       s.names[e.key.toString()] = e.value.toString();
     }
+    for (final e in ((j['battingXI'] ?? []) as List)) {
+      s.battingXI.add(e.toString());
+    }
     for (final e in ((j['batting'] ?? {}) as Map).entries) {
       s.batting[e.key.toString()] =
           BattingCard.fromJson(Map<String, dynamic>.from(e.value as Map));
@@ -490,6 +499,7 @@ class InningsSheet {
         'nonStrikerId': nonStrikerId,
         'bowlerId': bowlerId,
         'names': names,
+        'battingXI': battingXI.toList(),
         'batting': batting.map((k, v) => MapEntry(k, v.toJson())),
         'bowling': bowling.map((k, v) => MapEntry(k, v.toJson())),
         'fielding': fielding.map((k, v) => MapEntry(k, v.toJson())),
@@ -504,6 +514,17 @@ class InningsSheet {
       };
 
   String nameOf(String id) => names[id] ?? '?';
+
+  /// Registers the batting side's XI. Fielders are registered too (figures
+  /// need them) but must never be offered as batters.
+  void setBattingXI(List<Player> players) {
+    battingXI
+      ..clear()
+      ..addAll(players.map((p) => p.id));
+  }
+
+  /// Adds one id to the batting XI (a mid-match addition to that side).
+  void addToBattingXI(String id) => battingXI.add(id);
 
   void register(Player p) {
     names[p.id] = p.name;
@@ -540,6 +561,10 @@ class InningsSheet {
     final opts = <String>[];
     for (final id in names.keys) {
       if (id == outId || id == nonStrikerId) continue;
+      // A batter must come from the side that is batting. [battingXI] is
+      // empty on sheets saved before it existed, so those fall back to the
+      // old behaviour rather than offering nobody.
+      if (battingXI.isNotEmpty && !battingXI.contains(id)) continue;
       final c = batting[id];
       if (c == null) continue;
       if (c.position == 0) {

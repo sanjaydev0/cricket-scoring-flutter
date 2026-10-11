@@ -975,6 +975,10 @@ class MatchStore extends ChangeNotifier {
     final battingSquad = squadForTeam(inn.battingTeam);
     final bowlingSquad = squadForTeam(inn.bowlingTeam);
     sheet.registerSquad([...battingSquad, ...bowlingSquad]);
+    // Only the batting side may be brought on to bat. Both squads are
+    // registered above because figures need the fielders, but without this
+    // the next-batter list offered the whole fielding side.
+    sheet.setBattingXI(battingSquad);
     sheets[key] = sheet;
     return sheet;
   }
@@ -1086,17 +1090,15 @@ class MatchStore extends ChangeNotifier {
     /// `crossed` flag: choosing the end determines crossedness, so the umpire
     /// can no longer mistap it and silently seat the new batter at the wrong
     /// end.
-    bool outAtNonStrikerEnd = false,
-
-    /// The batters crossed before the dismissal was completed.
+    /// Run-out dismissed the batter at the NON-STRIKER's end.
     ///
-    /// Applies to EVERY dismissal, not just a run-out (Option A). A caught or
-    /// bowled dismissal usually carries zero runs, so run parity says nothing
-    /// about the ends - the umpire has to say whether they crossed. When they
-    /// did, the dismissed batter was standing at the far end when the ball
-    /// was taken/caught, so the incoming batter takes the striker's end and
-    /// the man who crossed ends up at the bowler's end.
-    bool crossed = false,
+    /// Crossing is not a parameter. It only changes the outcome for a run-out,
+    /// where choosing the end already determines it: a batter out at the
+    /// non-striker's end got there by crossing. For every other dismissal the
+    /// batters are taken to have stayed in their creases, and the one rare
+    /// exception - batters crossing on a catch - is corrected with the manual
+    /// swap ends control.
+    bool outAtNonStrikerEnd = false,
   }) {
     final m = match;
     final inn = innings;
@@ -1287,11 +1289,10 @@ class MatchStore extends ChangeNotifier {
         // at that end, and an odd number of completed runs always changes
         // the ends. A missed toggle used to seat the new batter at the wrong
         // end silently, corrupting every later ball.
-        // Run parity always moves the ends when it is odd. Beyond that, an
-        // explicit "batters crossed" applies to any dismissal - a catch or a
-        // bowled dismissal carries zero runs, so parity cannot detect it.
+        // The ends move on odd runs, and on a run-out at the non-striker's
+        // end (which the batters can only have reached by crossing).
         final swappedOnBall = b.runs % 2 == 1;
-        final endsChanged = outIsNonStriker || swappedOnBall || crossed;
+        final endsChanged = outIsNonStriker || swappedOnBall;
         // Dismissal is attributed by applyDelivery to the striker, so a
         // non-striker run-out is moved across here.
         if (outIsNonStriker) _moveDismissalToNonStriker(sheet, b);
@@ -1414,6 +1415,9 @@ class MatchStore extends ChangeNotifier {
     if (p != null) {
       for (final sh in sheets.values) {
         sh.register(p);
+        // Added to THIS side's XI, so they are a legitimate batter for the
+        // sheets whose batting team matches, and must stay out of the other.
+        if (sh.battingTeam == team) sh.addToBattingXI(playerId);
       }
     }
     _persist();
