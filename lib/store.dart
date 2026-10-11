@@ -1087,6 +1087,16 @@ class MatchStore extends ChangeNotifier {
     /// can no longer mistap it and silently seat the new batter at the wrong
     /// end.
     bool outAtNonStrikerEnd = false,
+
+    /// The batters crossed before the dismissal was completed.
+    ///
+    /// Applies to EVERY dismissal, not just a run-out (Option A). A caught or
+    /// bowled dismissal usually carries zero runs, so run parity says nothing
+    /// about the ends - the umpire has to say whether they crossed. When they
+    /// did, the dismissed batter was standing at the far end when the ball
+    /// was taken/caught, so the incoming batter takes the striker's end and
+    /// the man who crossed ends up at the bowler's end.
+    bool crossed = false,
   }) {
     final m = match;
     final inn = innings;
@@ -1277,8 +1287,11 @@ class MatchStore extends ChangeNotifier {
         // at that end, and an odd number of completed runs always changes
         // the ends. A missed toggle used to seat the new batter at the wrong
         // end silently, corrupting every later ball.
+        // Run parity always moves the ends when it is odd. Beyond that, an
+        // explicit "batters crossed" applies to any dismissal - a catch or a
+        // bowled dismissal carries zero runs, so parity cannot detect it.
         final swappedOnBall = b.runs % 2 == 1;
-        final endsChanged = outIsNonStriker || swappedOnBall;
+        final endsChanged = outIsNonStriker || swappedOnBall || crossed;
         // Dismissal is attributed by applyDelivery to the striker, so a
         // non-striker run-out is moved across here.
         if (outIsNonStriker) _moveDismissalToNonStriker(sheet, b);

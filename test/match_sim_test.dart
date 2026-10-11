@@ -623,6 +623,114 @@ void main() {
     });
   });
 
+  group('crossing on a non-run-out dismissal', () {
+    test('a caught ball with the batters crossed swaps the ends', () {
+      // A catch carries ZERO runs, so run parity cannot reveal the crossing -
+      // this is the case that silently seated the new batter at the wrong
+      // end before the explicit `crossed` flag existed.
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+
+      s.score(
+          action: 'WICKET',
+          wicketType: 'Caught',
+          dismissal: DismissalType.caught.name,
+          fielderName: 'Ravi',
+          crossed: true);
+
+      expect(sheet.batting[a[0]]!.isNotOut, isFalse, reason: 'striker out');
+      // Dismissed at the far end, so the crosser keeps the strike and the new
+      // batter is at the non-striker's end.
+      expect(sheet.strikerId, a[1], reason: 'the crosser is now on strike');
+      expect(sheet.nonStrikerId != a[0], isTrue,
+          reason: 'the dismissed batter is not left on the sheet');
+      expect(sheet.batting[a[1]]!.position, 2,
+          reason:
+              'the crosser is the non-striker opener and has not batted yet');
+      expect(sheet.batting[a[1]]!.balls, 0,
+          reason: 'no runs were scored before the catch');
+    });
+
+    test('a caught ball with no crossing leaves the ends alone', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+
+      s.score(
+          action: 'WICKET',
+          wicketType: 'Caught',
+          dismissal: DismissalType.caught.name,
+          crossed: false);
+
+      expect(sheet.strikerId != a[0], isTrue,
+          reason: 'the new batter took the striker\'s end');
+      expect(sheet.nonStrikerId, a[1],
+          reason: 'the partner stays at the bowler\'s end');
+    });
+
+    test('bowled while crossing follows the same rule (Option A)', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+
+      s.score(
+          action: 'WICKET',
+          wicketType: 'Bowled',
+          dismissal: DismissalType.bowled.name,
+          crossed: true);
+
+      expect(sheet.strikerId, a[1],
+          reason: 'crossing applies to every dismissal, not just a catch');
+    });
+
+    test('the dismissed batter leaves the sheet in every crossing case', () {
+      for (final kind in ['Bowled', 'Caught', 'LBW', 'Stumped']) {
+        final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+        final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+        final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+        s.setOpeners(a[0], a[1]);
+        s.setBowler(b[0]);
+        final sheet = s.currentSheet!;
+
+        s.score(
+            action: 'WICKET',
+            wicketType: kind,
+            dismissal: DismissalType.fromId(kind).name,
+            crossed: true);
+
+        expect(sheet.strikerId, isNot(a[0]), reason: '$kind: not on strike');
+        expect(sheet.nonStrikerId, isNot(a[0]),
+            reason: '$kind: dismissed batter must leave the sheet');
+      }
+    });
+
+    test('retirements are unaffected by crossing', () {
+      final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 2);
+      final a = s.squadForTeam('Lions').map((p) => p.id).toList();
+      final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+      final sheet = s.currentSheet!;
+      s.score(
+          action: 'WICKET',
+          wicketType: 'Retired Hurt',
+          dismissal: DismissalType.retiredHurt.name,
+          crossed: true);
+      expect(sheet.strikerId, a[1],
+          reason: 'a retirement is not a delivery, so no crossing applies');
+    });
+  });
+
   test('a full 5-a-side, 3-over match stays consistent end to end', () {
     final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 3);
     final lions = s.squadForTeam('Lions').map((p) => p.id).toList();
