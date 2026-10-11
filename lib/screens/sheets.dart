@@ -87,6 +87,7 @@ void showRunOutDialog(BuildContext context, MatchStore store) {
   }
   var runs = 0;
   var nonStrikerOut = false;
+  var outAtStrikerEnd = true;
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
@@ -111,18 +112,33 @@ void showRunOutDialog(BuildContext context, MatchStore store) {
                   selected: runs == n,
                   onTap: () => setSheet(() => runs = n),
                 ),
-              const RowSectionLabel('2. WHO IS OUT?', color: Color(0xFFDC143C)),
+              const RowSectionLabel('2. WHO WAS DISMISSED?',
+                  color: Color(0xFFDC143C)),
               PlayerRow(
-                name: 'Striker — on strike',
-                subtitle: "Out at the bowler's end",
+                name: 'Striker — facing the bowler',
+                subtitle: 'On strike',
                 selected: !nonStrikerOut,
                 onTap: () => setSheet(() => nonStrikerOut = false),
               ),
               PlayerRow(
                 name: 'Non-striker — the other end',
-                subtitle: 'Out at the far end, so the batters crossed',
+                subtitle: 'At the opposite end',
                 selected: nonStrikerOut,
                 onTap: () => setSheet(() => nonStrikerOut = true),
+              ),
+              const RowSectionLabel('3. WHICH END WAS HE OUT AT?',
+                  color: Color(0xFFDC143C)),
+              PlayerRow(
+                name: "Striker's end",
+                subtitle: 'Where he was facing',
+                selected: outAtStrikerEnd,
+                onTap: () => setSheet(() => outAtStrikerEnd = true),
+              ),
+              PlayerRow(
+                name: "Bowler's end",
+                subtitle: 'Where his partner was',
+                selected: !outAtStrikerEnd,
+                onTap: () => setSheet(() => outAtStrikerEnd = false),
               ),
               const SizedBox(height: 14),
               RectBtn(
@@ -133,6 +149,7 @@ void showRunOutDialog(BuildContext context, MatchStore store) {
                     runs: runs,
                     wicketType: 'Run Out',
                     outAtNonStrikerEnd: nonStrikerOut,
+                    outAtStrikerEnd: outAtStrikerEnd,
                   );
                 },
                 child: Text(runs == 0 ? 'WICKET' : 'W$runs'),

@@ -671,17 +671,53 @@ class InningsSheet {
   /// The incoming batter goes to that far end, which becomes the non-striker's
   /// end; the man who crossed keeps the strike.
   void crossedRunOutFix(String incomingId) {
-    // Only correct when the STRIKER was dismissed after crossing: he is out at
-    // the far end, the man who crossed is now striker, and the newcomer takes
-    // the striker's vacated end (the non-striker's end after the swap).
-    //
-    // This must never run for a NON-STRIKER dismissal. He was out at his own
-    // end, so nothing moved: the safe batter keeps the striker's end and the
-    // newcomer simply fills the vacated non-striker's end. Swapping here left
-    // the struck-off man sitting in the striker slot - dismissed but still
-    // listed on strike.
     swapEnds();
     nonStrikerId = incomingId;
+  }
+
+  /// Re-points the two ends after a dismissal, from the fact of WHERE it
+  /// happened rather than who was out.
+  ///
+  /// A batter occupies exactly one end. When he is dismissed at the end he was
+  /// NOT standing at, the other man must be moved across first - otherwise he
+  /// is still sitting in the slot the dismissed player just vacated, and the
+  /// newcomer lands in a third, impossible position. That is what left a
+  /// struck-off man on strike.
+  ///
+  /// Called with the identities as they were BEFORE any end change.
+  void seatAfterDismissal({
+    required String dismissedId,
+    required String newcomerId,
+    required bool atStrikerEnd,
+  }) {
+    // The dismissed man left; whoever remains now holds his old end.
+    final survivor = strikerId == dismissedId ? nonStrikerId : strikerId;
+    if (survivor == null || survivor == dismissedId) return;
+
+    // Put the survivor on the end the dismissed player was NOT at.
+    if (atStrikerEnd) {
+      // Dismissed at the striker's end -> the survivor holds the bowler's end.
+      nonStrikerId = survivor;
+      _enterNewcomer(newcomerId, atStrikerEnd: true);
+    } else {
+      // Dismissed at the bowler's end -> the survivor holds the striker's end.
+      strikerId = survivor;
+      _enterNewcomer(newcomerId, atStrikerEnd: false);
+    }
+  }
+
+  /// Scores the arrival onto the card and points the matching end at him.
+  void _enterNewcomer(String newcomerId, {required bool atStrikerEnd}) {
+    if (!names.containsKey(newcomerId)) return;
+    _bankPartnership();
+    _seat(newcomerId);
+    if (atStrikerEnd) {
+      strikerId = newcomerId;
+    } else {
+      nonStrikerId = newcomerId;
+    }
+    partnershipRuns = 0;
+    partnershipBalls = 0;
   }
 
   /// Seats [incomingId] at the NON-STRIKER's end, leaving the striker alone.

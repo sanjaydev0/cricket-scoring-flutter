@@ -605,6 +605,11 @@ void showRunOutSheet(BuildContext context, MatchStore store) {
   if (sheet == null) return;
   var runs = 0;
   var nonStrikerOut = false;
+  // Stated separately from WHO is out. The two are independent: a non-striker
+  // is often out at the striker's end, and a striker can be out at the
+  // bowler's end. Asking both keeps the scorecard faithful to what happened
+  // instead of inferring one from the other.
+  var outAtStrikerEnd = true;
   String? fielder;
 
   final strikerName = sheet.nameOf(sheet.strikerId ?? '');
@@ -639,10 +644,11 @@ void showRunOutSheet(BuildContext context, MatchStore store) {
                   onTap: () => setSheet(() => runs = n),
                 ),
 
-              const RowSectionLabel('2. WHO IS OUT?', color: Color(0xFFDC143C)),
+              const RowSectionLabel('2. WHO WAS DISMISSED?',
+                  color: Color(0xFFDC143C)),
               PlayerRow(
                 name: strikerName,
-                subtitle: "$battingSide • on strike at the bowler's end",
+                subtitle: '$battingSide • facing the bowler',
                 selected: !nonStrikerOut,
                 onTap: () => setSheet(() => nonStrikerOut = false),
               ),
@@ -652,14 +658,27 @@ void showRunOutSheet(BuildContext context, MatchStore store) {
                 selected: nonStrikerOut,
                 onTap: () => setSheet(() => nonStrikerOut = true),
               ),
+
+              const RowSectionLabel('3. WHICH END WAS HE OUT AT?',
+                  color: Color(0xFFDC143C)),
+              PlayerRow(
+                name: 'Striker\'s end',
+                subtitle: 'Where he was facing',
+                selected: outAtStrikerEnd,
+                onTap: () => setSheet(() => outAtStrikerEnd = true),
+              ),
+              PlayerRow(
+                name: "Bowler's end",
+                subtitle: 'Where his partner was',
+                selected: !outAtStrikerEnd,
+                onTap: () => setSheet(() => outAtStrikerEnd = false),
+              ),
               const SizedBox(height: 6),
-              // Say what will happen, so the choice is not a guess.
+              // State the consequence so the choice is never a guess.
               Text(
-                nonStrikerOut
-                    ? "$nonStrikerName is out at the far end — the batters must have crossed. The new batter takes the striker's end and $strikerName goes to the bowler's end."
-                    : (runs % 2 == 1)
-                        ? "$strikerName is out on an odd run — the ends change, so the new batter takes the other end and $nonStrikerName stays at the bowler's end."
-                        : "$strikerName is out. No odd run, so the new batter takes the striker's end and $nonStrikerName stays put.",
+                outAtStrikerEnd
+                    ? "Out at the striker's end — the new batter takes that end and faces next."
+                    : "Out at the bowler's end — the new batter fills that gap and ${nonStrikerOut ? nonStrikerName : strikerName} keeps his end and stays on strike.",
                 style: const TextStyle(fontSize: 11),
               ),
 
@@ -688,6 +707,7 @@ void showRunOutSheet(BuildContext context, MatchStore store) {
                     fielderName:
                         fielder == null ? null : sheet.nameOf(fielder!),
                     outAtNonStrikerEnd: nonStrikerOut,
+                    outAtStrikerEnd: outAtStrikerEnd,
                   );
                   if (err != null && context.mounted) {
                     ScaffoldMessenger.of(context)

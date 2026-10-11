@@ -1100,6 +1100,18 @@ class MatchStore extends ChangeNotifier {
     /// exception - batters crossing on a catch - is corrected with the manual
     /// swap ends control.
     bool outAtNonStrikerEnd = false,
+
+    /// WHICH END the dismissal happened at, stated directly by the umpire.
+    ///
+    /// This was previously inferred from [outAtNonStrikerEnd] and run parity,
+    /// which quietly forced the two facts to agree. They do not always: a
+    /// non-striker is commonly out at the STRIKER's end (he backed up or
+    /// crossed), and a striker can be out at the bowler's end. Stating the end
+    /// separately lets all four combinations be scored the way they happened.
+    ///
+    /// True = the batter was out at the striker's end (where he was facing).
+    /// False = out at the bowler's end (where his partner was).
+    bool outAtStrikerEnd = true,
   }) {
     final m = match;
     final inn = innings;
@@ -1290,13 +1302,6 @@ class MatchStore extends ChangeNotifier {
         // at that end, and an odd number of completed runs always changes
         // the ends. A missed toggle used to seat the new batter at the wrong
         // end silently, corrupting every later ball.
-        // The ends move on odd runs, and on a run-out at the non-striker's
-        // end (which the batters can only have reached by crossing).
-        // An odd number of completed runs means the batters crossed, so the
-        // ends moved ON THE BALL. applyDelivery already swapped for that on a
-        // non-wicket ball; on a wicket it returns before the swap, so it is
-        // accounted for below when deciding where the newcomer stands.
-        final crossedOnBall = b.runs % 2 == 1;
         // Dismissal is attributed by applyDelivery to the striker, so a
         // non-striker run-out is moved across here.
         if (outIsNonStriker) _moveDismissalToNonStriker(sheet, b);
@@ -1310,17 +1315,25 @@ class MatchStore extends ChangeNotifier {
             ? newBatterId
             : (opts.isEmpty ? null : opts.first);
         if (next != null) {
-          if (outIsNonStriker) {
-            // The man at the non-striker's end was put out there. He never
-            // crossed, so nobody moved: the batter who completed his run keeps
-            // the striker's end and the newcomer fills the gap opposite him.
-            //
-            // This was the bug - a swap here left the DISMISSED batter sitting
-            // in the striker slot, listed on strike after being bowled.
-            sheet.bringInAtNonStrikerEnd(next);
-          } else if (crossedOnBall) {
-            // The striker was out at the far end having crossed, so the man who
-            // crossed is now on strike and the newcomer takes his old end.
+          // Seat from WHERE the dismissal happened, not who was out. The end
+          // tells us which man must move across and where the newcomer lands,
+          // so both of the umpire's answers are honoured instead of one being
+          // inferred from the other.
+          //
+          //   out at the striker's end -> newcomer there, he is next in line
+          //   out at the bowler's end  -> newcomer fills that gap, the batter
+          //                               already on strike keeps his end
+          if (type == DismissalType.runOut) {
+            // Run-out: seat from the end the umpire stated, because a run-out
+            // is the one dismissal where the two answers are independent.
+            sheet.seatAfterDismissal(
+              dismissedId: outId,
+              newcomerId: next,
+              atStrikerEnd: outAtStrikerEnd,
+            );
+          } else if (b.runs % 2 == 1) {
+            // Every other dismissal: the batters crossed, so the newcomer takes
+            // the striker's vacated end and the man who crossed is on strike.
             sheet.crossedRunOutFix(next);
           } else {
             sheet.bringIn(next);
