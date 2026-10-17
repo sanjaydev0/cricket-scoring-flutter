@@ -204,12 +204,34 @@ enum DismissalType {
   final bool creditsBowler;
   final bool hasFielder;
 
-  static DismissalType fromId(String v) {
+  /// Resolves a stored dismissal id, or null when nothing matches.
+  ///
+  /// Matches the enum name (`runOut`) or the display label (`Run out`) after
+  /// dropping case and every non-letter, so `Run Out`, `runOut`, `run out` and
+  /// `RUNOUT` all resolve to the same value.
+  ///
+  /// The old version compared the two strings character for character and
+  /// answered [bowled] when they differed. The wicket grid passed the literal
+  /// `'Run Out'`, which is neither `runOut` nor the label `Run out`, so every
+  /// run-out in an untracked match was recorded — and printed on the card — as
+  /// bowled. `'Hit Wicket'` fell into the same hole.
+  static DismissalType? tryFromId(String v) {
+    final key = _matchKey(v);
+    if (key.isEmpty) return null;
     for (final d in DismissalType.values) {
-      if (d.name == v || d.label == v) return d;
+      if (_matchKey(d.name) == key || _matchKey(d.label) == key) return d;
     }
-    return DismissalType.bowled;
+    return null;
   }
+
+  /// Keeps the historic never-null contract. Prefer [tryFromId] anywhere the
+  /// answer decides what gets written down.
+  static DismissalType fromId(String v) => tryFromId(v) ?? DismissalType.bowled;
+
+  static String _matchKey(String s) =>
+      s.toLowerCase().replaceAll(_nonLetters, '');
+
+  static final _nonLetters = RegExp(r'[^a-z]');
 
   /// Scorecard dismissal text, e.g. "c Pandey b Ravi", "b Ravi", "run out".
   String text({String? fielder, String? bowler}) {
@@ -239,6 +261,14 @@ enum DismissalType {
     }
   }
 }
+
+/// The strip badge for a wicket delivery.
+///
+/// `W` for a wicket with no run completed, `W+1`/`W+2`/`W+3` when runs were
+/// completed before the dismissal — the Law 4 wording the rules and the overs
+/// history already use. One function so the keypad, the run-out sheet and the
+/// strip can never disagree about the same ball.
+String wicketBadge(int runs) => runs <= 0 ? 'W' : 'W+$runs';
 
 class BattingCard {
   final String playerId;
@@ -685,24 +715,41 @@ class InningsSheet {
   /// struck-off man on strike.
   ///
   /// Called with the identities as they were BEFORE any end change.
+  ///
+  /// [newcomerId] may be null — nobody left to bat. The vacated end is then
+  /// left EMPTY rather than holding the man who is already out, so the setup
+  /// gate asks for a batter instead of the strip naming a struck-off player on
+  /// strike. Leaving him there was the bug reported twice.
   void seatAfterDismissal({
     required String dismissedId,
-    required String newcomerId,
     required bool atStrikerEnd,
+    String? newcomerId,
   }) {
+    if (dismissedId.isEmpty) return;
     // The dismissed man left; whoever remains now holds his old end.
     final survivor = strikerId == dismissedId ? nonStrikerId : strikerId;
+    final incoming =
+        newcomerId != null && names.containsKey(newcomerId) ? newcomerId : null;
+
+    if (incoming == null) {
+      if (atStrikerEnd) {
+        strikerId = null;
+      } else {
+        nonStrikerId = null;
+      }
+      return;
+    }
     if (survivor == null || survivor == dismissedId) return;
 
     // Put the survivor on the end the dismissed player was NOT at.
     if (atStrikerEnd) {
       // Dismissed at the striker's end -> the survivor holds the bowler's end.
       nonStrikerId = survivor;
-      _enterNewcomer(newcomerId, atStrikerEnd: true);
+      _enterNewcomer(incoming, atStrikerEnd: true);
     } else {
       // Dismissed at the bowler's end -> the survivor holds the striker's end.
       strikerId = survivor;
-      _enterNewcomer(newcomerId, atStrikerEnd: false);
+      _enterNewcomer(incoming, atStrikerEnd: false);
     }
   }
 

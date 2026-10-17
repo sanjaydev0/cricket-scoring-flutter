@@ -229,19 +229,17 @@ void _retireDialog(BuildContext context, MatchStore store, BattingCard c) {
 /// One-tap dismissal: type chips on top, next batter below. Tapping a name
 /// commits the wicket AND the incoming batter in the same store call.
 void showDismissalSheet(
-    BuildContext context, MatchStore store, String wicketType) {
+    BuildContext context, MatchStore store, DismissalType initial) {
   final sheet = store.currentSheet;
   // Untracked matches keep the old instant behaviour.
   if (sheet == null) {
-    store.score(action: 'WICKET', wicketType: wicketType);
+    store.score(
+        action: 'WICKET', wicketType: initial.label, dismissal: initial.name);
     return;
   }
-  var type = DismissalType.fromId(wicketType);
+  // The pill row can still change the type, so this one is mutable.
+  var type = initial;
   String? fielder;
-  // Run-out can dismiss either end. Choosing the end is what decides whether
-  // the batters crossed, so there is no separate toggle to mistap.
-  var outAtNonStrikerEnd = false;
-  var runOutRuns = 0;
   // Explicit exclusion: the out batter, the non-striker, the dismissed and
   // the retired-out never appear. Retired-hurt returnees do.
   final outId = sheet.strikerId ?? '';
@@ -271,10 +269,22 @@ void showDismissalSheet(
                       ChoiceChip(
                         label: Text(d.label),
                         selected: type == d,
-                        onSelected: (_) => setSheet(() {
-                          type = d;
-                          fielder = null;
-                        }),
+                        onSelected: (_) {
+                          // Run-out asks its own three questions, which live in
+                          // one place (RunOutForm). Keeping a second, inline
+                          // copy here is how the stale one survived: bare 0..3
+                          // chips, no end question, and the end silently
+                          // defaulting to the striker's.
+                          if (d == DismissalType.runOut) {
+                            Navigator.pop(sheetCtx);
+                            showRunOutSheet(context, store);
+                            return;
+                          }
+                          setSheet(() {
+                            type = d;
+                            fielder = null;
+                          });
+                        },
                       ),
                 ],
               ),
@@ -331,45 +341,6 @@ void showDismissalSheet(
                   );
                 }),
               ],
-              if (type == DismissalType.runOut) ...[
-                const SizedBox(height: 8),
-                const Text('RUNS COMPLETED',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (var i = 0; i <= 3; i++)
-                      ChoiceChip(
-                        label: Text('$i'),
-                        selected: runOutRuns == i,
-                        onSelected: (_) => setSheet(() => runOutRuns = i),
-                      ),
-                  ],
-                ),
-                const RowSectionLabel('WHICH BATTER IS OUT?',
-                    color: Color(0xFFDC143C)),
-                PlayerRow(
-                  name: sheet.nameOf(sheet.strikerId ?? ''),
-                  subtitle: "Facing, at the striker's end",
-                  selected: !outAtNonStrikerEnd,
-                  onTap: () => setSheet(() => outAtNonStrikerEnd = false),
-                ),
-                PlayerRow(
-                  name: sheet.nameOf(sheet.nonStrikerId ?? ''),
-                  subtitle: "At the non-striker's end",
-                  selected: outAtNonStrikerEnd,
-                  onTap: () => setSheet(() => outAtNonStrikerEnd = true),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  outAtNonStrikerEnd
-                      ? "Non-striker out — the batters crossed, so the new batter takes the striker's end."
-                      : 'Striker out. Ends change only if an odd number of runs was completed.',
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ],
               const SizedBox(height: 12),
               const Text('NEXT BATTER',
                   style: TextStyle(fontWeight: FontWeight.w900)),
@@ -384,18 +355,16 @@ void showDismissalSheet(
                     child: RectBtn(
                       primary: false,
                       onTap: () {
-                        final runs =
-                            type == DismissalType.runOut ? runOutRuns : 0;
                         Navigator.pop(sheetCtx);
-                        final label = _wicketLabel(type);
+                        // The enum travels with the label in every path, so a
+                        // dismissal can never be recorded as something else
+                        // because two strings did not match exactly.
                         final err = store.score(
                           action: 'WICKET',
-                          runs: runs,
-                          wicketType: label,
+                          wicketType: type.label,
                           dismissal: type.name,
                           fielderName: fielder,
                           newBatterId: id,
-                          outAtNonStrikerEnd: outAtNonStrikerEnd,
                         );
                         if (err != null && context.mounted) {
                           ScaffoldMessenger.of(context)
@@ -415,18 +384,6 @@ void showDismissalSheet(
     ),
   );
 }
-
-String _wicketLabel(DismissalType t) => switch (t) {
-      DismissalType.bowled => 'Bowled',
-      DismissalType.caught => 'Caught',
-      DismissalType.lbw => 'LBW',
-      DismissalType.stumped => 'Stumped',
-      DismissalType.hitWicket => 'Hit Wicket',
-      DismissalType.runOut => 'Run Out',
-      DismissalType.obstructing => 'Obstructing the field',
-      DismissalType.retiredHurt => 'Retired Hurt',
-      DismissalType.retiredOut => 'Retired Out',
-    };
 
 /// Bowler picker with live figures. The just-bowled bowler is excluded by law.
 void showBowlerSheet(BuildContext context, MatchStore store,
@@ -514,13 +471,12 @@ void showBowlerSheet(BuildContext context, MatchStore store,
 /// Bowled needs no runs count and no end choice, so the full dismissal sheet
 /// was pure friction: seven wicket-type pills to answer a single question.
 void showNextBatterSheet(BuildContext context, MatchStore store,
-    {required String wicketType}) {
+    {required DismissalType type}) {
   final sheet = store.currentSheet;
   if (sheet == null) {
-    store.score(action: 'WICKET', wicketType: wicketType);
+    store.score(action: 'WICKET', wicketType: type.label, dismissal: type.name);
     return;
   }
-  final type = DismissalType.fromId(wicketType);
   final outId = sheet.strikerId ?? '';
   final waiting = sheet.nextBatterOptions(outId);
   final outName = sheet.nameOf(outId);
@@ -562,7 +518,7 @@ void showNextBatterSheet(BuildContext context, MatchStore store,
                         Navigator.pop(sheetCtx);
                         final err = store.score(
                           action: 'WICKET',
-                          wicketType: wicketType,
+                          wicketType: type.label,
                           dismissal: type.name,
                           fielderName:
                               fielder == null ? null : sheet.nameOf(fielder!),
@@ -595,130 +551,193 @@ void showNextBatterSheet(BuildContext context, MatchStore store,
   );
 }
 
-/// Run-out: exactly two questions, no dismissal-type grid.
+/// What the umpire said happened at a run-out.
+class RunOutChoice {
+  const RunOutChoice({
+    required this.runs,
+    required this.nonStrikerOut,
+    required this.outAtStrikerEnd,
+    this.fielderName,
+  });
+
+  /// Runs completed before the dismissal — the n in the W+n badge.
+  final int runs;
+
+  /// True when the batter at the non-striker's end was the one dismissed.
+  final bool nonStrikerOut;
+
+  /// True when the dismissal happened at the striker's end.
+  final bool outAtStrikerEnd;
+
+  final String? fielderName;
+}
+
+/// The run-out questions, written once.
 ///
-/// Opening the full dismissal sheet for a run-out buried both questions under
-/// seven wicket-type pills. This sheet answers only what a run-out actually
-/// needs: how many runs were completed, and which batter was out.
-void showRunOutSheet(BuildContext context, MatchStore store) {
-  final sheet = store.currentSheet;
-  if (sheet == null) return;
+/// A run-out is the one dismissal where WHO was out and WHICH END he was out
+/// at are independent facts — a non-striker is routinely out at the striker's
+/// end, and a striker can be out at the bowler's end. Both are asked, and the
+/// end alone decides where the newcomer stands.
+///
+/// Every entry point renders this widget. The questions used to be written out
+/// three times and the copy inside the full dismissal sheet had drifted: bare
+/// 0..3 chips, no end question, and the end quietly defaulting to the
+/// striker's, so the same physical run-out scored differently depending on
+/// which sheet the umpire happened to open.
+class RunOutForm extends StatefulWidget {
+  const RunOutForm({super.key, required this.store, required this.onConfirm});
+
+  final MatchStore store;
+  final void Function(RunOutChoice choice) onConfirm;
+
+  @override
+  State<RunOutForm> createState() => _RunOutFormState();
+}
+
+class _RunOutFormState extends State<RunOutForm> {
   var runs = 0;
   var nonStrikerOut = false;
-  // Stated separately from WHO is out. The two are independent: a non-striker
-  // is often out at the striker's end, and a striker can be out at the
-  // bowler's end. Asking both keeps the scorecard faithful to what happened
-  // instead of inferring one from the other.
   var outAtStrikerEnd = true;
   String? fielder;
 
-  final strikerName = sheet.nameOf(sheet.strikerId ?? '');
-  final nonStrikerName = sheet.nameOf(sheet.nonStrikerId ?? '');
-  final battingSide = sheet.battingTeam;
-  final bowlingSide = sheet.bowlingTeam;
+  @override
+  Widget build(BuildContext context) {
+    final store = widget.store;
+    final sheet = store.currentSheet;
+    // An untracked match has no XI to name, so the rows describe the roles.
+    final strikerName = sheet == null || sheet.strikerId == null
+        ? 'Striker — facing the bowler'
+        : sheet.nameOf(sheet.strikerId!);
+    final nonStrikerName = sheet == null || sheet.nonStrikerId == null
+        ? 'Non-striker — the other end'
+        : sheet.nameOf(sheet.nonStrikerId!);
+    final outName = nonStrikerOut ? nonStrikerName : strikerName;
+    final safeName = nonStrikerOut ? strikerName : nonStrikerName;
+    // The confirm button names him the short way; the rows above carry the
+    // explanation.
+    final buttonOut =
+        sheet == null ? (nonStrikerOut ? 'Non-striker' : 'Striker') : outName;
+    final badge = wicketBadge(runs);
 
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const RowSectionLabel('RUN OUT', color: Color(0xFFDC143C)),
+        const SizedBox(height: 6),
+        const RowSectionLabel('1. RUNS COMPLETED', color: Color(0xFFDC143C)),
+        for (final n in [0, 1, 2, 3])
+          PlayerRow(
+            // The badge IS the label. It is what the strip, the overs history
+            // and the scorecard will show for this ball, so the option the
+            // umpire taps reads the same as the result he gets back.
+            name: wicketBadge(n),
+            subtitle: n == 0
+                ? 'No run completed — out at his own end'
+                : '$n run${n == 1 ? '' : 's'} completed before the dismissal',
+            selected: runs == n,
+            onTap: () => setState(() => runs = n),
+          ),
+        const RowSectionLabel('2. WHO WAS DISMISSED?',
+            color: Color(0xFFDC143C)),
+        PlayerRow(
+          name: strikerName,
+          subtitle: sheet == null
+              ? 'On strike'
+              : '${sheet.battingTeam} • facing the bowler',
+          selected: !nonStrikerOut,
+          onTap: () => setState(() => nonStrikerOut = false),
+        ),
+        PlayerRow(
+          name: nonStrikerName,
+          subtitle: sheet == null
+              ? 'At the opposite end'
+              : '${sheet.battingTeam} • at the other end',
+          selected: nonStrikerOut,
+          onTap: () => setState(() => nonStrikerOut = true),
+        ),
+        const RowSectionLabel('3. WHICH END WAS HE OUT AT?',
+            color: Color(0xFFDC143C)),
+        PlayerRow(
+          name: "Striker's end",
+          subtitle: 'Where he was facing',
+          selected: outAtStrikerEnd,
+          onTap: () => setState(() => outAtStrikerEnd = true),
+        ),
+        PlayerRow(
+          name: "Bowler's end",
+          subtitle: 'Where his partner was',
+          selected: !outAtStrikerEnd,
+          onTap: () => setState(() => outAtStrikerEnd = false),
+        ),
+        const SizedBox(height: 8),
+        // State the consequence, so neither question is a guess.
+        Text(
+          outAtStrikerEnd
+              ? "$badge · out at the striker's end — the new batter takes that end and faces next."
+              : "$badge · out at the bowler's end — the new batter fills that gap and $safeName keeps his end and stays on strike.",
+          style: const TextStyle(fontSize: 11),
+        ),
+        if (sheet != null && store.askFielder) ...[
+          const RowSectionLabel('WHO TOOK IT? (optional)',
+              color: Color(0xFFDC143C)),
+          for (final id in _fieldingIds(store, sheet))
+            PlayerRow(
+              name: sheet.nameOf(id),
+              subtitle: sheet.bowlingTeam,
+              selected: fielder == id,
+              onTap: () => setState(() => fielder = fielder == id ? null : id),
+            ),
+        ],
+        const SizedBox(height: 14),
+        RectBtn(
+          onTap: () => widget.onConfirm(RunOutChoice(
+            runs: runs,
+            nonStrikerOut: nonStrikerOut,
+            outAtStrikerEnd: outAtStrikerEnd,
+            fielderName: fielder == null || sheet == null
+                ? null
+                : sheet.nameOf(fielder!),
+          )),
+          child: Text('$badge · $buttonOut OUT'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shows the run-out questions and records the ball on confirm.
+///
+/// The scroll view and isScrollControlled are load-bearing: the untracked
+/// version used to be a plain Column inside a sheet capped at 9/16 of the
+/// screen, so question 3 and the confirm button could sit past the cap with no
+/// way to scroll to them.
+void showRunOutSheet(BuildContext context, MatchStore store) {
   showModalBottomSheet(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (sheetCtx) => StatefulBuilder(
-      builder: (ctx, setSheet) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const RowSectionLabel('RUN OUT', color: Color(0xFFDC143C)),
-              const SizedBox(height: 6),
-
-              const RowSectionLabel('1. RUNS COMPLETED'),
-              for (final n in [0, 1, 2, 3])
-                PlayerRow(
-                  name: n == 0
-                      ? 'No runs — out at his own end'
-                      : '$n run${n == 1 ? '' : 's'} completed',
-                  subtitle:
-                      n == 0 ? 'Wicket only' : 'W$n — Wicket, $n runs added',
-                  selected: runs == n,
-                  onTap: () => setSheet(() => runs = n),
-                ),
-
-              const RowSectionLabel('2. WHO WAS DISMISSED?',
-                  color: Color(0xFFDC143C)),
-              PlayerRow(
-                name: strikerName,
-                subtitle: '$battingSide • facing the bowler',
-                selected: !nonStrikerOut,
-                onTap: () => setSheet(() => nonStrikerOut = false),
-              ),
-              PlayerRow(
-                name: nonStrikerName,
-                subtitle: '$battingSide • at the other end',
-                selected: nonStrikerOut,
-                onTap: () => setSheet(() => nonStrikerOut = true),
-              ),
-
-              const RowSectionLabel('3. WHICH END WAS HE OUT AT?',
-                  color: Color(0xFFDC143C)),
-              PlayerRow(
-                name: 'Striker\'s end',
-                subtitle: 'Where he was facing',
-                selected: outAtStrikerEnd,
-                onTap: () => setSheet(() => outAtStrikerEnd = true),
-              ),
-              PlayerRow(
-                name: "Bowler's end",
-                subtitle: 'Where his partner was',
-                selected: !outAtStrikerEnd,
-                onTap: () => setSheet(() => outAtStrikerEnd = false),
-              ),
-              const SizedBox(height: 6),
-              // State the consequence so the choice is never a guess.
-              Text(
-                outAtStrikerEnd
-                    ? "Out at the striker's end — the new batter takes that end and faces next."
-                    : "Out at the bowler's end — the new batter fills that gap and ${nonStrikerOut ? nonStrikerName : strikerName} keeps his end and stays on strike.",
-                style: const TextStyle(fontSize: 11),
-              ),
-
-              if (store.askFielder) ...[
-                const RowSectionLabel('WHO TOOK IT? (optional)',
-                    color: Color(0xFFDC143C)),
-                for (final id in _fieldingIds(store, sheet))
-                  PlayerRow(
-                    name: sheet.nameOf(id),
-                    subtitle: bowlingSide,
-                    selected: fielder == id,
-                    onTap: () =>
-                        setSheet(() => fielder = fielder == id ? null : id),
-                  ),
-              ],
-
-              const SizedBox(height: 14),
-              RectBtn(
-                onTap: () {
-                  Navigator.pop(sheetCtx);
-                  final err = store.score(
-                    action: 'WICKET',
-                    runs: runs,
-                    wicketType: 'Run Out',
-                    dismissal: DismissalType.runOut.name,
-                    fielderName:
-                        fielder == null ? null : sheet.nameOf(fielder!),
-                    outAtNonStrikerEnd: nonStrikerOut,
-                    outAtStrikerEnd: outAtStrikerEnd,
-                  );
-                  if (err != null && context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(err)));
-                  }
-                },
-                child:
-                    Text('${nonStrikerOut ? nonStrikerName : strikerName} OUT'),
-              ),
-            ],
-          ),
+    builder: (sheetCtx) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: RunOutForm(
+          store: store,
+          onConfirm: (c) {
+            Navigator.pop(sheetCtx);
+            final err = store.score(
+              action: 'WICKET',
+              runs: c.runs,
+              wicketType: DismissalType.runOut.label,
+              dismissal: DismissalType.runOut.name,
+              fielderName: c.fielderName,
+              outAtNonStrikerEnd: c.nonStrikerOut,
+              outAtStrikerEnd: c.outAtStrikerEnd,
+            );
+            if (err != null && context.mounted) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(err)));
+            }
+          },
         ),
       ),
     ),

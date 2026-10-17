@@ -454,32 +454,36 @@ class ScoringScreen extends StatelessWidget {
         title: const Text('RECORD DISMISSAL'),
         content: SizedBox(
           width: 340,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('SELECT WICKET TYPE',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 2.4,
-                children: [
-                  _tWicketKey(context, 'BOWLED', 'Bowled'),
-                  if (!simple) _tWicketKey(context, 'CAUGHT', 'Caught'),
-                  _tWicketKey(context, 'RUN OUT ›', 'Run Out'),
-                  if (!simple) ...[
-                    _tWicketKey(context, 'LBW', 'LBW'),
-                    _tWicketKey(context, 'STUMPED', 'Stumped'),
-                    _tWicketKey(context, 'HIT WICKET', 'Hit Wicket'),
+          // A dialog does not scroll its own content, so six wicket keys can
+          // run past the bottom on a short screen. The scroll view is cheap.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('SELECT WICKET TYPE',
+                    style: TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 12),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 2.4,
+                  children: [
+                    _tWicketKey(context, DismissalType.bowled),
+                    if (!simple) _tWicketKey(context, DismissalType.caught),
+                    _tWicketKey(context, DismissalType.runOut),
+                    if (!simple) ...[
+                      _tWicketKey(context, DismissalType.lbw),
+                      _tWicketKey(context, DismissalType.stumped),
+                      _tWicketKey(context, DismissalType.hitWicket),
+                    ],
                   ],
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -492,29 +496,28 @@ class ScoringScreen extends StatelessWidget {
     );
   }
 
-  Widget _tWicketKey(BuildContext context, String label, String type) {
+  Widget _tWicketKey(BuildContext context, DismissalType type) {
     return RectBtn(
       primary: false,
       onTap: () {
         Navigator.pop(context);
-        // [type] is the dismissal LABEL, not the enum — comparing it to
-        // DismissalType directly never matched, so Run Out still opened the
-        // full dismissal sheet with every wicket-type pill above the two
-        // questions that actually matter.
-        final t = DismissalType.fromId(type);
-        if (t == DismissalType.runOut) {
+        if (type == DismissalType.runOut) {
+          // Run-out has its own sheet: runs completed, who was out, which
+          // end. No other dismissal asks those, so no wicket-type pills.
           showRunOutSheet(context, store);
           return;
         }
         // A plain dismissal asks one question: who comes next. Going through
         // the full sheet for it cost taps and showed options that do not apply.
-        if (t == DismissalType.bowled && store.tracking) {
-          showNextBatterSheet(context, store, wicketType: type);
+        if (type == DismissalType.bowled && store.tracking) {
+          showNextBatterSheet(context, store, type: type);
           return;
         }
         showDismissalSheet(context, store, type);
       },
-      child: Text(label),
+      child: Text(type == DismissalType.runOut
+          ? 'RUN OUT ›'
+          : type.label.toUpperCase()),
     );
   }
 

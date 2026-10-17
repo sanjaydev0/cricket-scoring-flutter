@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../domain/players.dart';
 import '../math.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -12,7 +13,7 @@ import 'widgets.dart';
 void showWicketDialog(BuildContext context, MatchStore store) {
   // Armed no-ball or free hit: Laws allow only a run-out — skip the grid.
   if (store.nbArmed || (store.innings?.isFreeHitActive ?? false)) {
-    showRunOutDialog(context, store);
+    showRunOutSheet(context, store);
     return;
   }
   final simple = !store.complexWickets;
@@ -22,32 +23,36 @@ void showWicketDialog(BuildContext context, MatchStore store) {
       title: const Text('RECORD DISMISSAL'),
       content: SizedBox(
         width: 340,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('SELECT WICKET TYPE',
-                style: TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 2.4,
-              children: [
-                _wicketKey(context, store, 'BOWLED', 'Bowled'),
-                if (!simple) _wicketKey(context, store, 'CAUGHT', 'Caught'),
-                _wicketKey(context, store, 'RUN OUT ›', null, runOut: true),
-                if (!simple) ...[
-                  _wicketKey(context, store, 'LBW', 'LBW'),
-                  _wicketKey(context, store, 'STUMPED', 'Stumped'),
-                  _wicketKey(context, store, 'HIT WICKET', 'Hit Wicket'),
+        // A dialog does not scroll its own content, so six wicket keys can run
+        // past the bottom on a short screen.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('SELECT WICKET TYPE',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 2.4,
+                children: [
+                  _wicketKey(context, store, DismissalType.bowled),
+                  if (!simple) _wicketKey(context, store, DismissalType.caught),
+                  _wicketKey(context, store, DismissalType.runOut),
+                  if (!simple) ...[
+                    _wicketKey(context, store, DismissalType.lbw),
+                    _wicketKey(context, store, DismissalType.stumped),
+                    _wicketKey(context, store, DismissalType.hitWicket),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -60,105 +65,27 @@ void showWicketDialog(BuildContext context, MatchStore store) {
   );
 }
 
-Widget _wicketKey(
-    BuildContext context, MatchStore store, String label, String? type,
-    {bool runOut = false}) {
+Widget _wicketKey(BuildContext context, MatchStore store, DismissalType type) {
   return RectBtn(
     primary: false,
     onTap: () {
       Navigator.pop(context);
-      if (runOut) {
-        showRunOutDialog(context, store);
-      } else {
-        store.score(action: 'WICKET', wicketType: type!);
+      if (type == DismissalType.runOut) {
+        // Run-out asks three questions of its own, and it is the only
+        // dismissal that does. The four-button grid that used to live here
+        // never asked the end and always dismissed the striker, so the same
+        // physical run-out scored differently from the tracked flow.
+        showRunOutSheet(context, store);
+        return;
       }
+      // The enum travels with its label. A display string that did not match
+      // the enum exactly (`'Hit Wicket'` versus `Hit wicket`) used to be
+      // recorded as bowled.
+      store.score(
+          action: 'WICKET', wicketType: type.label, dismissal: type.name);
     },
-    child: Text(label),
-  );
-}
-
-void showRunOutDialog(BuildContext context, MatchStore store) {
-  // Untracked matches ask BOTH questions too. The old 4-button grid never
-  // asked the end and always dismissed the striker, so the same physical
-  // run-out scored differently depending on whether tracking was on.
-  if (store.tracking && store.currentSheet != null) {
-    showRunOutSheet(context, store);
-    return;
-  }
-  var runs = 0;
-  var nonStrikerOut = false;
-  var outAtStrikerEnd = true;
-  showModalBottomSheet(
-    context: context,
-    showDragHandle: true,
-    builder: (_) => StatefulBuilder(
-      builder: (ctx, setSheet) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const RowSectionLabel('RUN OUT', color: Color(0xFFDC143C)),
-              const SizedBox(height: 6),
-              const RowSectionLabel('1. RUNS COMPLETED'),
-              for (final n in [0, 1, 2, 3])
-                PlayerRow(
-                  name: n == 0
-                      ? 'No runs — out at his own end'
-                      : '$n run${n == 1 ? '' : 's'} completed',
-                  subtitle:
-                      n == 0 ? 'Wicket only' : 'W$n — Wicket, $n runs added',
-                  selected: runs == n,
-                  onTap: () => setSheet(() => runs = n),
-                ),
-              const RowSectionLabel('2. WHO WAS DISMISSED?',
-                  color: Color(0xFFDC143C)),
-              PlayerRow(
-                name: 'Striker — facing the bowler',
-                subtitle: 'On strike',
-                selected: !nonStrikerOut,
-                onTap: () => setSheet(() => nonStrikerOut = false),
-              ),
-              PlayerRow(
-                name: 'Non-striker — the other end',
-                subtitle: 'At the opposite end',
-                selected: nonStrikerOut,
-                onTap: () => setSheet(() => nonStrikerOut = true),
-              ),
-              const RowSectionLabel('3. WHICH END WAS HE OUT AT?',
-                  color: Color(0xFFDC143C)),
-              PlayerRow(
-                name: "Striker's end",
-                subtitle: 'Where he was facing',
-                selected: outAtStrikerEnd,
-                onTap: () => setSheet(() => outAtStrikerEnd = true),
-              ),
-              PlayerRow(
-                name: "Bowler's end",
-                subtitle: 'Where his partner was',
-                selected: !outAtStrikerEnd,
-                onTap: () => setSheet(() => outAtStrikerEnd = false),
-              ),
-              const SizedBox(height: 14),
-              RectBtn(
-                onTap: () {
-                  Navigator.pop(context);
-                  store.score(
-                    action: 'WICKET',
-                    runs: runs,
-                    wicketType: 'Run Out',
-                    outAtNonStrikerEnd: nonStrikerOut,
-                    outAtStrikerEnd: outAtStrikerEnd,
-                  );
-                },
-                child: Text(runs == 0 ? 'WICKET' : 'W$runs'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
+    child: Text(
+        type == DismissalType.runOut ? 'RUN OUT ›' : type.label.toUpperCase()),
   );
 }
 

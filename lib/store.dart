@@ -1129,6 +1129,14 @@ class MatchStore extends ChangeNotifier {
     pushSnapshot();
     final rules = m.config.rules;
 
+    // The dismissal type is settled ONCE, from the enum id when the UI sent
+    // one and from the display string otherwise. Nothing further down compares
+    // the strings: `'Run Out' != 'Run out'` is what let a non-run-out slip past
+    // the no-ball and free-hit guards, and what made a run-out print as
+    // `b <bowler>` on the card.
+    final type = DismissalType.tryFromId(dismissal ?? wicketType) ??
+        DismissalType.bowled;
+
     Ball b;
     switch (action) {
       case 'DOT':
@@ -1224,7 +1232,7 @@ class MatchStore extends ChangeNotifier {
         // the ball stays illegal.
         if (nbArmed) {
           nbArmed = false;
-          if (wicketType != 'Run Out') {
+          if (type != DismissalType.runOut) {
             _undo.removeLast();
             return 'Only run-out possible on no-ball';
           }
@@ -1234,20 +1242,20 @@ class MatchStore extends ChangeNotifier {
               extraRuns: rules.noBallPenalty,
               isLegal: false,
               isWicket: true,
-              wicketType: wicketType,
-              badge: runs > 0 ? 'W+$runs' : 'W');
+              wicketType: type.label,
+              badge: wicketBadge(runs));
           if (rules.freeHit) inn.isFreeHitActive = true;
           break;
         }
-        if (inn.isFreeHitActive && wicketType != 'Run Out') {
+        if (inn.isFreeHitActive && type != DismissalType.runOut) {
           b = Ball(runs: runs, badge: runs == 0 ? '0' : '$runs');
         } else {
           // Run-outs with completed runs read W+1 / W+2 on the strip.
           b = Ball(
               runs: runs,
               isWicket: true,
-              wicketType: wicketType,
-              badge: runs > 0 ? 'W+$runs' : 'W');
+              wicketType: type.label,
+              badge: wicketBadge(runs));
         }
         inn.isFreeHitActive = false;
         break;
@@ -1265,9 +1273,6 @@ class MatchStore extends ChangeNotifier {
     // Player attribution: stamp who faced and who bowled before the ball
     // lands, so the sheet and the strip never disagree.
     final sheet = tracking ? _ensureSheet(m.currentInnings) : null;
-    final type = dismissal != null
-        ? DismissalType.fromId(dismissal)
-        : DismissalType.fromId(b.wicketType);
     if (sheet != null) {
       b.strikerId = sheet.strikerId;
       b.nonStrikerId = sheet.nonStrikerId;
@@ -1314,7 +1319,7 @@ class MatchStore extends ChangeNotifier {
         final next = (newBatterId != null && newBatterId.isNotEmpty)
             ? newBatterId
             : (opts.isEmpty ? null : opts.first);
-        if (next != null) {
+        if (type == DismissalType.runOut) {
           // Seat from WHERE the dismissal happened, not who was out. The end
           // tells us which man must move across and where the newcomer lands,
           // so both of the umpire's answers are honoured instead of one being
@@ -1323,15 +1328,16 @@ class MatchStore extends ChangeNotifier {
           //   out at the striker's end -> newcomer there, he is next in line
           //   out at the bowler's end  -> newcomer fills that gap, the batter
           //                               already on strike keeps his end
-          if (type == DismissalType.runOut) {
-            // Run-out: seat from the end the umpire stated, because a run-out
-            // is the one dismissal where the two answers are independent.
-            sheet.seatAfterDismissal(
-              dismissedId: outId,
-              newcomerId: next,
-              atStrikerEnd: outAtStrikerEnd,
-            );
-          } else if (b.runs % 2 == 1) {
+          //
+          // This runs even with nobody left to bat, so the vacated end is
+          // emptied rather than left holding the man who is already out.
+          sheet.seatAfterDismissal(
+            dismissedId: outId,
+            newcomerId: next,
+            atStrikerEnd: outAtStrikerEnd,
+          );
+        } else if (next != null) {
+          if (b.runs % 2 == 1) {
             // Every other dismissal: the batters crossed, so the newcomer takes
             // the striker's vacated end and the man who crossed is on strike.
             sheet.crossedRunOutFix(next);
