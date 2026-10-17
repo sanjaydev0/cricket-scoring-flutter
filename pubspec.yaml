@@ -1,7 +1,7 @@
 name: cricket_scoring
 description: Gully Cricket Scorer - 100% offline, sunlight-optimized Flutter port.
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.21.0+51
 
 environment:
   sdk: ^3.4.0
