@@ -35,6 +35,14 @@ if pgrep -f "flutter run" >/dev/null 2>&1; then
   fail "dev server still running"
 fi
 
+
+echo "==> analyze"
+dart format . >/dev/null
+flutter analyze 2>&1 | tail -n 2
+
+echo "==> test"
+flutter test 2>&1 | tr '\r' '\n' | grep -E "All tests passed|Some tests failed" | tail -n 1
+
 # The version has to live in pubspec.yaml. Gradle reads flutter.versionName and
 # flutter.versionCode from there, so a release that only set a git tag shipped
 # an APK still calling itself 1.0.0 / versionCode 1. Every build from v2.2 to
@@ -63,13 +71,6 @@ fi
 echo "==> push"
 git push -q origin HEAD:main ||
   fail "could not push to origin/main — the GitHub tag would point at the wrong tree"
-
-echo "==> analyze"
-dart format . >/dev/null
-flutter analyze 2>&1 | tail -n 2
-
-echo "==> test"
-flutter test 2>&1 | tr '\r' '\n' | grep -E "All tests passed|Some tests failed" | tail -n 1
 
 echo "==> build apk"
 flutter build apk --release \

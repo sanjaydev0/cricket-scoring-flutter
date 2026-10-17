@@ -202,6 +202,42 @@ void main() {
         reason: 'the confirm button must be on screen without scrolling');
   });
 
+  testWidgets('backing out of the sheet records nothing', (tester) async {
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+
+    final s = _fixture();
+    int balls() => s.innings!.overs.fold(0, (n, o) => n + o.balls.length);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (ctx) => Center(
+            child: TextButton(
+              onPressed: () => showRunOutSheet(ctx, s),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('3. WHICH END WAS HE OUT AT?'), findsOneWidget);
+
+    // The system back gesture must dismiss the sheet, never confirm it. A
+    // stray BACK reaching the confirm button would record a dismissal the
+    // umpire never called.
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('3. WHICH END WAS HE OUT AT?'), findsNothing);
+    expect(balls(), 0, reason: 'no ball was recorded');
+    expect(s.innings!.wickets, 0);
+    expect(s.innings!.runs, 0);
+  });
+
   testWidgets('the answers reach the store as the ball that was described',
       (tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
