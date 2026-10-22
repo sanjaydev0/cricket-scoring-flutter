@@ -432,6 +432,20 @@ void showDismissalSheet(
   // the retired-out never appear. Retired-hurt returnees do.
   final outId = sheet.strikerId ?? '';
   final waiting = sheet.nextBatterOptions(outId);
+
+  // If no batters left to come in, this wicket completes the innings.
+  // Record it immediately instead of showing an empty sheet.
+  if (waiting.isEmpty) {
+    store.score(
+      action: 'WICKET',
+      wicketType: initial.label,
+      dismissal: initial.name,
+      fielderName: fielder,
+      newBatterId: '',
+    );
+    return;
+  }
+
   showAppSheet(
     context,
     showDragHandle: true,
@@ -546,41 +560,48 @@ void showDismissalSheet(
               ),
               const SizedBox(height: 6),
               if (waiting.isEmpty)
-                const Text('No batters left.', style: TextStyle(fontSize: 12)),
-              for (final id in waiting)
-                Builder(
-                  builder: (_) {
-                    final returning = (sheet.batting[id]?.position ?? 0) > 0;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: RectBtn(
-                        primary: false,
-                        onTap: () {
-                          Navigator.pop(sheetCtx);
-                          // The enum travels with the label in every path, so a
-                          // dismissal can never be recorded as something else
-                          // because two strings did not match exactly.
-                          final err = store.score(
-                            action: 'WICKET',
-                            wicketType: type.label,
-                            dismissal: type.name,
-                            fielderName: fielder,
-                            newBatterId: id,
-                          );
-                          if (err != null && context.mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(content: Text(err)));
-                          }
-                        },
-                        child: Text(
-                          returning
-                              ? '${sheet.nameOf(id)} (returning)'
-                              : sheet.nameOf(id),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child: Text(
+                    'Innings complete — wicket recorded.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                )
+              else
+                for (final id in waiting)
+                  Builder(
+                    builder: (_) {
+                      final returning = (sheet.batting[id]?.position ?? 0) > 0;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: RectBtn(
+                          primary: false,
+                          onTap: () {
+                            Navigator.pop(sheetCtx);
+                            // The enum travels with the label in every path, so a
+                            // dismissal can never be recorded as something else
+                            // because two strings did not match exactly.
+                            final err = store.score(
+                              action: 'WICKET',
+                              wicketType: type.label,
+                              dismissal: type.name,
+                              fielderName: fielder,
+                              newBatterId: id,
+                            );
+                            if (err != null && context.mounted) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(content: Text(err)));
+                            }
+                          },
+                          child: Text(
+                            returning
+                                ? '${sheet.nameOf(id)} (returning)'
+                                : sheet.nameOf(id),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
             ],
           ),
         ),
@@ -699,6 +720,19 @@ void showNextBatterSheet(
   final waiting = sheet.nextBatterOptions(outId);
   final outName = sheet.nameOf(outId);
   String? fielder;
+
+  // If no batters left to come in, this wicket completes the innings.
+  // Record it immediately instead of showing an empty sheet.
+  if (waiting.isEmpty) {
+    store.score(
+      action: 'WICKET',
+      wicketType: type.label,
+      dismissal: type.name,
+      fielderName: fielder,
+      newBatterId: '',
+    );
+    return;
+  }
 
   showAppSheet(
     context,
