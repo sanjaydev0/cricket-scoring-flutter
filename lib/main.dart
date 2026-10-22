@@ -53,6 +53,13 @@ void main() async {
   unawaited(sync.init().catchError((Object _) {}));
   debugPrint('MAIN: calling runApp');
   runApp(CricketApp(store: store));
+  // Flush a final snapshot when the phone locks or goes home. Force-stop
+  // still leaves the prefs safe; this just keeps the backup equally fresh.
+  AppLifecycleListener(
+    onPause: () {
+      unawaited(store.backupNow());
+    },
+  );
   debugPrint('MAIN: runApp returned (never expected to block)');
 }
 

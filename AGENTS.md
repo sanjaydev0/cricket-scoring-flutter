@@ -197,6 +197,27 @@ adb devices -l           # confirm device (USB or wireless)
   `ACCESS_NETWORK_STATE` in the **merged release manifest** and that the
   Supabase keys are baked into `libapp.so`. Both faults are invisible on web.
 
+## Data preservation (critical)
+
+- **NEVER `adb uninstall`, `pm clear`, or "reinstall to fix".** The only copy of the
+  club, roster, live match and archives lives in app storage; uninstalling deletes it.
+- Update with `adb install -r` only. Run `./tool/safe_update.sh` first: it pulls the
+  on-device backup to `~/backups/cricscore/`, installs over the top, and prints the
+  `STORE:` boot line.
+- The app writes two snapshots after every change (10 s floor):
+  `/sdcard/Android/data/com.gully.cricket.cricket_scoring/files/backups/cricscore-backup.json`
+  and `/sdcard/Download/CricScore/cricscore-backup.json`.
+- Fresh install: install, then `./tool/restore_backup.sh <newest.json>` before the
+  first launch (or copy the JSON to `Downloads/CricScore/cricscore-backup.json`).
+  The app auto-restores only when no `cricket_*` preference exists, so it can never
+  overwrite a live store. Existing data is replaced only via Settings → Data backup.
+- Verify after every install:
+  `adb logcat -d | grep "STORE:"` → either `roster=N clubs=N ... match=...` or
+  `restored backup ...` with the expected counts.
+- Backup format is versioned (`BackupSnapshot.format`, currently 1). Keep older
+  versions readable; never change a preference key without migrating its backup.
+- A backup failure must never block scoring or boot. Prefs remain the source of truth.
+
 ## Rules
 
 - NEVER hand-edit `build/`, `.dart_tool/`, `*.g.dart` (generated).

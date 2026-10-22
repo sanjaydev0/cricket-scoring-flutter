@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../ports/sync_port.dart';
 import '../store.dart';
@@ -40,6 +41,44 @@ class HomeScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  if (store.restoredFromBackup) ...[
+                    Card(
+                      color: Theme.of(context).colorScheme.primary,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.restore,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'DATA RESTORED FROM BACKUP',
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Dismiss',
+                              onPressed: store.acknowledgeRestore,
+                              icon: Icon(
+                                Icons.close,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
@@ -124,6 +163,31 @@ class HomeScreen extends StatelessWidget {
       SyncState.error => 'Error',
     };
     return err == null || err.isEmpty ? label : '$label — $err';
+  }
+
+  Future<bool> _confirmRestore(
+    BuildContext context, {
+    required String title,
+    required String body,
+  }) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dctx, false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dctx, true),
+            child: const Text('RESTORE'),
+          ),
+        ],
+      ),
+    );
+    return yes == true;
   }
 
   void _settingsSheet(BuildContext context) {
@@ -316,6 +380,96 @@ class HomeScreen extends StatelessWidget {
                   onChanged: store.onlineState == SyncState.unconfigured
                       ? null
                       : (_) => store.sync.init(),
+                ),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Data backup',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    store.lastBackupAt == null
+                        ? 'Auto-saves to Downloads/CricScore'
+                        : 'Last ${DateFormat('d MMM, HH:mm').format(store.lastBackupAt!.toLocal())} • ${store.backupLocationLabel}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Every change is copied to Downloads/CricScore/cricscore-backup.json. A fresh install restores it automatically.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final ok = await store.backupNow();
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    ok
+                                        ? 'Backup saved to Downloads/CricScore/'
+                                        : store.lastBackupError == null
+                                        ? 'Nothing to back up yet'
+                                        : 'Backup skipped — ${store.lastBackupError}',
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.save_alt, size: 18),
+                            label: const Text('BACK UP NOW'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final yes = await _confirmRestore(
+                                context,
+                                title: 'Restore backup?',
+                                body: 'This replaces the current clubs, players, live match and archives with the latest backup on this device.',
+                              );
+                              if (!yes) return;
+                              final result = await store.restoreLatestBackup();
+                              if (!context.mounted) return;
+                              if (result.ok) Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(result.message)),
+                              );
+                            },
+                            icon: const Icon(Icons.restore, size: 18),
+                            label: const Text('RESTORE'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          final yes = await _confirmRestore(
+                            context,
+                            title: 'Restore from file?',
+                            body: 'Pick a CricScore backup JSON. This replaces the current clubs, players, live match and archives.',
+                          );
+                          if (!yes) return;
+                          final result = await store.restoreFromPickedBackup();
+                          if (!context.mounted) return;
+                          if (result.ok) Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(result.message)),
+                          );
+                        },
+                        icon: const Icon(Icons.folder_open, size: 18),
+                        label: const Text('RESTORE FROM FILE…'),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
               ],

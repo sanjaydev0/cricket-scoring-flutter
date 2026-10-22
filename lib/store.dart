@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'adapters/local_only_sync.dart';
+import 'backup.dart';
 import 'domain/players.dart';
 import 'domain/room_snapshot.dart';
 import 'math.dart';
@@ -156,6 +157,10 @@ class MatchStore extends ChangeNotifier {
   static const kAppearances = 'cricket_appearances_v1';
   static const kAppearanceKeys = 'cricket_appearance_keys_v1';
 
+  /// The part of the preference store a scorer would actually miss. Settings
+  /// alone never justify restoring a snapshot over a newer store.
+  static const userDataKeys = [kActive, kHistory, kRoster, kClubs, kProfiles];
+
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
   static const teamBColor = 0xFFDC2626; // red-600
@@ -204,6 +209,19 @@ class MatchStore extends ChangeNotifier {
   /// preview) is still writable; only a *failed read* blocks persistence.
   bool _prefsLoadAttempted = false;
 
+  /// True when a fresh install brought data back from the Downloads snapshot.
+  /// HomeScreen shows a dismissible banner so the umpire knows why the old
+  /// roster is suddenly there.
+  bool restoredFromBackup = false;
+  DateTime? lastBackupAt;
+  String? lastBackupPath;
+  String? lastBackupDownloadsPath;
+  String? lastBackupError;
+  bool _backupEnabled = false;
+  bool _backingUp = false;
+  bool _backupQueued = false;
+  DateTime? _lastBackupAttempt;
+
   bool get _persistBlocked => _prefsLoadAttempted && !_prefsReadable;
 
   Innings? get innings => match == null
@@ -226,6 +244,11 @@ class MatchStore extends ChangeNotifier {
   Future<void> load() async {
     debugPrint('STORE: load() start');
     _prefsLoadAttempted = true;
+    restoredFromBackup = false;
+    // A manual restore can replace or remove the live match. Clear the old
+    // one first so a backup with no active match cannot leave a stale match
+    // in memory after load().
+    match = null;
     final SharedPreferences p;
     try {
       p = await SharedPreferences.getInstance();
@@ -240,6 +263,9 @@ class MatchStore extends ChangeNotifier {
       _warmAudio(soundOn);
       return;
     }
+    // Separate from the read above: a backup failure must never turn a
+    // successful prefs read into a read-only boot.
+    await _restoreBackupIfEmpty(p);
     debugPrint('STORE: prefs loaded');
     themeId = _migrateTheme(p.getString(kTheme));
     soundOn = p.getBool(kSound) ?? true;
@@ -328,13 +354,217 @@ class MatchStore extends ChangeNotifier {
       _undo = [];
     }
     _redo = [];
+    _backupEnabled = true;
     loaded = true;
     notifyListeners();
     debugPrint(
       'STORE: load() complete — roster=${roster.length} '
       'clubs=${clubs.length} profiles=${profiles.length} '
-      'match=${match != null}',
+      'match=${match != null} restored=$restoredFromBackup',
     );
+  }
+
+  /// First launch after an uninstall/reinstall has no `cricket_*` keys at all,
+  /// so a leftover snapshot in Downloads is safe to bring back. Any existing
+  /// key means this is not a fresh install — never overwrite it.
+  Future<void> _restoreBackupIfEmpty(SharedPreferences p) async {
+    try {
+      if (p.getKeys().any((k) => k.startsWith('cricket_'))) return;
+      final raw = await BackupService.read().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => null,
+      );
+      if (raw == null || raw.isEmpty) return;
+      final snap = BackupSnapshot.decode(raw);
+      if (snap == null || !snap.hasAny(userDataKeys)) {
+        debugPrint('STORE: backup found but unusable — keeping empty store');
+        return;
+      }
+      for (final entry in snap.values.entries) {
+        await _writePref(p, entry.key, entry.value);
+      }
+      restoredFromBackup = true;
+      lastBackupAt = snap.savedAt;
+      debugPrint(
+        'STORE: restored backup from ${snap.savedAt.toIso8601String()} '
+        '(${snap.values.length} keys)',
+      );
+    } catch (e) {
+      debugPrint('STORE: backup restore skipped: $e');
+    }
+  }
+
+  Future<void> _writePref(
+    SharedPreferences p,
+    String key,
+    Object? value,
+  ) async {
+    if (value is bool) {
+      await p.setBool(key, value);
+    } else if (value is int) {
+      await p.setInt(key, value);
+    } else if (value is double) {
+      await p.setDouble(key, value);
+    } else if (value is String) {
+      await p.setString(key, value);
+    } else if (value is List) {
+      await p.setStringList(key, value.map((e) => e.toString()).toList());
+    }
+  }
+
+  /// Writes the current store to both backup locations. Returns false when
+  /// there is nothing worth saving or storage refuses the write; the caller
+  /// can show [lastBackupError].
+  ///
+  /// A store with no club/player/match/archive is never written, even
+  /// manually: a settings-only snapshot must never clobber the real backup
+  /// left by a previous install that auto-restore has not read yet.
+  Future<bool> backupNow() async {
+    if (_persistBlocked) return false;
+    if (_backingUp) {
+      _backupQueued = true;
+      return false;
+    }
+    _backingUp = true;
+    try {
+      final p = await SharedPreferences.getInstance();
+      final values = <String, Object?>{};
+      for (final key in p.getKeys()) {
+        if (!key.startsWith('cricket_')) continue;
+        final value = p.get(key);
+        if (value is String ||
+            value is bool ||
+            value is int ||
+            value is double) {
+          values[key] = value;
+        } else if (value is List) {
+          values[key] = value.map((e) => e.toString()).toList();
+        }
+      }
+      final snap = BackupSnapshot(savedAt: DateTime.now(), values: values);
+      if (!snap.hasAny(userDataKeys)) {
+        debugPrint('STORE: backup skipped — no user data yet');
+        return false;
+      }
+      final res = await BackupService.write(snap);
+      if (res.ok) {
+        lastBackupAt = snap.savedAt;
+        lastBackupPath = res.path;
+        lastBackupDownloadsPath = res.downloadsPath;
+        lastBackupError = null;
+        debugPrint(
+          'STORE: backup written — app=${res.path} '
+          'downloads=${res.downloadsPath}',
+        );
+      } else {
+        lastBackupError = res.error ?? 'storage unavailable';
+        debugPrint('STORE: backup FAILED — $lastBackupError');
+      }
+      notifyListeners();
+      return res.ok;
+    } catch (e) {
+      lastBackupError = e.toString();
+      debugPrint('STORE: backup FAILED — $e');
+      notifyListeners();
+      return false;
+    } finally {
+      _backingUp = false;
+      if (_backupQueued) {
+        _backupQueued = false;
+        unawaited(backupNow());
+      }
+    }
+  }
+
+  /// Called after every persist. No timers: the 10-second floor is enough to
+  /// keep a ball-by-ball match from hammering storage and cannot leak a
+  /// pending timer into tests.
+  void _maybeBackup() {
+    if (!_backupEnabled || _persistBlocked) return;
+    if (_backingUp) {
+      // A save landed while the snapshot was being written; take one more
+      // snapshot as soon as the current write finishes.
+      _backupQueued = true;
+      return;
+    }
+    final now = DateTime.now();
+    final last = _lastBackupAttempt;
+    if (last != null && now.difference(last) < const Duration(seconds: 10)) {
+      return;
+    }
+    _lastBackupAttempt = now;
+    unawaited(backupNow());
+  }
+
+  void acknowledgeRestore() {
+    if (!restoredFromBackup) return;
+    restoredFromBackup = false;
+    notifyListeners();
+  }
+
+  /// Where the last backup landed, in words the umpire can find with a file
+  /// manager. The public copy is the one that survives a reinstall.
+  String get backupLocationLabel => lastBackupDownloadsPath != null
+      ? 'Downloads/CricScore/${BackupService.fileName}'
+      : lastBackupPath != null
+      ? 'App storage (pull with adb)'
+      : 'Not saved yet';
+
+  /// Safe fallback for a backup copied off the phone (or from Drive).
+  Future<BackupRestore> restoreLatestBackup() async {
+    final raw = await BackupService.read();
+    if (raw == null || raw.isEmpty) {
+      return const BackupRestore(false, 'No backup found on this device');
+    }
+    return _applyBackup(raw);
+  }
+
+  Future<BackupRestore> restoreFromPickedBackup() async {
+    final raw = await BackupService.pick();
+    if (raw == null || raw.isEmpty) {
+      return const BackupRestore(false, 'No file selected');
+    }
+    return _applyBackup(raw);
+  }
+
+  Future<BackupRestore> _applyBackup(String raw) async {
+    final snap = BackupSnapshot.decode(raw);
+    if (snap == null || !snap.hasAny(userDataKeys)) {
+      return const BackupRestore(false, 'That file is not a CricScore backup');
+    }
+    try {
+      final p = await SharedPreferences.getInstance();
+      // Replacement, not merge: drop keys the backup predates so an old live
+      // match cannot survive alongside the restored one.
+      final stale = p
+          .getKeys()
+          .where((k) => k.startsWith('cricket_') && !snap.values.containsKey(k))
+          .toList();
+      for (final key in stale) {
+        await p.remove(key);
+      }
+      for (final entry in snap.values.entries) {
+        await _writePref(p, entry.key, entry.value);
+      }
+      await load();
+      lastBackupAt = snap.savedAt;
+      notifyListeners();
+      debugPrint('STORE: restored user backup (${snap.values.length} keys)');
+      return BackupRestore(
+        true,
+        'Restored backup from ${_stamp(snap.savedAt)}',
+        savedAt: snap.savedAt,
+      );
+    } catch (e) {
+      debugPrint('STORE: restore failed: $e');
+      return BackupRestore(false, 'Restore failed: $e');
+    }
+  }
+
+  static String _stamp(DateTime d) {
+    final l = d.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${l.day}/${l.month}/${l.year} ${two(l.hour)}:${two(l.minute)}';
   }
 
   /// Old 3-theme ids -> light/dark.
@@ -414,6 +644,7 @@ class MatchStore extends ChangeNotifier {
       kSheets,
       jsonEncode(sheets.map((k, v) => MapEntry(k, v.toJson()))),
     );
+    _maybeBackup();
   }
 
   void setTheme(String id) {
@@ -1827,6 +2058,9 @@ class MatchStore extends ChangeNotifier {
     hist.insert(0, rec);
     if (hist.length > 50) hist = hist.sublist(0, 50);
     await p.setString(kHistory, jsonEncode(hist));
+    // Archiving does not go through _persist, so take the snapshot here.
+    // A fresh install must never lose the match that just finished.
+    if (_backupEnabled) unawaited(backupNow());
   }
 
   /// Raw archive records (match + optional sheets), newest first.
