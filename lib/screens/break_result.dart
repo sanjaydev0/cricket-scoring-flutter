@@ -81,6 +81,31 @@ class BreakScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
+                        if (store.tracking &&
+                            store.sheetFor(1) != null &&
+                            store.sheetFor(1)!.bowlingCards.isNotEmpty) ...[
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    'BOWLING — ${inn1.bowlingTeam}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  BowlerRows(store.sheetFor(1)!.bowlingCards),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(

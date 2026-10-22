@@ -55,9 +55,7 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
                 const SizedBox(height: 6),
                 _partnershipRow(s),
                 const SizedBox(height: 10),
-                _rowsHeader(preset, 'Bowler', const ['W-R', 'Ov', 'Econ']),
-                if (s.currentBowler != null) _bowlerRow(s.currentBowler!),
-                const SizedBox(height: 10),
+                if (s.currentBowler != null) BowlerRows([s.currentBowler!]),
                 Row(
                   children: [
                     Expanded(
@@ -246,10 +244,6 @@ Widget _batterRow(
     ),
   );
 }
-
-/// Single-bowler row in the stats sheet: same shared rows as the scorecard,
-/// so the two can never disagree on layout.
-Widget _bowlerRow(BowlingCard b) => BowlerRows([b]);
 
 Widget _partnershipRow(InningsSheet s) {
   final last = s.fallOfWickets.isEmpty ? null : s.fallOfWickets.last;

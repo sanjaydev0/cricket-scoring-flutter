@@ -181,18 +181,32 @@ class _ScoreboardState extends State<Scoreboard> {
                           color: preset.heroFg.withValues(alpha: 0.25),
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _stat('OVERS', '$oversFmt/$totalOvers'),
-                            _stat('CRR', crr),
-                            _stat('EXTRAS', '${inn.extrasTotal}'),
-                          ],
-                        ),
+                        if (_peek)
+                          TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: const Duration(milliseconds: 160),
+                            curve: Curves.easeOut,
+                            builder: (context, t, child) => Opacity(
+                              opacity: t,
+                              child: Transform.scale(
+                                scale: 0.96 + 0.04 * t,
+                                child: child,
+                              ),
+                            ),
+                            child: _chaseStrip(inn, match, preset),
+                          )
+                        else
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _stat('OVERS', '$oversFmt/$totalOvers'),
+                              _stat('CRR', crr),
+                              _stat('EXTRAS', '${inn.extrasTotal}'),
+                            ],
+                          ),
                       ],
                     ),
                   ),
-                  if (_peek) Positioned.fill(child: _peekPanel(inn, match)),
                 ],
               ),
             ),
@@ -339,12 +353,10 @@ class _ScoreboardState extends State<Scoreboard> {
   }
 }
 
-/// The on-demand chase panel.
-///
-/// A SOLID card over the hero — no blur, no translucency: in direct sun a
-/// see-through panel is a panel nobody can read. Label left, value right, so
-/// the numbers line up with the hero above them.
-Widget _peekPanel(Innings inn, Match match) {
+/// The on-demand chase strip. Replaces the OVERS/CRR/EXTRAS row in place
+/// (no full-card cover, no layout shift outside the card): the hero keeps its
+/// own colour and the white letters sit where the stat row used to be.
+Widget _chaseStrip(Innings inn, Match match, StylePreset preset) {
   final target = match.currentInnings == 2 ? match.target : null;
   final need = target == null ? 0 : target - inn.runs;
   final ballsLeft =
@@ -352,56 +364,55 @@ Widget _peekPanel(Innings inn, Match match) {
   final rrr = (target != null && ballsLeft > 0)
       ? CricketMath.calcRRR(need, ballsLeft)
       : null;
-  final rows = <(String, String)>[];
-  if (target != null) {
-    rows.add(('TARGET', '$target'));
-    rows.add((
-      need <= 0 ? 'RESULT' : 'NEED',
-      need <= 0 ? 'WON' : '$need off $ballsLeft',
-    ));
-    if (rrr != null) rows.add(('RRR', rrr));
-  } else {
-    rows.add(('INNINGS', '1st'));
-    rows.add(('OVER LIMIT', '${match.config.totalOvers} ov'));
-  }
-  rows.add(('EXTRAS', '${inn.extrasTotal}'));
-  return Container(
-    color: const Color(0xFF131316),
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  final fg = preset.heroFg;
+  if (target == null) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (final r in rows)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    r.$1,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ),
-                Text(
-                  r.$2,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
+        Text(
+          'OVER LIMIT ${match.config.totalOvers}',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: fg,
+            letterSpacing: 1,
           ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'CRR ${CricketMath.calcCRR(inn.runs, inn.legalDeliveries)}',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: fg.withValues(alpha: 0.85),
+          ),
+        ),
       ],
-    ),
+    );
+  }
+  final won = need <= 0;
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        'TARGET $target',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          color: fg,
+          letterSpacing: 1,
+        ),
+      ),
+      const SizedBox(height: 2),
+      Text(
+        won ? 'WON' : 'NEED $need OFF $ballsLeft  ·  RRR ${rrr ?? "—"}',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: fg.withValues(alpha: 0.9),
+        ),
+      ),
+    ],
   );
 }
 

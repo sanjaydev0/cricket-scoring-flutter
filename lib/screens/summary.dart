@@ -76,6 +76,7 @@ class BowlerRows extends StatelessWidget {
               _cell('M', color: faint, header: true),
               _cell('R', color: faint, header: true),
               _cell('W', color: faint, header: true),
+              _cell('ECO', color: faint, header: true, width: 36),
               if (hasExtras) ...[
                 _cell('WD', color: faint, header: true, width: 26),
                 _cell('NB', color: faint, header: true, width: 26),
@@ -93,34 +94,14 @@ class BowlerRows extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        c.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                      if (c.economy != null)
-                        const Text(
-                          'Econ',
-                          style: TextStyle(fontSize: 9, height: 1.1),
-                        ),
-                      if (c.economy != null)
-                        Text(
-                          c.economy!.toStringAsFixed(2),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFF59E0B),
-                          ),
-                        ),
-                    ],
+                  child: Text(
+                    c.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 _cell(c.oversDisplay),
@@ -129,6 +110,11 @@ class BowlerRows extends StatelessWidget {
                 _cell(
                   '${c.wickets}',
                   color: c.wickets > 0 ? const Color(0xFF22C55E) : null,
+                ),
+                _cell(
+                  c.economy == null ? '—' : c.economy!.toStringAsFixed(2),
+                  color: const Color(0xFFF59E0B),
+                  width: 36,
                 ),
                 if (hasExtras) ...[
                   _cell(
@@ -503,21 +489,25 @@ class TopPerformersView extends StatelessWidget {
     if (m == null || !store.tracking) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
     final rows = <Widget>[];
+    final squad = m.config.playersPerSide;
+    final many = squad >= 8; // more players per side -> 3 batters, else 2
+    final nBat = many ? 3 : 2;
+    final nBowl = 2;
     for (var n = 1; n <= 2; n++) {
       if (inningsNo != null && n != inningsNo) continue;
       final sheet = store.sheetFor(n);
       if (sheet == null) continue;
-      if (sheet.battingCards.isEmpty && sheet.bowlingCards.isEmpty) continue;
-      final bat = sheet.battingCards.toList()
+      final bat = sheet.battingCards.where((c) => c.balls > 0).toList()
         ..sort((a, b) {
           final r = b.runs.compareTo(a.runs);
           return r != 0 ? r : (b.strikeRate ?? 0).compareTo(a.strikeRate ?? 0);
         });
-      final bowl = sheet.bowlingCards.toList()
+      final bowl = sheet.bowlingCards.where((c) => c.legalBalls > 0).toList()
         ..sort((a, b) {
           final w = b.wickets.compareTo(a.wickets);
           return w != 0 ? w : a.runsConceded.compareTo(b.runsConceded);
         });
+      if (bat.isEmpty && bowl.isEmpty) continue;
       final teamColor = sheet.battingTeam == m.config.teamA
           ? MatchStore.teamAColor
           : MatchStore.teamBColor;
@@ -531,32 +521,37 @@ class TopPerformersView extends StatelessWidget {
           n == 1 ? '$bowlingFirst opt to bowl' : null,
         ),
       );
-      for (final c in bat.take(2)) {
-        rows.add(
-          _row(
-            context,
-            name: c.name,
-            sub: c.strikeRate == null
-                ? 'SR —'
-                : 'SR: ${c.strikeRate!.toStringAsFixed(2)}',
-            figure: '${c.runs} (${c.balls})${c.isNotOut ? '*' : ''}',
-            color: teamColor,
-          ),
-        );
+      if (bat.isNotEmpty) {
+        rows.add(_sectionLabel(context, 'BATTERS'));
+        for (final c in bat.take(nBat)) {
+          rows.add(
+            _row(
+              context,
+              name: c.name,
+              sub: c.strikeRate == null
+                  ? 'SR —'
+                  : 'SR: ${c.strikeRate!.toStringAsFixed(2)}',
+              figure: '${c.runs} (${c.balls})${c.isNotOut ? '*' : ''}',
+              color: teamColor,
+            ),
+          );
+        }
       }
-      if (bowl.isNotEmpty && bowl.first.wickets > 0) {
-        final c = bowl.first;
-        rows.add(
-          _row(
-            context,
-            name: c.name,
-            sub: c.economy == null
-                ? 'ER —'
-                : 'ER: ${c.economy!.toStringAsFixed(2)}',
-            figure: '${c.wickets}-${c.runsConceded} (${c.oversDisplay})',
-            color: teamColor,
-          ),
-        );
+      if (bowl.isNotEmpty) {
+        rows.add(_sectionLabel(context, 'BOWLERS'));
+        for (final c in bowl.take(nBowl)) {
+          rows.add(
+            _row(
+              context,
+              name: c.name,
+              sub: c.economy == null
+                  ? 'ER —'
+                  : 'ER: ${c.economy!.toStringAsFixed(2)}',
+              figure: '${c.wickets}-${c.runsConceded} (${c.oversDisplay})',
+              color: teamColor,
+            ),
+          );
+        }
       }
     }
     if (rows.isEmpty) return const SizedBox.shrink();
@@ -570,9 +565,24 @@ class TopPerformersView extends StatelessWidget {
         const SizedBox(height: 4),
         ...rows,
         const SizedBox(height: 4),
-        // A quiet rule so the block ends cleanly instead of trailing off.
         Container(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
       ],
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.4,
+          color: cs.onSurface.withValues(alpha: 0.55),
+        ),
+      ),
     );
   }
 

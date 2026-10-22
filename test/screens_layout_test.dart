@@ -64,8 +64,8 @@ void main() {
     await scrollTo(tester, find.text('Track players + stats'));
     await tester.tap(find.text('Track players + stats'));
     await tester.pumpAndSettle();
-    await scrollTo(tester, find.text('+ ADD PLAYER'));
-    expect(find.text('+ ADD PLAYER'), findsOneWidget);
+    await scrollTo(tester, find.byTooltip('Add player'));
+    expect(find.byTooltip('Add player'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -75,7 +75,7 @@ void main() {
     await scrollTo(tester, find.text('Track players + stats'));
     await tester.tap(find.text('Track players + stats'));
     await tester.pumpAndSettle();
-    await scrollTo(tester, find.text('+ ADD PLAYER'));
+    await scrollTo(tester, find.byTooltip('Add player'));
     // Team A is open by default: its players are listed.
     expect(find.textContaining('Player 1'), findsWidgets);
     // Opening Team B swaps the list over.

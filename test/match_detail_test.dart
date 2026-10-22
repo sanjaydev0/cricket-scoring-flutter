@@ -101,9 +101,9 @@ void main() {
       // Tap the score box.
       await tester.tap(find.byKey(const ValueKey('hero-numerals')));
       await tester.pumpAndSettle();
-      expect(find.text('TARGET'), findsOneWidget);
-      expect(find.text('NEED'), findsOneWidget);
-      expect(find.text('RRR'), findsOneWidget);
+      expect(find.textContaining('TARGET'), findsOneWidget);
+      expect(find.textContaining('NEED'), findsOneWidget);
+      expect(find.textContaining('RRR'), findsOneWidget);
 
       // It leaves again on its own.
       await tester.pump(const Duration(seconds: 5));

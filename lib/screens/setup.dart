@@ -495,73 +495,74 @@ class _SetupScreenState extends State<SetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextField(
-          controller: _searchCtrls.putIfAbsent(
-            side,
-            () => TextEditingController(),
-          ),
-          decoration: InputDecoration(
-            labelText: 'Select players',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: query.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    tooltip: 'Clear search',
-                    onPressed: () {
-                      _searchCtrls[side]?.clear();
-                      onQuery('');
-                    },
-                  ),
-            border: const OutlineInputBorder(),
-          ),
-          onChanged: onQuery,
-          onTap: () => setState(() => _expanded.add(side)),
-        ),
-        const SizedBox(height: 6),
-        // Add a player without leaving the setup: the old flow said "add them
-        // in CLUB first" and sent the umpire to another screen to do it.
-        InkWell(
-          onTap: () async {
-            if (sel.length >= cap) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'XI full at $cap — raise players per side first.',
-                  ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchCtrls.putIfAbsent(
+                  side,
+                  () => TextEditingController(),
                 ),
-              );
-              return;
-            }
-            final p = await showAddPlayerSheet(
-              context,
-              store,
-              title: 'ADD TO ${team.trim().isEmpty ? side : team.trim()}',
-            );
-            if (p == null || !mounted) return;
-            setState(() => sel.add(p.id));
-          },
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline,
-                width: 1.5,
+                decoration: InputDecoration(
+                  labelText: 'Select players',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: query.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          tooltip: 'Clear search',
+                          onPressed: () {
+                            _searchCtrls[side]?.clear();
+                            onQuery('');
+                          },
+                        ),
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: onQuery,
+                onTap: () => setState(() => _expanded.add(side)),
               ),
-              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
-              children: [
-                Icon(Icons.person_add, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  '+ ADD PLAYER',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'Add player',
+              child: InkWell(
+                onTap: () async {
+                  if (sel.length >= cap) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'XI full at $cap — raise players per side first.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  final p = await showAddPlayerSheet(
+                    context,
+                    store,
+                    title: 'ADD TO ${team.trim().isEmpty ? side : team.trim()}',
+                  );
+                  if (p == null || !mounted) return;
+                  setState(() => sel.add(p.id));
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1D4ED8),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.person_add,
+                    size: 22,
+                    color: Colors.white,
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 4),
         if (pool.isEmpty)
