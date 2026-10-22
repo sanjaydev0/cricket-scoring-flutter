@@ -246,7 +246,32 @@ class HomeScreen extends StatelessWidget {
   }
 
   Future<BackupRestore> _restoreFromFile(BuildContext context) async {
-    final result = await store.restoreFromPickedBackup();
+    final raw = await BackupService.pick();
+    if (raw == null || raw.isEmpty) {
+      return const BackupRestore(false, 'No file selected');
+    }
+    final snap = BackupSnapshot.decode(raw);
+    if (snap == null || !snap.hasAny(MatchStore.userDataKeys)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('That file is not a CricScore backup')),
+        );
+      }
+      return const BackupRestore(false, 'That file is not a CricScore backup');
+    }
+    if (!context.mounted) {
+      return const BackupRestore(false, 'Restore cancelled');
+    }
+    final yes = await _confirmRestore(
+      context,
+      title: 'Restore this backup?',
+      body:
+          'Backup from ${DateFormat('d MMM yyyy, HH:mm').format(snap.savedAt.toLocal())}. This replaces the current clubs, players, live match and archives.',
+    );
+    if (!yes || !context.mounted) {
+      return const BackupRestore(false, 'Restore cancelled');
+    }
+    final result = await store.restorePickedBackup(raw);
     if (!context.mounted) return result;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(result.message)));
@@ -515,12 +540,6 @@ class HomeScreen extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed: () async {
-                          final yes = await _confirmRestore(
-                            context,
-                            title: 'Restore from file?',
-                            body: 'Pick a CricScore backup JSON. This replaces the current clubs, players, live match and archives.',
-                          );
-                          if (!yes || !context.mounted) return;
                           final result = await _restoreFromFile(context);
                           if (!context.mounted) return;
                           if (result.ok) Navigator.of(context).pop();

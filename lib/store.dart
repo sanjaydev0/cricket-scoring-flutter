@@ -540,13 +540,10 @@ class MatchStore extends ChangeNotifier {
     return _applyBackup(raw);
   }
 
-  Future<BackupRestore> restoreFromPickedBackup() async {
-    final raw = await BackupService.pick();
-    if (raw == null || raw.isEmpty) {
-      return const BackupRestore(false, 'No file selected');
-    }
-    return _applyBackup(raw);
-  }
+  /// Applies a raw snapshot the picker returned after the UI has shown the
+  /// user which backup it is and asked for confirmation. Validation happens
+  /// again here; the UI check is not trusted for a destructive replace.
+  Future<BackupRestore> restorePickedBackup(String raw) => _applyBackup(raw);
 
   Future<BackupRestore> _applyBackup(String raw) async {
     final snap = BackupSnapshot.decode(raw);
