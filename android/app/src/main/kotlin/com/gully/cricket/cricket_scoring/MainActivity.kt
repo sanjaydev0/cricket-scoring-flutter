@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -72,7 +73,19 @@ class MainActivity : FlutterActivity() {
                         pendingPick = result
                         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                             addCategory(Intent.CATEGORY_OPENABLE)
-                            type = "application/json"
+                            // A JSON copied in with adb or a file manager is
+                            // often reported as application/octet-stream, so
+                            // filtering to application/json can hide the very
+                            // file the user needs. Dart validates the content.
+                            type = "*/*"
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                putExtra(
+                                    DocumentsContract.EXTRA_INITIAL_URI,
+                                    Uri.parse(
+                                        "content://com.android.providers.downloads.documents/root/downloads",
+                                    ),
+                                )
+                            }
                         }
                         try {
                             startActivityForResult(intent, PICK_REQUEST)

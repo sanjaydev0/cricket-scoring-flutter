@@ -17,7 +17,8 @@
     <application
         android:label="CricScore"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:hasFragileUserData="true">
         <!-- Portrait only. This is the AUTHORITATIVE lock: the keypad grid,
              over strip and hero tile are laid out for a narrow portrait
              column, and in landscape they crush into fat-finger errors.

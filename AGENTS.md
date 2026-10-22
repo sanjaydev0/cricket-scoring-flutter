@@ -206,10 +206,18 @@ adb devices -l           # confirm device (USB or wireless)
   `STORE:` boot line.
 - The app writes two snapshots after every change (10 s floor):
   `/sdcard/Android/data/com.gully.cricket.cricket_scoring/files/backups/cricscore-backup.json`
-  and `/sdcard/Download/CricScore/cricscore-backup.json`.
+  and `/sdcard/Download/CricScore/cricscore-backup.json`. The public copy is updated
+  in place; MediaStore may have renamed it to `cricscore-backup (N).json`, and the
+  app reads any of those names.
 - Fresh install: install, then `./tool/restore_backup.sh <newest.json>` before the
-  first launch (or copy the JSON to `Downloads/CricScore/cricscore-backup.json`).
-  The app auto-restores only when no `cricket_*` preference exists, so it can never
+  first launch. It pushes the app-specific copy, so auto-restore is automatic.
+- If only the public copy remains, Android scoped storage can stop a new install
+  from reading it. The app then shows `RESTORE A BACKUP?`; tap
+  `RESTORE FROM FILE…` and pick `Downloads/CricScore/cricscore-backup.json`.
+  Never promise an unattended restore from Downloads alone.
+- When uninstalling through Android Settings, choose **Keep app data** if offered
+  (`hasFragileUserData`). `adb uninstall` still deletes everything.
+- The app auto-restores only when no `cricket_*` preference exists, so it can never
   overwrite a live store. Existing data is replaced only via Settings → Data backup.
 - Verify after every install:
   `adb logcat -d | grep "STORE:"` → either `roster=N clubs=N ... match=...` or

@@ -71,7 +71,7 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   const Text(
-                                    'If you reinstalled CricScore, pick the backup JSON from Downloads to bring back your clubs, players and matches.',
+                                    'If you reinstalled CricScore, pick cricscore-backup.json from Downloads/CricScore to bring back your clubs, players and matches.',
                                   ),
                                   const SizedBox(height: 8),
                                   FilledButton.tonalIcon(
@@ -460,7 +460,7 @@ class HomeScreen extends StatelessWidget {
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Every change is copied to Downloads/CricScore/cricscore-backup.json. A fresh install restores it automatically.',
+                        'Every change is copied to Downloads/CricScore/cricscore-backup.json. Updates restore it automatically. After a reinstall, tap RESTORE FROM FILE… and pick it.',
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
