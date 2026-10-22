@@ -20,14 +20,19 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Online rooms are opt-in at build time. Without credentials the app is
   // exactly the offline app it has always been.
+  debugPrint('MAIN: starting');
   final sync = AppConfig.onlineRoomsEnabled
       ? SupabaseSync(url: AppConfig.supabaseUrl, publishableKey: AppConfig.key)
       : LocalOnlySync();
   final store = MatchStore(sync: sync);
-  // Load before the first frame: this also preloads every SFX clip, so the
-  // very first boundary/wicket of the match is never swallowed by an
-  // audio pool that is still warming up.
-  await store.load();
+  debugPrint('MAIN: calling store.load()');
+  await store.load().timeout(
+    const Duration(seconds: 15),
+    onTimeout: () {
+      debugPrint('MAIN: store.load() TIMED OUT');
+    },
+  );
+  debugPrint('MAIN: store.load() done, loaded=${store.loaded}');
   // Portrait only: the keypad grid, strip and hero are laid out for a narrow
   // portrait column; landscape would crush them and cause fat-finger errors.
   //
@@ -37,10 +42,13 @@ void main() async {
   // `screenOrientation="portrait"` is the authoritative lock (see the note
   // there); this call covers web/desktop and keeps the two platforms agreed.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  debugPrint('MAIN: orientations set');
   // Signing in is deliberately not awaited: a slow or unreachable backend
   // must not delay the first ball. Sharing enables itself when it arrives.
   unawaited(sync.init().catchError((Object _) {}));
+  debugPrint('MAIN: calling runApp');
   runApp(CricketApp(store: store));
+  debugPrint('MAIN: runApp returned (never expected to block)');
 }
 
 class CricketApp extends StatelessWidget {

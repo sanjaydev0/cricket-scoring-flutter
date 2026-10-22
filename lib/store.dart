@@ -198,7 +198,9 @@ class MatchStore extends ChangeNotifier {
       : (match!.currentInnings == 1 ? match!.innings1 : match!.innings2);
 
   Future<void> load() async {
+    debugPrint('STORE: load() start');
     final p = await SharedPreferences.getInstance();
+    debugPrint('STORE: prefs loaded');
     themeId = _migrateTheme(p.getString(kTheme));
     soundOn = p.getBool(kSound) ?? true;
     advancedExtras = p.getBool(kAdvExtras) ?? true;
@@ -266,6 +268,7 @@ class MatchStore extends ChangeNotifier {
     // booting: a hung platform channel (audioplayers_android 5.3.0 did this
     // on a handful of devices) left the umpire staring at a splash screen.
     // The scorer still works without sound; it just stays silent.
+    debugPrint('STORE: pre-audio init');
     unawaited(
       SoundService.instance
           .init(enabled: soundOn)
@@ -274,22 +277,29 @@ class MatchStore extends ChangeNotifier {
             SoundService.instance.setEnabled(false);
           }),
     );
+    debugPrint('STORE: audio scheduled (non-blocking)');
+    debugPrint('STORE: reading active match');
     final raw = p.getString(kActive);
     if (raw != null) {
       try {
         final m = Match.decode(raw);
         if (m.config.commonPlayers > 1) m.config.commonPlayers = 1;
         if (_isActive(m)) match = m;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('STORE: match decode failed: $e');
+      }
     }
+    debugPrint('STORE: reading undo');
     try {
       _undo = (jsonDecode(p.getString(kUndo) ?? '[]') as List).cast<String>();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('STORE: undo decode failed: $e');
       _undo = [];
     }
     _redo = [];
     loaded = true;
     notifyListeners();
+    debugPrint('STORE: load() complete');
   }
 
   /// Old 3-theme ids -> light/dark.
