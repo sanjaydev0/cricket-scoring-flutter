@@ -35,6 +35,14 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // R8 renames kotlin.coroutines.Continuation, which breaks the
+            // Pigeon *suspend* bridge in shared_preferences_android 2.5.x:
+            // SharedPreferencesApiRegistrar.getAll(...) throws NoSuchMethodError
+            // at runtime, so every saved match, archive and club vanished.
+            // The plugin ships no consumer proguard rules, and minification
+            // saves little here (the engine dwarfs the dex), so keep it off.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

@@ -193,13 +193,53 @@ class MatchStore extends ChangeNotifier {
   List<String> _redo = [];
   bool loaded = false;
 
+  /// False only when [load] actually tried and failed to read the platform
+  /// store (R8-renamed `kotlin.coroutines.Continuation` in
+  /// shared_preferences_android 2.5.x did exactly that). The app still boots
+  /// with defaults, but writes are then skipped: persisting empty lists would
+  /// overwrite the real roster, clubs and archives that are safely on disk.
+  bool _prefsReadable = true;
+
+  /// Whether [load] has run at all. A store that never loaded (tests, a fresh
+  /// preview) is still writable; only a *failed read* blocks persistence.
+  bool _prefsLoadAttempted = false;
+
+  bool get _persistBlocked => _prefsLoadAttempted && !_prefsReadable;
+
   Innings? get innings => match == null
       ? null
       : (match!.currentInnings == 1 ? match!.innings1 : match!.innings2);
 
+  /// Warms the SFX pools without ever blocking the first frame: a hung
+  /// platform channel leaves the pools empty, not the app on a splash screen.
+  void _warmAudio(bool enabled) {
+    unawaited(
+      SoundService.instance
+          .init(enabled: enabled)
+          .timeout(const Duration(seconds: 5))
+          .catchError((Object _) {
+            SoundService.instance.setEnabled(false);
+          }),
+    );
+  }
+
   Future<void> load() async {
     debugPrint('STORE: load() start');
-    final p = await SharedPreferences.getInstance();
+    _prefsLoadAttempted = true;
+    final SharedPreferences p;
+    try {
+      p = await SharedPreferences.getInstance();
+      _prefsReadable = true;
+    } catch (e) {
+      // Fault-tolerant boot: never strand the umpire on a splash screen, and
+      // never let the empty defaults that follow be written back over the
+      // real saved data (see [_prefsReadable]).
+      debugPrint('STORE: prefs unavailable, read-only boot: $e');
+      loaded = true;
+      notifyListeners();
+      _warmAudio(soundOn);
+      return;
+    }
     debugPrint('STORE: prefs loaded');
     themeId = _migrateTheme(p.getString(kTheme));
     soundOn = p.getBool(kSound) ?? true;
@@ -268,16 +308,7 @@ class MatchStore extends ChangeNotifier {
     // booting: a hung platform channel (audioplayers_android 5.3.0 did this
     // on a handful of devices) left the umpire staring at a splash screen.
     // The scorer still works without sound; it just stays silent.
-    debugPrint('STORE: pre-audio init');
-    unawaited(
-      SoundService.instance
-          .init(enabled: soundOn)
-          .timeout(const Duration(seconds: 5))
-          .catchError((Object _) {
-            SoundService.instance.setEnabled(false);
-          }),
-    );
-    debugPrint('STORE: audio scheduled (non-blocking)');
+    _warmAudio(soundOn);
     debugPrint('STORE: reading active match');
     final raw = p.getString(kActive);
     if (raw != null) {
@@ -299,7 +330,11 @@ class MatchStore extends ChangeNotifier {
     _redo = [];
     loaded = true;
     notifyListeners();
-    debugPrint('STORE: load() complete');
+    debugPrint(
+      'STORE: load() complete — roster=${roster.length} '
+      'clubs=${clubs.length} profiles=${profiles.length} '
+      'match=${match != null}',
+    );
   }
 
   /// Old 3-theme ids -> light/dark.
@@ -334,6 +369,12 @@ class MatchStore extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
+    if (_persistBlocked) {
+      // The store was read and the read failed, so everything in memory is
+      // defaults. Writing now would destroy the real saved data on disk.
+      debugPrint('STORE: persist skipped — prefs read failed');
+      return;
+    }
     final p = await SharedPreferences.getInstance();
     if (match != null && _isActive(match!)) {
       await p.setString(kActive, match!.encode());
@@ -1766,7 +1807,14 @@ class MatchStore extends ChangeNotifier {
   }
 
   Future<void> _archive() async {
-    final p = await SharedPreferences.getInstance();
+    if (_persistBlocked) return;
+    final SharedPreferences p;
+    try {
+      p = await SharedPreferences.getInstance();
+    } catch (e) {
+      debugPrint('STORE: archive skipped — prefs unavailable: $e');
+      return;
+    }
     List hist = [];
     try {
       hist = jsonDecode(p.getString(kHistory) ?? '[]') as List;
@@ -1783,8 +1831,8 @@ class MatchStore extends ChangeNotifier {
 
   /// Raw archive records (match + optional sheets), newest first.
   Future<List<Map<String, dynamic>>> historyRecords() async {
-    final p = await SharedPreferences.getInstance();
     try {
+      final p = await SharedPreferences.getInstance();
       final list = jsonDecode(p.getString(kHistory) ?? '[]') as List;
       return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     } catch (_) {
@@ -1808,8 +1856,8 @@ class MatchStore extends ChangeNotifier {
   }
 
   Future<List<Match>> history() async {
-    final p = await SharedPreferences.getInstance();
     try {
+      final p = await SharedPreferences.getInstance();
       final list = jsonDecode(p.getString(kHistory) ?? '[]') as List;
       return list
           .map((e) => Match.fromJson(e as Map<String, dynamic>))
@@ -1820,7 +1868,12 @@ class MatchStore extends ChangeNotifier {
   }
 
   Future<void> deleteHistoryAt(int idx) async {
-    final p = await SharedPreferences.getInstance();
+    final SharedPreferences p;
+    try {
+      p = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
     final h = await history();
     if (idx >= 0 && idx < h.length) {
       h.removeAt(idx);
@@ -1833,8 +1886,10 @@ class MatchStore extends ChangeNotifier {
   }
 
   Future<void> clearHistory() async {
-    final p = await SharedPreferences.getInstance();
-    await p.remove(kHistory);
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.remove(kHistory);
+    } catch (_) {}
     notifyListeners();
   }
 
