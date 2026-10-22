@@ -262,9 +262,18 @@ class MatchStore extends ChangeNotifier {
     } catch (_) {
       sheets = {};
     }
-    // Awaited: when load() returns, every SFX clip is preloaded, so the first
-    // ball of the match cannot outrun the audio pool.
-    await SoundService.instance.init(enabled: soundOn);
+    // Audio is preloaded, but it must NEVER be allowed to stop the app from
+    // booting: a hung platform channel (audioplayers_android 5.3.0 did this
+    // on a handful of devices) left the umpire staring at a splash screen.
+    // The scorer still works without sound; it just stays silent.
+    unawaited(
+      SoundService.instance
+          .init(enabled: soundOn)
+          .timeout(const Duration(seconds: 5))
+          .catchError((Object _) {
+            SoundService.instance.setEnabled(false);
+          }),
+    );
     final raw = p.getString(kActive);
     if (raw != null) {
       try {
