@@ -26,13 +26,18 @@ void main() async {
       : LocalOnlySync();
   final store = MatchStore(sync: sync);
   debugPrint('MAIN: calling store.load()');
-  await store.load().timeout(
-    const Duration(seconds: 15),
-    onTimeout: () {
-      debugPrint('MAIN: store.load() TIMED OUT');
-    },
-  );
-  debugPrint('MAIN: store.load() done, loaded=${store.loaded}');
+  try {
+    await store.load().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        debugPrint('MAIN: store.load() TIMED OUT');
+      },
+    );
+    debugPrint('MAIN: store.load() done, loaded=${store.loaded}');
+  } catch (e, st) {
+    debugPrint('MAIN: store.load() THREW: $e');
+    debugPrintStack(stackTrace: st);
+  }
   // Portrait only: the keypad grid, strip and hero are laid out for a narrow
   // portrait column; landscape would crush them and cause fat-finger errors.
   //
