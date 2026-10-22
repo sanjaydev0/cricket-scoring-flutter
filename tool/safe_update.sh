@@ -25,23 +25,38 @@ adb_cmd() {
 mkdir -p "$DEST"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 found=0
-paths=(
-  "/sdcard/Download/CricScore/cricscore-backup.json"
-  "/sdcard/Android/data/$PKG/files/backups/cricscore-backup.json"
-)
-labels=(downloads app-external)
-for i in "${!paths[@]}"; do
-  src="${paths[$i]}"
-  if adb_cmd shell "test -f '$src'" >/dev/null 2>&1; then
-    out="$DEST/$STAMP-${labels[$i]}.json"
-    adb_cmd pull "$src" "$out" >/dev/null
+
+# The app-specific copy is written first, always readable, and survives
+# `adb install -r`. Prefer it for latest.json.
+APP_SRC="/sdcard/Android/data/$PKG/files/backups/cricscore-backup.json"
+if adb_cmd shell "test -f '$APP_SRC'" >/dev/null 2>&1; then
+  out="$DEST/$STAMP-app-external.json"
+  adb_cmd pull "$APP_SRC" "$out" >/dev/null
+  echo "backup  $APP_SRC -> $out"
+  cp "$out" "$DEST/latest.json"
+  found=1
+fi
+
+# Pull every public copy, not just the plain name. MediaStore may have
+# renamed an older write to "cricscore-backup (1).json"; the newest one is
+# still a valid fallback if the app storage was wiped.
+while IFS= read -r src; do
+  [[ -n "$src" ]] || continue
+  base="$(basename "$src")"
+  safe="$(printf '%s' "$base" | tr ' ()' '___')"
+  out="$DEST/$STAMP-public-$safe"
+  if adb_cmd pull "$src" "$out" >/dev/null 2>&1; then
     echo "backup  $src -> $out"
     found=1
-    if [[ "${labels[$i]}" == "downloads" ]]; then
+    if [[ ! -f "$DEST/latest.json" ]]; then
       cp "$out" "$DEST/latest.json"
     fi
   fi
-done
+done < <(
+  adb_cmd shell "ls /sdcard/Download/CricScore/cricscore-backup*.json 2>/dev/null" \
+    | tr -d '\r'
+)
+
 if [[ "$found" -eq 0 ]]; then
   echo "WARNING: no on-device backup found." >&2
   echo "         install -r is still safe; never uninstall." >&2

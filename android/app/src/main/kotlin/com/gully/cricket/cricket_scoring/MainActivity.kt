@@ -12,6 +12,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import org.json.JSONObject
 
 /**
  * Backup bridge.
@@ -94,9 +95,18 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun writeBackup(name: String, content: String): Map<String, Any?> {
-        val appFile = File(backupDir(), name)
-        appFile.parentFile?.mkdirs()
-        appFile.writeText(content, Charsets.UTF_8)
+        val appDir = backupDir()
+        appDir.mkdirs()
+        val appFile = File(appDir, name)
+        // Write a sibling temp file and rename it into place. A crash or a
+        // full disk must never leave a truncated JSON that is newer than the
+        // public copy and therefore wins the next auto-restore.
+        val tmp = File(appDir, "$name.tmp")
+        tmp.writeText(content, Charsets.UTF_8)
+        if (!tmp.renameTo(appFile)) {
+            appFile.writeText(content, Charsets.UTF_8)
+            tmp.delete()
+        }
 
         var downloadsPath: String? = null
         try {
@@ -116,19 +126,32 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
         val relative = "${Environment.DIRECTORY_DOWNLOADS}/$DOWNLOADS_FOLDER/"
+        // MediaStore renames an insert to "cricscore-backup (1).json" when a
+        // file with the same display name already exists (for example one
+        // copied in with adb). Matching the whole family keeps every later
+        // save on one file instead of creating (2), (3), ... on every write.
+        val prefix = name.removeSuffix(".json")
         val selection =
-            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND " +
+            "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ? AND " +
                 "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
-        val args = arrayOf(name, "${Environment.DIRECTORY_DOWNLOADS}/$DOWNLOADS_FOLDER%")
+        val args = arrayOf(
+            "$prefix%",
+            "${Environment.DIRECTORY_DOWNLOADS}/$DOWNLOADS_FOLDER%",
+        )
 
+        var displayName: String? = null
         var uri: Uri? = contentResolver.query(
             collection,
-            arrayOf(MediaStore.MediaColumns._ID),
+            arrayOf(
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+            ),
             selection,
             args,
             "${MediaStore.MediaColumns.DATE_MODIFIED} DESC",
         )?.use { cursor ->
             if (cursor.moveToFirst()) {
+                displayName = cursor.getString(1)
                 ContentUris.withAppendedId(collection, cursor.getLong(0))
             } else {
                 null
@@ -142,27 +165,38 @@ class MainActivity : FlutterActivity() {
                 put(MediaStore.MediaColumns.RELATIVE_PATH, relative)
             }
             uri = contentResolver.insert(collection, values)
+            displayName = name
         }
         val target = uri ?: return null
         contentResolver.openOutputStream(target, "wt")?.use {
             it.write(content.toByteArray(Charsets.UTF_8))
         } ?: return null
-        return "/sdcard/Download/$DOWNLOADS_FOLDER/$name"
+        return "/sdcard/Download/$DOWNLOADS_FOLDER/${displayName ?: name}"
     }
 
     private data class Snapshot(val content: String, val modified: Long)
 
+    /** A newer file that is not our JSON must not hide a good older copy. */
+    private fun Snapshot.isUsable(): Boolean = try {
+        val json = JSONObject(content)
+        json.optString("app") == "cricscore" && json.optInt("format", 0) >= 1
+    } catch (_: Exception) {
+        false
+    }
+
     /**
-     * Return the newest of the app copy and the public Downloads copy. The
-     * user may have copied a newer JSON into Downloads, and a fresh install
-     * only has the Downloads copy, so "first file found" is not good enough.
+     * Return the newest usable of the app copy and the public Downloads copy.
+     * The user may have copied a newer JSON into Downloads, and a fresh
+     * install only has the Downloads copy, so "first file found" is not good
+     * enough.
      */
     private fun readBackup(): String? {
         val newest = listOfNotNull(
             readAppBackup(),
             readDownloads(),
             readLegacyDownloads(),
-        ).maxByOrNull { it.modified }
+        ).filter { it.isUsable() }
+            .maxByOrNull { it.modified }
         return newest?.content
     }
 
@@ -177,11 +211,12 @@ class MainActivity : FlutterActivity() {
     private fun readDownloads(): Snapshot? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        val prefix = BACKUP_FILE.removeSuffix(".json")
         val selection =
-            "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND " +
+            "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ? AND " +
                 "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
         val args = arrayOf(
-            BACKUP_FILE,
+            "$prefix%",
             "${Environment.DIRECTORY_DOWNLOADS}/$DOWNLOADS_FOLDER%",
         )
         var id = 0L
@@ -216,11 +251,14 @@ class MainActivity : FlutterActivity() {
             val dir = Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS,
             )
-            val file = File(File(dir, DOWNLOADS_FOLDER), BACKUP_FILE)
-            if (!file.isFile || file.length() !in 1..MAX_BACKUP_BYTES.toLong()) {
-                return null
-            }
-            Snapshot(file.readText(Charsets.UTF_8), file.lastModified())
+            val files = File(dir, DOWNLOADS_FOLDER).listFiles { file ->
+                file.isFile &&
+                    file.name.startsWith("cricscore-backup") &&
+                    file.name.endsWith(".json") &&
+                    file.length() in 1..MAX_BACKUP_BYTES.toLong()
+            } ?: return null
+            val newest = files.maxByOrNull { it.lastModified() } ?: return null
+            Snapshot(newest.readText(Charsets.UTF_8), newest.lastModified())
         } catch (e: Exception) {
             null
         }

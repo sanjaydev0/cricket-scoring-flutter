@@ -30,6 +30,10 @@ echo "      use Settings -> Data backup -> Restore instead."
 
 adb_cmd shell mkdir -p /sdcard/Download/CricScore
 adb_cmd push "$FILE" /sdcard/Download/CricScore/cricscore-backup.json
+# The app-specific copy is the one guaranteed to be readable after a fresh
+# install; Downloads is the copy that survives an uninstall.
+adb_cmd shell mkdir -p "/sdcard/Android/data/$PKG/files/backups"
+adb_cmd push "$FILE" "/sdcard/Android/data/$PKG/files/backups/cricscore-backup.json"
 adb_cmd shell am force-stop "$PKG"
 adb_cmd logcat -c
 adb_cmd shell am start -n "$PKG/.MainActivity" >/dev/null

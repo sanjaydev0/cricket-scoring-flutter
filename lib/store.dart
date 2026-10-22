@@ -213,6 +213,12 @@ class MatchStore extends ChangeNotifier {
   /// HomeScreen shows a dismissible banner so the umpire knows why the old
   /// roster is suddenly there.
   bool restoredFromBackup = false;
+
+  /// True when this was a fresh install with no readable automatic backup.
+  /// HomeScreen offers the SAF picker so a JSON copied off the phone can
+  /// still be recovered (scoped storage blocks a plain Downloads read on
+  /// some Android versions).
+  bool needsRestorePrompt = false;
   DateTime? lastBackupAt;
   String? lastBackupPath;
   String? lastBackupDownloadsPath;
@@ -245,6 +251,7 @@ class MatchStore extends ChangeNotifier {
     debugPrint('STORE: load() start');
     _prefsLoadAttempted = true;
     restoredFromBackup = false;
+    needsRestorePrompt = false;
     // A manual restore can replace or remove the live match. Clear the old
     // one first so a backup with no active match cannot leave a stale match
     // in memory after load().
@@ -374,16 +381,24 @@ class MatchStore extends ChangeNotifier {
         const Duration(seconds: 4),
         onTimeout: () => null,
       );
-      if (raw == null || raw.isEmpty) return;
+      if (raw == null || raw.isEmpty) {
+        // Fresh install, no backup the app can read by itself. Offer the
+        // system file picker once; it can read a manual copy in Downloads
+        // where scoped storage stops a plain read.
+        needsRestorePrompt = true;
+        return;
+      }
       final snap = BackupSnapshot.decode(raw);
       if (snap == null || !snap.hasAny(userDataKeys)) {
         debugPrint('STORE: backup found but unusable — keeping empty store');
+        needsRestorePrompt = true;
         return;
       }
       for (final entry in snap.values.entries) {
         await _writePref(p, entry.key, entry.value);
       }
       restoredFromBackup = true;
+      needsRestorePrompt = false;
       lastBackupAt = snap.savedAt;
       debugPrint(
         'STORE: restored backup from ${snap.savedAt.toIso8601String()} '
@@ -499,6 +514,12 @@ class MatchStore extends ChangeNotifier {
   void acknowledgeRestore() {
     if (!restoredFromBackup) return;
     restoredFromBackup = false;
+    notifyListeners();
+  }
+
+  void dismissRestorePrompt() {
+    if (!needsRestorePrompt) return;
+    needsRestorePrompt = false;
     notifyListeners();
   }
 

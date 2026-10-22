@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../backup.dart';
 import '../ports/sync_port.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -41,6 +42,60 @@ class HomeScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  if (store.needsRestorePrompt &&
+                      store.roster.isEmpty &&
+                      store.clubs.isEmpty &&
+                      store.match == null) ...[
+                    Card(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 6, 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 2),
+                              child: Icon(Icons.settings_backup_restore),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'RESTORE A BACKUP?',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'If you reinstalled CricScore, pick the backup JSON from Downloads to bring back your clubs, players and matches.',
+                                  ),
+                                  const SizedBox(height: 8),
+                                  FilledButton.tonalIcon(
+                                    onPressed: () => _restoreFromFile(context),
+                                    icon: const Icon(
+                                      Icons.folder_open,
+                                      size: 18,
+                                    ),
+                                    label: const Text('RESTORE FROM FILE…'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Dismiss',
+                              onPressed: store.dismissRestorePrompt,
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if (store.restoredFromBackup) ...[
                     Card(
                       color: Theme.of(context).colorScheme.primary,
@@ -188,6 +243,14 @@ class HomeScreen extends StatelessWidget {
       ),
     );
     return yes == true;
+  }
+
+  Future<BackupRestore> _restoreFromFile(BuildContext context) async {
+    final result = await store.restoreFromPickedBackup();
+    if (!context.mounted) return result;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(result.message)));
+    return result;
   }
 
   void _settingsSheet(BuildContext context) {
@@ -457,13 +520,10 @@ class HomeScreen extends StatelessWidget {
                             title: 'Restore from file?',
                             body: 'Pick a CricScore backup JSON. This replaces the current clubs, players, live match and archives.',
                           );
-                          if (!yes) return;
-                          final result = await store.restoreFromPickedBackup();
+                          if (!yes || !context.mounted) return;
+                          final result = await _restoreFromFile(context);
                           if (!context.mounted) return;
                           if (result.ok) Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(result.message)),
-                          );
                         },
                         icon: const Icon(Icons.folder_open, size: 18),
                         label: const Text('RESTORE FROM FILE…'),
