@@ -7,8 +7,8 @@ import 'package:cricket_scoring/ports/sync_port.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _match({int runs = 0}) => {
-      'innings1': {'runs': runs, 'wickets': 0}
-    };
+  'innings1': {'runs': runs, 'wickets': 0},
+};
 
 void main() {
   group('room codes', () {
@@ -59,14 +59,22 @@ void main() {
     test('each failure names its own cause', () {
       // The whole point: a single "unavailable" string for four failures is
       // what made a network error look like a missing build flag.
-      expect(const ShareAttempt.failed(ShareFailure.noBackend, 'x').message,
-          contains('off in this build'));
-      expect(const ShareAttempt.failed(ShareFailure.noMatch).message,
-          contains('Start a match'));
-      expect(const ShareAttempt.failed(ShareFailure.offline, 'timeout').message,
-          contains('timeout'));
-      expect(const ShareAttempt.failed(ShareFailure.failed, 'rpc 400').message,
-          contains('rpc 400'));
+      expect(
+        const ShareAttempt.failed(ShareFailure.noBackend, 'x').message,
+        contains('off in this build'),
+      );
+      expect(
+        const ShareAttempt.failed(ShareFailure.noMatch).message,
+        contains('Start a match'),
+      );
+      expect(
+        const ShareAttempt.failed(ShareFailure.offline, 'timeout').message,
+        contains('timeout'),
+      );
+      expect(
+        const ShareAttempt.failed(ShareFailure.failed, 'rpc 400').message,
+        contains('rpc 400'),
+      );
       expect(const ShareAttempt.ok('ABCDE').message, contains('ABCDE'));
     });
   });
@@ -102,7 +110,10 @@ void main() {
 
     test('a row whose payload is a string still decodes', () {
       final s = RoomSnapshot(
-          seq: 2, match: _match(runs: 7), updatedAt: DateTime.now());
+        seq: 2,
+        match: _match(runs: 7),
+        updatedAt: DateTime.now(),
+      );
       final row = {'payload': jsonEncode(s.toPayload()), 'seq': 9};
       final back = RoomSnapshot.fromRow(row);
       expect(back, isNotNull);
@@ -131,7 +142,9 @@ void main() {
       expect(RoomSnapshot.fromPayload({}), isNull);
       expect(RoomSnapshot.fromPayload({'v': 1}), isNull);
       expect(
-          RoomSnapshot.fromPayload({'v': 1, 'seq': 'x', 'match': {}}), isNull);
+        RoomSnapshot.fromPayload({'v': 1, 'seq': 'x', 'match': {}}),
+        isNull,
+      );
     });
 
     test('reads a database row, falling back to row columns', () {
@@ -148,10 +161,16 @@ void main() {
     });
 
     test('newer sequence supersedes older', () {
-      final a =
-          RoomSnapshot(seq: 1, match: _match(), updatedAt: DateTime.now());
-      final b =
-          RoomSnapshot(seq: 2, match: _match(), updatedAt: DateTime.now());
+      final a = RoomSnapshot(
+        seq: 1,
+        match: _match(),
+        updatedAt: DateTime.now(),
+      );
+      final b = RoomSnapshot(
+        seq: 2,
+        match: _match(),
+        updatedAt: DateTime.now(),
+      );
       expect(b.supersedes(a), isTrue);
       expect(a.supersedes(b), isFalse);
       expect(a.supersedes(a), isFalse);
@@ -167,8 +186,10 @@ void main() {
       expect(opened.ok, isFalse);
       // It must say WHY, not return a bare null.
       expect(opened.failure, ShareFailure.noBackend);
-      await s.publish('ABCDE',
-          RoomSnapshot(seq: 1, match: _match(), updatedAt: DateTime.now()));
+      await s.publish(
+        'ABCDE',
+        RoomSnapshot(seq: 1, match: _match(), updatedAt: DateTime.now()),
+      );
       await s.watchRoom('ABCDE');
       await s.endRoom('ABCDE');
       expect(s.viewerCount, 0);

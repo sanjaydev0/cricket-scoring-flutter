@@ -158,12 +158,16 @@ class SupabaseSync implements SyncPort {
     await _ensureReady();
     if (_state == SyncState.unconfigured) {
       return const ShareAttempt.failed(
-          ShareFailure.noBackend, 'no URL/key at build time');
+        ShareFailure.noBackend,
+        'no URL/key at build time',
+      );
     }
     final db = _db;
     if (db == null || _state != SyncState.ready) {
       return ShareAttempt.failed(
-          ShareFailure.offline, _lastError ?? 'not connected');
+        ShareFailure.offline,
+        _lastError ?? 'not connected',
+      );
     }
 
     for (var attempt = 0; attempt < 5; attempt++) {
@@ -186,7 +190,9 @@ class SupabaseSync implements SyncPort {
     }
     _set(SyncState.error, 'no free room code after 5 tries');
     return const ShareAttempt.failed(
-        ShareFailure.failed, 'could not find a free room code');
+      ShareFailure.failed,
+      'could not find a free room code',
+    );
   }
 
   @override
@@ -196,16 +202,19 @@ class SupabaseSync implements SyncPort {
     try {
       final secret = await _secretFor(code);
       if (secret == null) return; // not ours to write
-      await db.rpc('room_publish', params: {
-        'p_code': code,
-        'p_secret': secret,
-        'p_seq': snapshot.seq,
-        // The payload must go as a JSON OBJECT, not a pre-encoded string.
-        // Sending jsonEncode(...) made PostgREST store it as a jsonb *string
-        // scalar (jsonb_typeof = 'string'), so a viewer reading the row could
-        // not decode it and would sit on "waiting" forever.
-        'p_payload': snapshot.toPayload(),
-      });
+      await db.rpc(
+        'room_publish',
+        params: {
+          'p_code': code,
+          'p_secret': secret,
+          'p_seq': snapshot.seq,
+          // The payload must go as a JSON OBJECT, not a pre-encoded string.
+          // Sending jsonEncode(...) made PostgREST store it as a jsonb *string
+          // scalar (jsonb_typeof = 'string'), so a viewer reading the row could
+          // not decode it and would sit on "waiting" forever.
+          'p_payload': snapshot.toPayload(),
+        },
+      );
     } catch (e) {
       // Never surfaced to scoring: the ball is already recorded locally.
       _set(SyncState.error, 'Publish failed: $e');

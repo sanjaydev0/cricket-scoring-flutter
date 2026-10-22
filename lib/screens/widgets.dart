@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'dart:math' show sin;
+
 import '../domain/players.dart';
 import '../models.dart';
 import '../store.dart';
@@ -53,25 +55,32 @@ class RectBtn extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return FilledButton(
       onPressed: onTap,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(64, 52),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        backgroundColor: danger
-            ? cs.error
-            : (primary ? const Color(0xFF131316) : cs.surface),
-        foregroundColor: (primary || danger) ? Colors.white : cs.onSurface,
-        side: (primary || danger)
-            ? null
-            : const BorderSide(color: Colors.black, width: 1.5),
-        textStyle: const TextStyle(fontWeight: FontWeight.w800),
-      ).copyWith(
-        // Design spec: feedback lands on pointer-down and is strong enough for
-        // sunlight. Overlay darkens the fill instantly; nothing animates layout.
-        overlayColor: WidgetStateProperty.resolveWith((s) => danger
-            ? const Color(0xCC000000)
-            : (primary ? const Color(0xCC000000) : const Color(0x1A000000))),
-      ),
+      style:
+          FilledButton.styleFrom(
+            minimumSize: const Size(64, 52),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            backgroundColor: danger
+                ? cs.error
+                : (primary ? const Color(0xFF131316) : cs.surface),
+            foregroundColor: (primary || danger) ? Colors.white : cs.onSurface,
+            side: (primary || danger)
+                ? null
+                : const BorderSide(color: Colors.black, width: 1.5),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          ).copyWith(
+            // Design spec: feedback lands on pointer-down and is strong enough for
+            // sunlight. Overlay darkens the fill instantly; nothing animates layout.
+            overlayColor: WidgetStateProperty.resolveWith(
+              (s) => danger
+                  ? const Color(0xCC000000)
+                  : (primary
+                        ? const Color(0xCC000000)
+                        : const Color(0x1A000000)),
+            ),
+          ),
       child: child,
     );
   }
@@ -128,8 +137,10 @@ class StepperRow extends StatelessWidget {
             children: [
               Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
               if (hint != null)
-                Text(hint!,
-                    style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+                Text(
+                  hint!,
+                  style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                ),
             ],
           ),
         ),
@@ -139,10 +150,11 @@ class StepperRow extends StatelessWidget {
         ),
         SizedBox(
           width: 40,
-          child: Text('$value',
-              textAlign: TextAlign.center,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
         ),
         IconButton.filledTonal(
           onPressed: value < max ? () => onChanged(value + 1) : null,
@@ -203,17 +215,17 @@ class BallBadge extends StatelessWidget {
     return Container(
       width: 36,
       height: 36,
-      decoration: BoxDecoration(
-        color: bg,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
       alignment: Alignment.center,
-      child: Text(t,
-          style: TextStyle(
-              color: fg,
-              fontWeight: FontWeight.w900,
-              // W+2 style badges get a smaller numeral to hold the circle.
-              fontSize: t.length > 2 ? 10 : 12)),
+      child: Text(
+        t,
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w900,
+          // W+2 style badges get a smaller numeral to hold the circle.
+          fontSize: t.length > 2 ? 10 : 12,
+        ),
+      ),
     );
   }
 }
@@ -245,30 +257,39 @@ class KeyBtn extends StatelessWidget {
       height: 72,
       child: FilledButton(
         onPressed: onTap,
-        style: FilledButton.styleFrom(
-          backgroundColor: bg,
-          foregroundColor: onFg,
-          padding: EdgeInsets.zero,
-          side: const BorderSide(color: Colors.black38, width: 1.5),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(radius)),
-        ).copyWith(
-          // Instant, high-contrast press state. A ripple is invisible in
-          // direct sun; the fill visibly darkens the moment the finger lands.
-          overlayColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.pressed)
-                  ? const Color(0x40000000)
-                  : const Color(0x00000000)),
-        ),
+        style:
+            FilledButton.styleFrom(
+              backgroundColor: bg,
+              foregroundColor: onFg,
+              padding: EdgeInsets.zero,
+              side: const BorderSide(color: Colors.black38, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radius),
+              ),
+            ).copyWith(
+              // Instant, high-contrast press state. A ripple is invisible in
+              // direct sun; the fill visibly darkens the moment the finger lands.
+              overlayColor: WidgetStateProperty.resolveWith(
+                (s) => s.contains(WidgetState.pressed)
+                    ? const Color(0x40000000)
+                    : const Color(0x00000000),
+              ),
+            ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w900, height: 1)),
-            Text(sub,
-                style:
-                    const TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+            Text(
+              sub,
+              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800),
+            ),
           ],
         ),
       ),
@@ -362,8 +383,10 @@ class _CelebrateState extends State<Celebrate>
     super.dispose();
   }
 
-  Text _text(Color color, {List<Shadow>? shadows}) => Text(widget.text,
-      style: widget.style.copyWith(color: color, shadows: shadows));
+  Text _text(Color color, {List<Shadow>? shadows}) => Text(
+    widget.text,
+    style: widget.style.copyWith(color: color, shadows: shadows),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -377,47 +400,61 @@ class _CelebrateState extends State<Celebrate>
     final tint = widget.tint;
     return AnimatedBuilder(
       animation: _c,
-      builder: (_, __) {
+      builder: (_, _) {
         final t = Curves.easeOutCubic.transform(_c.value);
         switch (widget.mode) {
           case 'glitch': // chromatic-aberration snap, numerals never move
             final g = sin(t * 3.14159) * 4 * (1 - t * 0.3);
-            return _text(base, shadows: [
-              Shadow(
-                  color:
-                      const Color(0xFFFF004C).withValues(alpha: 0.9 * (1 - t)),
+            return _text(
+              base,
+              shadows: [
+                Shadow(
+                  color: const Color(0xFFFF004C)
+                      .withValues(alpha: 0.9 * (1 - t)),
                   offset: Offset(-g, 0),
-                  blurRadius: 0),
-              Shadow(
-                  color:
-                      const Color(0xFF00E5FF).withValues(alpha: 0.9 * (1 - t)),
+                  blurRadius: 0,
+                ),
+                Shadow(
+                  color: const Color(0xFF00E5FF)
+                      .withValues(alpha: 0.9 * (1 - t)),
                   offset: Offset(g, 0),
-                  blurRadius: 0),
-            ]);
+                  blurRadius: 0,
+                ),
+              ],
+            );
           case 'crt': // faint CRT refresh flicker, settles clean
             final f = 0.9 + 0.1 * sin(t * 55);
             return Opacity(opacity: t > 0.9 ? 1.0 : f, child: _text(base));
           case 'slowmo': // long swell to 1.15x, eases back exactly
             return Transform.scale(
-                scale: 1 + 0.15 * sin(t * 3.14159), child: _text(base));
+              scale: 1 + 0.15 * sin(t * 3.14159),
+              child: _text(base),
+            );
           case 'rise': // retired — falls to pop
           case 'flash': // numerals tint to event color, ease back
             final k = t < 0.35 ? t / 0.35 : 1 - (t - 0.35) / 0.65;
             return _text(Color.lerp(base, tint, k.clamp(0.0, 1.0))!);
           case 'glow': // soft bloom behind numerals, decays
-            return _text(base, shadows: [
-              Shadow(
+            return _text(
+              base,
+              shadows: [
+                Shadow(
                   color: tint.withValues(alpha: 0.85 * (1 - t)),
-                  blurRadius: 28 * (1 - t) + 2),
-              Shadow(
+                  blurRadius: 28 * (1 - t) + 2,
+                ),
+                Shadow(
                   color: tint.withValues(alpha: 0.5 * (1 - t)),
-                  blurRadius: 60 * (1 - t) + 4),
-            ]);
+                  blurRadius: 60 * (1 - t) + 4,
+                ),
+              ],
+            );
           case 'roll': // retired — falls to pop
           case 'shake': // tiny decaying shiver, tile stays put
             final d = (1 - t) * 3 * sin(t * 24);
             return Transform.translate(
-                offset: Offset(d, 0), child: _text(base));
+              offset: Offset(d, 0),
+              child: _text(base),
+            );
           case 'blink': // two quick scoreboard dips
             final o = (t * 4) % 2 < 1 ? 0.35 : 1.0;
             return Opacity(opacity: t > 0.85 ? 1.0 : o, child: _text(base));
@@ -426,7 +463,9 @@ class _CelebrateState extends State<Celebrate>
           case 'burst': // retired — falls to rise
           default: // pop — single gentle bump, settles exactly at 1x
             return Transform.scale(
-                scale: 1 + 0.07 * sin(t * 3.14159), child: _text(base));
+              scale: 1 + 0.07 * sin(t * 3.14159),
+              child: _text(base),
+            );
         }
       },
     );
@@ -601,7 +640,10 @@ class DetailRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 15, color: ink),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: ink,
+                    ),
                   ),
                   if (subtitle != null)
                     Text(
@@ -609,7 +651,9 @@ class DetailRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: 11.5, color: ink.withValues(alpha: 0.65)),
+                        fontSize: 11.5,
+                        color: ink.withValues(alpha: 0.65),
+                      ),
                     ),
                 ],
               ),
@@ -624,10 +668,11 @@ class DetailRow extends StatelessWidget {
                     Text(
                       valueLabel!,
                       style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
-                          color: ink.withValues(alpha: 0.6)),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: ink.withValues(alpha: 0.6),
+                      ),
                     ),
                   if (value != null)
                     Text(
@@ -642,10 +687,7 @@ class DetailRow extends StatelessWidget {
                 ],
               ),
             ],
-            if (trailing != null) ...[
-              const SizedBox(width: 8),
-              trailing!,
-            ],
+            if (trailing != null) ...[const SizedBox(width: 8), trailing!],
           ],
         ),
       ),
@@ -666,8 +708,12 @@ class RowSectionLabel extends StatelessWidget {
 
   /// Render as a filled band with white text rather than a plain caption.
   final bool filled;
-  const RowSectionLabel(this.text,
-      {super.key, this.color, this.filled = false});
+  const RowSectionLabel(
+    this.text, {
+    super.key,
+    this.color,
+    this.filled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -747,11 +793,14 @@ class BowlerFigureBlock extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 3),
-            Text('OV',
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurface.withValues(alpha: 0.55))),
+            Text(
+              'OV',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: cs.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 2),
@@ -768,11 +817,14 @@ class BowlerFigureBlock extends StatelessWidget {
                 color: Color(0xFFF59E0B),
               ),
             ),
-            Text(' ECON',
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurface.withValues(alpha: 0.55))),
+            Text(
+              ' ECON',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: cs.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
           ],
         ),
       ],
@@ -799,7 +851,9 @@ class BowlingFiguresPanel extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                    fontSize: 11, color: cs.onSurface.withValues(alpha: 0.65)),
+                  fontSize: 11,
+                  color: cs.onSurface.withValues(alpha: 0.65),
+                ),
               ),
             ),
             Text(
@@ -824,8 +878,11 @@ class BowlingFiguresPanel extends StatelessWidget {
       children: [
         cell('Overs', c.oversDisplay, big: true),
         cell('Runs given', '${c.runsConceded}'),
-        cell('Wickets', '${c.wickets}',
-            color: c.wickets > 0 ? const Color(0xFF22C55E) : null),
+        cell(
+          'Wickets',
+          '${c.wickets}',
+          color: c.wickets > 0 ? const Color(0xFF22C55E) : null,
+        ),
         cell('Maidens', '${c.maidens}'),
         cell('Average', fmt2(c.average)),
         cell('Economy', fmt2(c.economy)),
@@ -838,7 +895,9 @@ class BowlingFiguresPanel extends StatelessWidget {
             child: Text(
               'Runs given already includes ${extras.join(' and ')}',
               style: TextStyle(
-                  fontSize: 11, color: cs.onSurface.withValues(alpha: 0.6)),
+                fontSize: 11,
+                color: cs.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ),
       ],
@@ -848,3 +907,194 @@ class BowlingFiguresPanel extends StatelessWidget {
 
 /// Two-decimal stat with an em-dash for "not applicable" (0 wickets, no overs).
 String fmt2(double? v) => v == null ? '—' : v.toStringAsFixed(2);
+
+/// Rounded team pill — the innings switcher on the scorecard.
+///
+/// The selected side is a SOLID slab in the team's colour (sunlight-legible,
+/// no tint), the other is an outline. One tap switches which innings the card
+/// shows; the card never shows both innings' players at once.
+class TeamPill extends StatelessWidget {
+  final String label;
+  final String figure;
+  final bool selected;
+  final int colorValue;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  const TeamPill({
+    super.key,
+    required this.label,
+    required this.figure,
+    required this.selected,
+    required this.colorValue,
+    this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final team = Color(colorValue);
+    final on = selected ? Colors.white : cs.onSurface;
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 54),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? team : Colors.transparent,
+            border: Border.all(
+              color: selected ? team : cs.onSurface.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              TeamDot(selected ? 0xFFFFFFFF : colorValue, size: 10),
+              const SizedBox(width: 8),
+              // The name gives way first, the score never gets cut: a pill
+              // that says "302-9 (5…" is worse than one that says "EAG…".
+              Expanded(
+                flex: 2,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    color: on,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                flex: 3,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    figure,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: selected ? Colors.white : cs.onSurface,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Circle with the player's initials.
+///
+/// There are no player photos in this app, so the avatar is a solid team-colour
+/// disc with white initials: it reads as a portrait slot without pretending to
+/// be a picture, and it survives direct sunlight.
+class InitialsAvatar extends StatelessWidget {
+  final String name;
+  final int colorValue;
+  final double size;
+  const InitialsAvatar(
+    this.name, {
+    super.key,
+    required this.colorValue,
+    this.size = 26,
+  });
+
+  static String initialsOf(String n) {
+    final parts = n.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Color(colorValue),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        initialsOf(name),
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: size * 0.38,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+/// Underlined tab strip — the switch between the scorecard and the summary.
+///
+/// An underline, not a pill: the tab reads as a heading, the underline says
+/// which one is open, and nothing moves when the selection changes.
+class UnderlineTabs extends StatelessWidget {
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onChanged;
+  const UnderlineTabs({
+    super.key,
+    required this.labels,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        for (var i = 0; i < labels.length; i++)
+          Expanded(
+            child: InkWell(
+              onTap: () => onChanged(i),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      labels[i],
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        letterSpacing: 1,
+                        color: i == selected
+                            ? cs.onSurface
+                            : cs.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 2.5,
+                      color: i == selected ? cs.onSurface : Colors.transparent,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}

@@ -11,9 +11,9 @@ import '../models.dart';
 enum PlayerRole { batter, bowler, allRounder, keeper }
 
 PlayerRole roleFromId(String v) => PlayerRole.values.firstWhere(
-      (r) => r.name == v,
-      orElse: () => PlayerRole.allRounder,
-    );
+  (r) => r.name == v,
+  orElse: () => PlayerRole.allRounder,
+);
 
 /// Right-hand / left-hand bat.
 enum BattingStyle { rightHand, leftHand }
@@ -33,32 +33,32 @@ String battingStyleLabel(BattingStyle s) =>
     s == BattingStyle.rightHand ? 'RHB' : 'LHB';
 
 String bowlingStyleLabel(BowlingStyle s) => switch (s) {
-      BowlingStyle.none => '\u2014',
-      BowlingStyle.rightFast => 'RAF',
-      BowlingStyle.rightMedium => 'RAM',
-      BowlingStyle.leftFast => 'LAF',
-      BowlingStyle.leftMedium => 'LAM',
-      BowlingStyle.rightSpin => 'RAS',
-      BowlingStyle.leftSpin => 'LAS',
-    };
+  BowlingStyle.none => '\u2014',
+  BowlingStyle.rightFast => 'RAF',
+  BowlingStyle.rightMedium => 'RAM',
+  BowlingStyle.leftFast => 'LAF',
+  BowlingStyle.leftMedium => 'LAM',
+  BowlingStyle.rightSpin => 'RAS',
+  BowlingStyle.leftSpin => 'LAS',
+};
 
 String bowlingStyleName(BowlingStyle s) => switch (s) {
-      BowlingStyle.none => 'Does not bowl',
-      BowlingStyle.rightFast => 'Right-arm fast',
-      BowlingStyle.rightMedium => 'Right-arm medium',
-      BowlingStyle.leftFast => 'Left-arm fast',
-      BowlingStyle.leftMedium => 'Left-arm medium',
-      BowlingStyle.rightSpin => 'Right-arm spin',
-      BowlingStyle.leftSpin => 'Left-arm spin',
-    };
+  BowlingStyle.none => 'Does not bowl',
+  BowlingStyle.rightFast => 'Right-arm fast',
+  BowlingStyle.rightMedium => 'Right-arm medium',
+  BowlingStyle.leftFast => 'Left-arm fast',
+  BowlingStyle.leftMedium => 'Left-arm medium',
+  BowlingStyle.rightSpin => 'Right-arm spin',
+  BowlingStyle.leftSpin => 'Left-arm spin',
+};
 
 BattingStyle battingStyleFromId(String? v) =>
     v == 'leftHand' ? BattingStyle.leftHand : BattingStyle.rightHand;
 
 BowlingStyle bowlingStyleFromId(String? v) => BowlingStyle.values.firstWhere(
-      (b) => b.name == v,
-      orElse: () => BowlingStyle.none,
-    );
+  (b) => b.name == v,
+  orElse: () => BowlingStyle.none,
+);
 
 class Player {
   final String id;
@@ -81,43 +81,45 @@ class Player {
     this.active = true,
   });
 
-  factory Player.create(
-      {required String clubId,
-      required String name,
-      PlayerRole? role,
-      BattingStyle? battingStyle,
-      BowlingStyle? bowlingStyle}) {
+  factory Player.create({
+    required String clubId,
+    required String name,
+    PlayerRole? role,
+    BattingStyle? battingStyle,
+    BowlingStyle? bowlingStyle,
+  }) {
     final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     return Player(
-        id: 'p_$stamp',
-        clubId: clubId,
-        name: name,
-        role: role ?? PlayerRole.allRounder,
-        battingStyle: battingStyle ?? BattingStyle.rightHand,
-        bowlingStyle: bowlingStyle ?? BowlingStyle.none);
+      id: 'p_$stamp',
+      clubId: clubId,
+      name: name,
+      role: role ?? PlayerRole.allRounder,
+      battingStyle: battingStyle ?? BattingStyle.rightHand,
+      bowlingStyle: bowlingStyle ?? BowlingStyle.none,
+    );
   }
 
   factory Player.fromJson(Map<String, dynamic> j) => Player(
-        id: (j['id'] ?? '').toString(),
-        clubId: (j['clubId'] ?? '').toString(),
-        name: (j['name'] ?? '').toString(),
-        role: roleFromId((j['role'] ?? 'allRounder').toString()),
-        battingStyle: battingStyleFromId(j['battingStyle']?.toString()),
-        bowlingStyle: bowlingStyleFromId(j['bowlingStyle']?.toString()),
-        phone: j['phone']?.toString(),
-        active: (j['active'] ?? true) as bool,
-      );
+    id: (j['id'] ?? '').toString(),
+    clubId: (j['clubId'] ?? '').toString(),
+    name: (j['name'] ?? '').toString(),
+    role: roleFromId((j['role'] ?? 'allRounder').toString()),
+    battingStyle: battingStyleFromId(j['battingStyle']?.toString()),
+    bowlingStyle: bowlingStyleFromId(j['bowlingStyle']?.toString()),
+    phone: j['phone']?.toString(),
+    active: (j['active'] ?? true) as bool,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'clubId': clubId,
-        'name': name,
-        'role': role.name,
-        'battingStyle': battingStyle.name,
-        'bowlingStyle': bowlingStyle.name,
-        'phone': phone,
-        'active': active,
-      };
+    'id': id,
+    'clubId': clubId,
+    'name': name,
+    'role': role.name,
+    'battingStyle': battingStyle.name,
+    'bowlingStyle': bowlingStyle.name,
+    'phone': phone,
+    'active': active,
+  };
 
   String get searchKey =>
       name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -139,10 +141,10 @@ class Club {
   }
 
   factory Club.fromJson(Map<String, dynamic> j) => Club(
-        id: (j['id'] ?? '').toString(),
-        name: (j['name'] ?? '').toString(),
-        handle: (j['handle'] ?? '').toString(),
-      );
+    id: (j['id'] ?? '').toString(),
+    name: (j['name'] ?? '').toString(),
+    handle: (j['handle'] ?? '').toString(),
+  );
   Map<String, dynamic> toJson() => {'id': id, 'name': name, 'handle': handle};
 }
 
@@ -152,11 +154,12 @@ class ClubProfile {
   String name;
   String pinHash;
   String? clubId;
-  ClubProfile(
-      {required this.id,
-      required this.name,
-      required this.pinHash,
-      this.clubId});
+  ClubProfile({
+    required this.id,
+    required this.name,
+    required this.pinHash,
+    this.clubId,
+  });
 
   factory ClubProfile.create({required String name, required String pinHash}) {
     final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
@@ -164,13 +167,17 @@ class ClubProfile {
   }
 
   factory ClubProfile.fromJson(Map<String, dynamic> j) => ClubProfile(
-        id: (j['id'] ?? '').toString(),
-        name: (j['name'] ?? '').toString(),
-        pinHash: (j['pinHash'] ?? '').toString(),
-        clubId: j['clubId']?.toString(),
-      );
-  Map<String, dynamic> toJson() =>
-      {'id': id, 'name': name, 'pinHash': pinHash, 'clubId': clubId};
+    id: (j['id'] ?? '').toString(),
+    name: (j['name'] ?? '').toString(),
+    pinHash: (j['pinHash'] ?? '').toString(),
+    clubId: j['clubId']?.toString(),
+  );
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'pinHash': pinHash,
+    'clubId': clubId,
+  };
 }
 
 /// Simple salted hash for a local PIN (obfuscation, not server security).
@@ -191,14 +198,26 @@ enum DismissalType {
   stumped('Stumped', 'st', creditsBowler: true, hasFielder: true),
   hitWicket('Hit wicket', 'hw', creditsBowler: true, hasFielder: false),
   runOut('Run out', '', creditsBowler: false, hasFielder: true),
-  obstructing('Obstructing the field', '',
-      creditsBowler: false, hasFielder: false),
-  retiredHurt('Retired hurt', 'ret hurt',
-      creditsBowler: false, hasFielder: false),
+  obstructing(
+    'Obstructing the field',
+    '',
+    creditsBowler: false,
+    hasFielder: false,
+  ),
+  retiredHurt(
+    'Retired hurt',
+    'ret hurt',
+    creditsBowler: false,
+    hasFielder: false,
+  ),
   retiredOut('Retired out', 'ret out', creditsBowler: false, hasFielder: false);
 
-  const DismissalType(this.label, this.abbr,
-      {required this.creditsBowler, required this.hasFielder});
+  const DismissalType(
+    this.label,
+    this.abbr, {
+    required this.creditsBowler,
+    required this.hasFielder,
+  });
   final String abbr;
   final String label;
   final bool creditsBowler;
@@ -289,8 +308,9 @@ class BattingCard {
 
   factory BattingCard.fromJson(Map<String, dynamic> j) {
     final c = BattingCard(
-        playerId: (j['playerId'] ?? '').toString(),
-        name: (j['name'] ?? '').toString());
+      playerId: (j['playerId'] ?? '').toString(),
+      name: (j['name'] ?? '').toString(),
+    );
     c.isNotOut = (j['isNotOut'] ?? true) as bool;
     final d = j['dismissal']?.toString();
     c.dismissal = d == null ? null : DismissalType.fromId(d);
@@ -307,20 +327,20 @@ class BattingCard {
   }
 
   Map<String, dynamic> toJson() => {
-        'playerId': playerId,
-        'name': name,
-        'isNotOut': isNotOut,
-        'dismissal': dismissal?.name,
-        'dismissedByName': dismissedByName,
-        'bowlerName': bowlerName,
-        'runs': runs,
-        'balls': balls,
-        'fours': fours,
-        'sixes': sixes,
-        'dots': dots,
-        'position': position,
-        'wicketNumber': wicketNumber,
-      };
+    'playerId': playerId,
+    'name': name,
+    'isNotOut': isNotOut,
+    'dismissal': dismissal?.name,
+    'dismissedByName': dismissedByName,
+    'bowlerName': bowlerName,
+    'runs': runs,
+    'balls': balls,
+    'fours': fours,
+    'sixes': sixes,
+    'dots': dots,
+    'position': position,
+    'wicketNumber': wicketNumber,
+  };
 
   double? get strikeRate => balls == 0 ? null : runs * 100 / balls;
 }
@@ -355,8 +375,9 @@ class BowlingCard {
 
   factory BowlingCard.fromJson(Map<String, dynamic> j) {
     final c = BowlingCard(
-        playerId: (j['playerId'] ?? '').toString(),
-        name: (j['name'] ?? '').toString());
+      playerId: (j['playerId'] ?? '').toString(),
+      name: (j['name'] ?? '').toString(),
+    );
     c.balls = (j['balls'] ?? 0) as int;
     c.maidens = (j['maidens'] ?? 0) as int;
     c.runsConceded = (j['runsConceded'] ?? 0) as int;
@@ -373,19 +394,19 @@ class BowlingCard {
   }
 
   Map<String, dynamic> toJson() => {
-        'playerId': playerId,
-        'name': name,
-        'balls': balls,
-        'maidens': maidens,
-        'runsConceded': runsConceded,
-        'wickets': wickets,
-        'wides': wides,
-        'noBalls': noBalls,
-        'overRuns': overRuns,
-        'overBalls': overBalls,
-        'overLegal': overLegal,
-        'legalBalls': legalBalls,
-      };
+    'playerId': playerId,
+    'name': name,
+    'balls': balls,
+    'maidens': maidens,
+    'runsConceded': runsConceded,
+    'wickets': wickets,
+    'wides': wides,
+    'noBalls': noBalls,
+    'overRuns': overRuns,
+    'overBalls': overBalls,
+    'overLegal': overLegal,
+    'legalBalls': legalBalls,
+  };
 
   /// Overs from LEGAL balls only - `2.4` is two overs and four legal balls,
   /// never a decimal fraction.
@@ -412,8 +433,9 @@ class FieldingCard {
   FieldingCard({required this.playerId, required this.name});
   factory FieldingCard.fromJson(Map<String, dynamic> j) {
     final c = FieldingCard(
-        playerId: (j['playerId'] ?? '').toString(),
-        name: (j['name'] ?? '').toString());
+      playerId: (j['playerId'] ?? '').toString(),
+      name: (j['name'] ?? '').toString(),
+    );
     c.catches = (j['catches'] ?? 0) as int;
     c.runOuts = (j['runOuts'] ?? 0) as int;
     c.stumpings = (j['stumpings'] ?? 0) as int;
@@ -421,12 +443,12 @@ class FieldingCard {
   }
 
   Map<String, dynamic> toJson() => {
-        'playerId': playerId,
-        'name': name,
-        'catches': catches,
-        'runOuts': runOuts,
-        'stumpings': stumpings,
-      };
+    'playerId': playerId,
+    'name': name,
+    'catches': catches,
+    'runOuts': runOuts,
+    'stumpings': stumpings,
+  };
   int get total => catches + runOuts + stumpings;
 }
 
@@ -496,23 +518,28 @@ class InningsSheet {
       s.battingXI.add(e.toString());
     }
     for (final e in ((j['batting'] ?? {}) as Map).entries) {
-      s.batting[e.key.toString()] =
-          BattingCard.fromJson(Map<String, dynamic>.from(e.value as Map));
+      s.batting[e.key.toString()] = BattingCard.fromJson(
+        Map<String, dynamic>.from(e.value as Map),
+      );
     }
     for (final e in ((j['bowling'] ?? {}) as Map).entries) {
-      s.bowling[e.key.toString()] =
-          BowlingCard.fromJson(Map<String, dynamic>.from(e.value as Map));
+      s.bowling[e.key.toString()] = BowlingCard.fromJson(
+        Map<String, dynamic>.from(e.value as Map),
+      );
     }
     for (final e in ((j['fielding'] ?? {}) as Map).entries) {
-      s.fielding[e.key.toString()] =
-          FieldingCard.fromJson(Map<String, dynamic>.from(e.value as Map));
+      s.fielding[e.key.toString()] = FieldingCard.fromJson(
+        Map<String, dynamic>.from(e.value as Map),
+      );
     }
     s.partnershipRuns = (j['partnershipRuns'] ?? 0) as int;
     s.partnershipBalls = (j['partnershipBalls'] ?? 0) as int;
     for (final p in ((j['partnerships'] ?? []) as List)) {
       final m = Map<String, dynamic>.from(p as Map);
-      s.partnerships.add(
-          {'runs': (m['runs'] ?? 0) as int, 'balls': (m['balls'] ?? 0) as int});
+      s.partnerships.add({
+        'runs': (m['runs'] ?? 0) as int,
+        'balls': (m['balls'] ?? 0) as int,
+      });
     }
     s.nextPosition = (j['nextPosition'] ?? 3) as int;
     s.wicketNumber = (j['wicketNumber'] ?? 0) as int;
@@ -523,25 +550,25 @@ class InningsSheet {
   }
 
   Map<String, dynamic> toJson() => {
-        'battingTeam': battingTeam,
-        'bowlingTeam': bowlingTeam,
-        'strikerId': strikerId,
-        'nonStrikerId': nonStrikerId,
-        'bowlerId': bowlerId,
-        'names': names,
-        'battingXI': battingXI.toList(),
-        'batting': batting.map((k, v) => MapEntry(k, v.toJson())),
-        'bowling': bowling.map((k, v) => MapEntry(k, v.toJson())),
-        'fielding': fielding.map((k, v) => MapEntry(k, v.toJson())),
-        'partnershipRuns': partnershipRuns,
-        'partnershipBalls': partnershipBalls,
-        'partnerships': partnerships,
-        'nextPosition': nextPosition,
-        'wicketNumber': wicketNumber,
-        'closedOvers': closedOvers,
-        'lastBowlerId': lastBowlerId,
-        'needsNewBowler': needsNewBowler,
-      };
+    'battingTeam': battingTeam,
+    'bowlingTeam': bowlingTeam,
+    'strikerId': strikerId,
+    'nonStrikerId': nonStrikerId,
+    'bowlerId': bowlerId,
+    'names': names,
+    'battingXI': battingXI.toList(),
+    'batting': batting.map((k, v) => MapEntry(k, v.toJson())),
+    'bowling': bowling.map((k, v) => MapEntry(k, v.toJson())),
+    'fielding': fielding.map((k, v) => MapEntry(k, v.toJson())),
+    'partnershipRuns': partnershipRuns,
+    'partnershipBalls': partnershipBalls,
+    'partnerships': partnerships,
+    'nextPosition': nextPosition,
+    'wicketNumber': wicketNumber,
+    'closedOvers': closedOvers,
+    'lastBowlerId': lastBowlerId,
+    'needsNewBowler': needsNewBowler,
+  };
 
   String nameOf(String id) => names[id] ?? '?';
 
@@ -561,7 +588,9 @@ class InningsSheet {
     batting.putIfAbsent(p.id, () => BattingCard(playerId: p.id, name: p.name));
     bowling.putIfAbsent(p.id, () => BowlingCard(playerId: p.id, name: p.name));
     fielding.putIfAbsent(
-        p.id, () => FieldingCard(playerId: p.id, name: p.name));
+      p.id,
+      () => FieldingCard(playerId: p.id, name: p.name),
+    );
   }
 
   void registerSquad(List<Player> squad) {
@@ -577,10 +606,12 @@ class InningsSheet {
 
   /// Players who have not batted yet (position == 0), in registration order.
   List<String> get waitingBatters => names.keys
-      .where((id) =>
-          (batting[id]?.position ?? 0) == 0 &&
-          id != strikerId &&
-          id != nonStrikerId)
+      .where(
+        (id) =>
+            (batting[id]?.position ?? 0) == 0 &&
+            id != strikerId &&
+            id != nonStrikerId,
+      )
       .toList();
 
   /// Who may come in after [outId] goes. Explicit by id, never by position
@@ -637,6 +668,11 @@ class InningsSheet {
     final opts = <String>[];
     for (final id in names.keys) {
       if (id == outId || id == otherEndId) continue;
+      // A replacement must come from the side that is BATTING. Both squads
+      // are registered on the sheet (the fielders need figures), so without
+      // this guard the mid-over change sheet offered the bowling side's
+      // players as batters.
+      if (battingXI.isNotEmpty && !battingXI.contains(id)) continue;
       final c = batting[id];
       if (c == null) continue;
       if (c.position == 0) {
@@ -691,10 +727,11 @@ class InningsSheet {
 
   /// Dismissed this innings, in fall order.
   List<BattingCard> get fallOfWickets {
-    final gone = batting.values
-        .where((c) => c.position > 0 && !c.isNotOut && c.wicketNumber > 0)
-        .toList()
-      ..sort((a, b) => a.wicketNumber.compareTo(b.wicketNumber));
+    final gone =
+        batting.values
+            .where((c) => c.position > 0 && !c.isNotOut && c.wicketNumber > 0)
+            .toList()
+          ..sort((a, b) => a.wicketNumber.compareTo(b.wicketNumber));
     return gone;
   }
 
@@ -793,8 +830,9 @@ class InningsSheet {
     if (dismissedId.isEmpty) return;
     // The dismissed man left; whoever remains now holds his old end.
     final survivor = strikerId == dismissedId ? nonStrikerId : strikerId;
-    final incoming =
-        newcomerId != null && names.containsKey(newcomerId) ? newcomerId : null;
+    final incoming = newcomerId != null && names.containsKey(newcomerId)
+        ? newcomerId
+        : null;
 
     if (incoming == null) {
       if (atStrikerEnd) {
@@ -908,8 +946,11 @@ class InningsSheet {
   }
 
   /// One place where the Laws decide who is charged with what.
-  void applyDelivery(Ball ball,
-      {DismissalType? dismissalType, String? fielderName}) {
+  void applyDelivery(
+    Ball ball, {
+    DismissalType? dismissalType,
+    String? fielderName,
+  }) {
     final bat = striker;
     final bowl = currentBowler;
     if (bat == null || bowl == null) return;

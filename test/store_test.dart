@@ -13,11 +13,12 @@ import 'package:cricket_scoring/theme.dart';
 MatchStore freshStore({FakeSync? sync}) {
   final s = MatchStore(sync: sync ?? FakeSync());
   s.draft = MatchConfig(
-      teamA: 'A',
-      teamB: 'B',
-      totalOvers: 5,
-      playersPerSide: 5,
-      rules: Rules(widePenalty: 1, noBallPenalty: 0));
+    teamA: 'A',
+    teamB: 'B',
+    totalOvers: 5,
+    playersPerSide: 5,
+    rules: Rules(widePenalty: 1, noBallPenalty: 0),
+  );
   s.startMatch(s.draft);
   return s;
 }
@@ -161,9 +162,10 @@ void main() {
     final club = s.createClub(name: 'Eagles');
     expect(s.activeClubId, club.id);
     final created = s.addPlayer(
-        name: 'Rohit',
-        battingStyle: BattingStyle.leftHand,
-        bowlingStyle: BowlingStyle.rightSpin);
+      name: 'Rohit',
+      battingStyle: BattingStyle.leftHand,
+      bowlingStyle: BowlingStyle.rightSpin,
+    );
     expect(created, isNotNull);
     expect(created!.battingStyle, BattingStyle.leftHand);
     expect(created.bowlingStyle, BowlingStyle.rightSpin);
@@ -186,16 +188,17 @@ void main() {
     final s = MatchStore();
     s.createClub(name: 'Eagles');
     final ids = [
-      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id
+      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id,
     ];
     s.draft = MatchConfig(
-        teamA: 'A',
-        teamB: 'B',
-        totalOvers: 2,
-        playersPerSide: 2,
-        trackPlayers: true,
-        squadA: [ids[0], ids[1]],
-        squadB: [ids[2]]);
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 2,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1]],
+      squadB: [ids[2]],
+    );
     s.startMatch(s.draft);
     // Cap: XI already full at 2.
     expect(s.addToSquad('A', ids[3]), contains('full'));
@@ -211,16 +214,17 @@ void main() {
     final s = MatchStore();
     s.createClub(name: 'Eagles');
     final ids = [
-      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id
+      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id,
     ];
     s.draft = MatchConfig(
-        teamA: 'A',
-        teamB: 'B',
-        totalOvers: 2,
-        playersPerSide: 4,
-        trackPlayers: true,
-        squadA: [ids[0], ids[1]],
-        squadB: [ids[2], ids[3]]);
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 4,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1]],
+      squadB: [ids[2], ids[3]],
+    );
     s.startMatch(s.draft);
     s.setOpeners(ids[0], ids[1]);
     expect(s.setBowler(ids[2]), isNull);
@@ -232,16 +236,17 @@ void main() {
     final s = MatchStore();
     s.createClub(name: 'Eagles');
     final ids = [
-      for (final n in ['A1', 'A2', 'B1']) s.addPlayer(name: n)!.id
+      for (final n in ['A1', 'A2', 'B1']) s.addPlayer(name: n)!.id,
     ];
     s.draft = MatchConfig(
-        teamA: 'A',
-        teamB: 'B',
-        totalOvers: 5,
-        playersPerSide: 5,
-        trackPlayers: true,
-        squadA: ids.sublist(0, 2),
-        squadB: [ids[2]]);
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 5,
+      playersPerSide: 5,
+      trackPlayers: true,
+      squadA: ids.sublist(0, 2),
+      squadB: [ids[2]],
+    );
     s.startMatch(s.draft);
     s.setOpeners(ids[0], ids[1]);
     s.setBowler(ids[2]);
@@ -259,13 +264,14 @@ void main() {
     expect(s.clubRoster.map((p) => p.id), isNot(contains(a)));
     // In a live squad: refused until removed from the XI.
     s.draft = MatchConfig(
-        teamA: 'A',
-        teamB: 'B',
-        totalOvers: 2,
-        playersPerSide: 4,
-        trackPlayers: true,
-        squadA: [b],
-        squadB: []);
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 4,
+      trackPlayers: true,
+      squadA: [b],
+      squadB: [],
+    );
     s.startMatch(s.draft);
     expect(s.deletePlayer(b), isNotNull);
   });
@@ -285,16 +291,17 @@ void main() {
     final s = MatchStore();
     s.createClub(name: 'Eagles');
     final ids = [
-      for (final n in ['A1', 'A2', 'B1']) s.addPlayer(name: n)!.id
+      for (final n in ['A1', 'A2', 'B1']) s.addPlayer(name: n)!.id,
     ];
     s.draft = MatchConfig(
-        teamA: 'A',
-        teamB: 'B',
-        totalOvers: 2,
-        playersPerSide: 4,
-        trackPlayers: true,
-        squadA: [ids[0], ids[1]],
-        squadB: [ids[2]]);
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 4,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1]],
+      squadB: [ids[2]],
+    );
     s.startMatch(s.draft);
     // No openers yet: the ball is refused, nothing recorded.
     expect(s.score(action: 'RUNS', runs: 1), MatchStore.needSetupMsg);
@@ -310,16 +317,17 @@ void main() {
     final s = MatchStore();
     s.createClub(name: 'Eagles');
     final ids = [
-      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id
+      for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id,
     ];
     s.draft = MatchConfig(
-        teamA: 'A',
-        teamB: 'B',
-        totalOvers: 2,
-        playersPerSide: 4,
-        trackPlayers: true,
-        squadA: [ids[0], ids[1]],
-        squadB: [ids[2], ids[3]]);
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 4,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1]],
+      squadB: [ids[2], ids[3]],
+    );
     s.startMatch(s.draft);
     s.setOpeners(ids[0], ids[1]);
     s.setBowler(ids[2]);
@@ -348,8 +356,12 @@ void main() {
 
   test('batting-first picker orders innings', () {
     final s = MatchStore();
-    final cfg =
-        MatchConfig(teamA: 'A', teamB: 'B', battingFirst: 'B', totalOvers: 2);
+    final cfg = MatchConfig(
+      teamA: 'A',
+      teamB: 'B',
+      battingFirst: 'B',
+      totalOvers: 2,
+    );
     s.startMatch(cfg);
     expect(s.innings!.battingTeam, 'B');
     expect(s.innings!.bowlingTeam, 'A');

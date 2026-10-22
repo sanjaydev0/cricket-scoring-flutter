@@ -32,11 +32,11 @@ class RoomSnapshot {
   });
 
   Map<String, dynamic> toPayload() => {
-        'v': version,
-        'seq': seq,
-        'match': match,
-        'at': updatedAt.toIso8601String(),
-      };
+    'v': version,
+    'seq': seq,
+    'match': match,
+    'at': updatedAt.toIso8601String(),
+  };
 
   /// Decodes a payload written by [toPayload]. Returns null for a payload this
   /// build cannot read, so callers fall back to "waiting for a newer score"

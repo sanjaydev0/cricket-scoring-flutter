@@ -16,7 +16,8 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
   final sheet = store.currentSheet;
   if (sheet == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Player tracking is off for this match')));
+      const SnackBar(content: Text('Player tracking is off for this match')),
+    );
     return;
   }
   showAppSheet(
@@ -25,7 +26,7 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
     isScrollControlled: true,
     builder: (_) => ListenableBuilder(
       listenable: store,
-      builder: (_, __) {
+      builder: (_, _) {
         final s = store.currentSheet;
         if (s == null) return const SizedBox.shrink();
         final preset = StylePreset.of(store.styleId);
@@ -44,8 +45,13 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
                 if (s.striker != null)
                   _batterRow(context, store, s, s.striker!, isStriker: true),
                 if (s.nonStriker != null)
-                  _batterRow(context, store, s, s.nonStriker!,
-                      isStriker: false),
+                  _batterRow(
+                    context,
+                    store,
+                    s,
+                    s.nonStriker!,
+                    isStriker: false,
+                  ),
                 const SizedBox(height: 6),
                 _partnershipRow(s),
                 const SizedBox(height: 10),
@@ -112,13 +118,16 @@ Widget _undoBanner(BuildContext context, MatchStore store, String what) {
         const Icon(Icons.swap_horiz, size: 18, color: Colors.white),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(what,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13)),
+          child: Text(
+            what,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
         ),
         RectBtn(
           primary: false,
@@ -138,21 +147,27 @@ Widget _rowsHeader(StylePreset preset, String label, List<String> cols) {
     child: Row(
       children: [
         Expanded(
-          child: Text(label,
-              style: TextStyle(
-                  color: preset.heroFg,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13)),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: preset.heroFg,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
         ),
         for (final c in cols)
           SizedBox(
             width: 44,
-            child: Text(c,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                    color: preset.heroFg.withValues(alpha: 0.85),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11)),
+            child: Text(
+              c,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: preset.heroFg.withValues(alpha: 0.85),
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
           ),
       ],
     ),
@@ -160,8 +175,12 @@ Widget _rowsHeader(StylePreset preset, String label, List<String> cols) {
 }
 
 Widget _batterRow(
-    BuildContext context, MatchStore store, InningsSheet s, BattingCard c,
-    {required bool isStriker}) {
+  BuildContext context,
+  MatchStore store,
+  InningsSheet s,
+  BattingCard c, {
+  required bool isStriker,
+}) {
   final p = _playerOf(store, c.playerId);
   return InkWell(
     // Tap the batter to change or retire him. Long-press used to be the only
@@ -182,18 +201,24 @@ Widget _batterRow(
                 Row(
                   children: [
                     Expanded(
-                      child: Text('${c.name}${isStriker ? ' *' : ''}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      child: Text(
+                        '${c.name}${isStriker ? ' *' : ''}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
                     ),
-                    const Icon(Icons.chevron_right,
-                        size: 18, color: Color(0xFF94A3B8)),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: Color(0xFF94A3B8),
+                    ),
                   ],
                 ),
                 Text(
-                    'SR ${fmt1(c.strikeRate)}${p == null ? '' : ' | ${battingStyleLabel(p.battingStyle)}'}',
-                    style: const TextStyle(fontSize: 11)),
+                  'SR ${fmt1(c.strikeRate)}${p == null ? '' : ' | ${battingStyleLabel(p.battingStyle)}'}',
+                  style: const TextStyle(fontSize: 11),
+                ),
               ],
             ),
           ),
@@ -201,16 +226,20 @@ Widget _batterRow(
             '${c.runs}',
             '${c.balls}',
             '${c.fours}',
-            '${c.sixes}'
+            '${c.sixes}',
           ])
             SizedBox(
               width: 44,
-              child: Text(v,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                      fontWeight:
-                          v == '${c.runs}' ? FontWeight.w900 : FontWeight.w700,
-                      fontSize: v == '${c.runs}' ? 16 : 13)),
+              child: Text(
+                v,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontWeight: v == '${c.runs}'
+                      ? FontWeight.w900
+                      : FontWeight.w700,
+                  fontSize: v == '${c.runs}' ? 16 : 13,
+                ),
+              ),
             ),
         ],
       ),
@@ -229,15 +258,18 @@ Widget _partnershipRow(InningsSheet s) {
     child: Row(
       children: [
         Expanded(
-          child: Text("P'ship: ${s.partnershipRuns} (${s.partnershipBalls})",
-              style:
-                  const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+          child: Text(
+            "P'ship: ${s.partnershipRuns} (${s.partnershipBalls})",
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+          ),
         ),
         if (last != null)
           Expanded(
-            child: Text('Last wkt: ${last.name} ${last.runs} (${last.balls})',
-                textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 12)),
+            child: Text(
+              'Last wkt: ${last.name} ${last.runs} (${last.balls})',
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
       ],
     ),
@@ -258,17 +290,17 @@ Player? _playerOf(MatchStore store, String id) {
 /// rather than stacking another sheet on top, so there is never a pile of
 /// sheets to back out of.
 void showBatterOptionsSheet(
-    BuildContext context, MatchStore store, BattingCard card,
-    {required bool isStriker}) {
+  BuildContext context,
+  MatchStore store,
+  BattingCard card, {
+  required bool isStriker,
+}) {
   showAppSheet(
     context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (sheetCtx) => _BatterOptions(
-      store: store,
-      card: card,
-      isStriker: isStriker,
-    ),
+    builder: (sheetCtx) =>
+        _BatterOptions(store: store, card: card, isStriker: isStriker),
   );
 }
 
@@ -276,8 +308,11 @@ class _BatterOptions extends StatefulWidget {
   final MatchStore store;
   final BattingCard card;
   final bool isStriker;
-  const _BatterOptions(
-      {required this.store, required this.card, required this.isStriker});
+  const _BatterOptions({
+    required this.store,
+    required this.card,
+    required this.isStriker,
+  });
   @override
   State<_BatterOptions> createState() => _BatterOptionsState();
 }
@@ -293,8 +328,9 @@ class _BatterOptionsState extends State<_BatterOptions> {
     final sheet = store.currentSheet;
     if (sheet == null) return const SizedBox.shrink();
     final card = widget.card;
-    final accent =
-        widget.isStriker ? const Color(0xFF1D4ED8) : const Color(0xFF0F766E);
+    final accent = widget.isStriker
+        ? const Color(0xFF1D4ED8)
+        : const Color(0xFF0F766E);
     final retireAs = _retireAs;
     if (retireAs == null) {
       return SafeArea(
@@ -347,28 +383,30 @@ class _BatterOptionsState extends State<_BatterOptions> {
               )
             else
               for (final id in options)
-                Builder(builder: (_) {
-                  final returning = (sheet.batting[id]?.position ?? 0) > 0;
-                  return PlayerRow(
-                    name: sheet.nameOf(id),
-                    subtitle: returning
-                        ? 'Retired hurt — coming back in'
-                        : 'Yet to bat • ${sheet.battingTeam}',
-                    onTap: () {
-                      final err = store.substituteBatter(
-                        atStrikerEnd: widget.isStriker,
-                        newcomerId: id,
-                        retireAs: retireAs,
-                      );
-                      if (err != null) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text(err)));
-                        return;
-                      }
-                      Navigator.pop(context);
-                    },
-                  );
-                }),
+                Builder(
+                  builder: (_) {
+                    final returning = (sheet.batting[id]?.position ?? 0) > 0;
+                    return PlayerRow(
+                      name: sheet.nameOf(id),
+                      subtitle: returning
+                          ? 'Retired hurt — coming back in'
+                          : 'Yet to bat • ${sheet.battingTeam}',
+                      onTap: () {
+                        final err = store.substituteBatter(
+                          atStrikerEnd: widget.isStriker,
+                          newcomerId: id,
+                          retireAs: retireAs,
+                        );
+                        if (err != null) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(err)));
+                          return;
+                        }
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
           ],
         ),
       ),
@@ -379,12 +417,18 @@ class _BatterOptionsState extends State<_BatterOptions> {
 /// One-tap dismissal: type chips on top, next batter below. Tapping a name
 /// commits the wicket AND the incoming batter in the same store call.
 void showDismissalSheet(
-    BuildContext context, MatchStore store, DismissalType initial) {
+  BuildContext context,
+  MatchStore store,
+  DismissalType initial,
+) {
   final sheet = store.currentSheet;
   // Untracked matches keep the old instant behaviour.
   if (sheet == null) {
     store.score(
-        action: 'WICKET', wicketType: initial.label, dismissal: initial.name);
+      action: 'WICKET',
+      wicketType: initial.label,
+      dismissal: initial.name,
+    );
     return;
   }
   // The pill row can still change the type, so this one is mutable.
@@ -406,8 +450,10 @@ void showDismissalSheet(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('OUT • ${sheet.nameOf(sheet.strikerId ?? '')}',
-                  style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(
+                'OUT • ${sheet.nameOf(sheet.strikerId ?? '')}',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -440,93 +486,107 @@ void showDismissalSheet(
               ),
               if (store.askFielder && type.hasFielder) ...[
                 const SizedBox(height: 12),
-                const Text('WHO TOOK IT? (optional)',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                const Text(
+                  'WHO TOOK IT? (optional)',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
-                Builder(builder: (_) {
-                  // Fielders come from the FIELDING (bowling) side's squad in
-                  // XI order — the bowling map holds every registered player,
-                  // so its keys showed batters as fielders.
-                  final m = store.match!;
-                  final squadIds = sheet.bowlingTeam == m.config.teamA
-                      ? m.config.squadA
-                      : m.config.squadB;
-                  final ids = squadIds.isEmpty
-                      ? sheet.bowling.keys
-                          .where((id) => id != sheet.strikerId)
-                          .toList()
-                      : squadIds.where((id) => id != sheet.strikerId).toList();
-                  return Column(
-                    children: [
-                      for (final id in ids)
-                        InkWell(
-                          onTap: () => setSheet(() {
-                            fielder = fielder == sheet.nameOf(id)
-                                ? null
-                                : sheet.nameOf(id);
-                          }),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(sheet.nameOf(id),
+                Builder(
+                  builder: (_) {
+                    // Fielders come from the FIELDING (bowling) side's squad in
+                    // XI order — the bowling map holds every registered player,
+                    // so its keys showed batters as fielders.
+                    final m = store.match!;
+                    final squadIds = sheet.bowlingTeam == m.config.teamA
+                        ? m.config.squadA
+                        : m.config.squadB;
+                    final ids = squadIds.isEmpty
+                        ? sheet.bowling.keys
+                              .where((id) => id != sheet.strikerId)
+                              .toList()
+                        : squadIds
+                              .where((id) => id != sheet.strikerId)
+                              .toList();
+                    return Column(
+                      children: [
+                        for (final id in ids)
+                          InkWell(
+                            onTap: () => setSheet(() {
+                              fielder = fielder == sheet.nameOf(id)
+                                  ? null
+                                  : sheet.nameOf(id);
+                            }),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      sheet.nameOf(id),
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w700)),
-                                ),
-                                Icon(
-                                  fielder == sheet.nameOf(id)
-                                      ? Icons.radio_button_checked
-                                      : Icons.radio_button_unchecked,
-                                  color: fielder == sheet.nameOf(id)
-                                      ? Colors.green
-                                      : Colors.grey,
-                                ),
-                              ],
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    fielder == sheet.nameOf(id)
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_unchecked,
+                                    color: fielder == sheet.nameOf(id)
+                                        ? Colors.green
+                                        : Colors.grey,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                    ],
-                  );
-                }),
+                      ],
+                    );
+                  },
+                ),
               ],
               const SizedBox(height: 12),
-              const Text('NEXT BATTER',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'NEXT BATTER',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 6),
               if (waiting.isEmpty)
                 const Text('No batters left.', style: TextStyle(fontSize: 12)),
               for (final id in waiting)
-                Builder(builder: (_) {
-                  final returning = (sheet.batting[id]?.position ?? 0) > 0;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: RectBtn(
-                      primary: false,
-                      onTap: () {
-                        Navigator.pop(sheetCtx);
-                        // The enum travels with the label in every path, so a
-                        // dismissal can never be recorded as something else
-                        // because two strings did not match exactly.
-                        final err = store.score(
-                          action: 'WICKET',
-                          wicketType: type.label,
-                          dismissal: type.name,
-                          fielderName: fielder,
-                          newBatterId: id,
-                        );
-                        if (err != null && context.mounted) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(content: Text(err)));
-                        }
-                      },
-                      child: Text(returning
-                          ? '${sheet.nameOf(id)} (returning)'
-                          : sheet.nameOf(id)),
-                    ),
-                  );
-                }),
+                Builder(
+                  builder: (_) {
+                    final returning = (sheet.batting[id]?.position ?? 0) > 0;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: RectBtn(
+                        primary: false,
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          // The enum travels with the label in every path, so a
+                          // dismissal can never be recorded as something else
+                          // because two strings did not match exactly.
+                          final err = store.score(
+                            action: 'WICKET',
+                            wicketType: type.label,
+                            dismissal: type.name,
+                            fielderName: fielder,
+                            newBatterId: id,
+                          );
+                          if (err != null && context.mounted) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(content: Text(err)));
+                          }
+                        },
+                        child: Text(
+                          returning
+                              ? '${sheet.nameOf(id)} (returning)'
+                              : sheet.nameOf(id),
+                        ),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -536,21 +596,25 @@ void showDismissalSheet(
 }
 
 /// Bowler picker with live figures. The just-bowled bowler is excluded by law.
-void showBowlerSheet(BuildContext context, MatchStore store,
-    {bool auto = false}) {
+void showBowlerSheet(
+  BuildContext context,
+  MatchStore store, {
+  bool auto = false,
+}) {
   final sheet = store.currentSheet;
   if (sheet == null) return;
   // Candidates are the BOWLING side's squad in XI order — never the batters.
   // (The bowling map holds every registered player, so reading its keys
   // showed batting names as bowlers.)
   final m = store.match!;
-  final squadIds =
-      sheet.bowlingTeam == m.config.teamA ? m.config.squadA : m.config.squadB;
+  final squadIds = sheet.bowlingTeam == m.config.teamA
+      ? m.config.squadA
+      : m.config.squadB;
   final inXi = squadIds.isEmpty
       ? sheet.bowling.keys.toList()
       : [
           for (final id in squadIds)
-            if (sheet.bowling.containsKey(id)) id
+            if (sheet.bowling.containsKey(id)) id,
         ];
   // Anyone who already bowled but is not in the XI (mid-match squad edits)
   // stays visible rather than vanishing.
@@ -571,44 +635,51 @@ void showBowlerSheet(BuildContext context, MatchStore store,
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(auto ? 'OVER DONE — NEXT BOWLER' : 'CHANGE BOWLER',
-                style: const TextStyle(fontWeight: FontWeight.w900)),
+            Text(
+              auto ? 'OVER DONE — NEXT BOWLER' : 'CHANGE BOWLER',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
             if (sheet.lastBowlerId != null) ...[
               const SizedBox(height: 4),
               Text(
-                  'Prev: ${sheet.nameOf(sheet.lastBowlerId!)} (${_oversBowled(sheet, sheet.lastBowlerId!)} overs)',
-                  style: const TextStyle(fontSize: 12)),
+                'Prev: ${sheet.nameOf(sheet.lastBowlerId!)} (${_oversBowled(sheet, sheet.lastBowlerId!)} overs)',
+                style: const TextStyle(fontSize: 12),
+              ),
             ],
             const SizedBox(height: 4),
-            const Text('Tap a name; they bowl the whole over.',
-                style: TextStyle(fontSize: 12)),
+            const Text(
+              'Tap a name; they bowl the whole over.',
+              style: TextStyle(fontSize: 12),
+            ),
             const SizedBox(height: 8),
             for (final id in candidates)
-              Builder(builder: (_) {
-                final c = sheet.bowling[id]!;
-                final allowed = sheet.canBowl(id);
-                return PlayerRow(
-                  name: c.name,
-                  selected: false,
-                  enabled: allowed,
-                  blockedReason: allowed
-                      ? null
-                      : sheet.bowlBlockReason(id) ?? 'unavailable',
-                  subtitle: bowlerFigureLine(c),
-                  trailing: BowlerFigureBlock(c),
-                  onTap: allowed
-                      ? () {
-                          final err = store.setBowler(id);
-                          if (err != null) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(content: Text(err)));
-                            return;
+              Builder(
+                builder: (_) {
+                  final c = sheet.bowling[id]!;
+                  final allowed = sheet.canBowl(id);
+                  return PlayerRow(
+                    name: c.name,
+                    selected: false,
+                    enabled: allowed,
+                    blockedReason: allowed
+                        ? null
+                        : sheet.bowlBlockReason(id) ?? 'unavailable',
+                    subtitle: bowlerFigureLine(c),
+                    trailing: BowlerFigureBlock(c),
+                    onTap: allowed
+                        ? () {
+                            final err = store.setBowler(id);
+                            if (err != null) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(content: Text(err)));
+                              return;
+                            }
+                            Navigator.pop(context);
                           }
-                          Navigator.pop(context);
-                        }
-                      : null,
-                );
-              }),
+                        : null,
+                  );
+                },
+              ),
           ],
         ),
       ),
@@ -620,8 +691,11 @@ void showBowlerSheet(BuildContext context, MatchStore store,
 ///
 /// Bowled needs no runs count and no end choice, so the full dismissal sheet
 /// was pure friction: seven wicket-type pills to answer a single question.
-void showNextBatterSheet(BuildContext context, MatchStore store,
-    {required DismissalType type}) {
+void showNextBatterSheet(
+  BuildContext context,
+  MatchStore store, {
+  required DismissalType type,
+}) {
   final sheet = store.currentSheet;
   if (sheet == null) {
     store.score(action: 'WICKET', wicketType: type.label, dismissal: type.name);
@@ -644,46 +718,55 @@ void showNextBatterSheet(BuildContext context, MatchStore store,
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('$outName — ${type.label.toUpperCase()}',
-                  style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(
+                '$outName — ${type.label.toUpperCase()}',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 10),
               const RowSectionLabel('NEXT BATTER', color: Color(0xFF1D4ED8)),
               if (waiting.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  child:
-                      Text('No batters left.', style: TextStyle(fontSize: 12)),
+                  child: Text(
+                    'No batters left.',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 )
               else
                 for (final id in waiting)
-                  Builder(builder: (_) {
-                    final returning = (sheet.batting[id]?.position ?? 0) > 0;
-                    return PlayerRow(
-                      name: sheet.nameOf(id),
-                      subtitle: returning
-                          ? 'Retired hurt — coming back in'
-                          : 'Yet to bat • ${sheet.battingTeam}',
-                      selected: false,
-                      onTap: () {
-                        Navigator.pop(sheetCtx);
-                        final err = store.score(
-                          action: 'WICKET',
-                          wicketType: type.label,
-                          dismissal: type.name,
-                          fielderName:
-                              fielder == null ? null : sheet.nameOf(fielder!),
-                          newBatterId: id,
-                        );
-                        if (err != null && context.mounted) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(content: Text(err)));
-                        }
-                      },
-                    );
-                  }),
+                  Builder(
+                    builder: (_) {
+                      final returning = (sheet.batting[id]?.position ?? 0) > 0;
+                      return PlayerRow(
+                        name: sheet.nameOf(id),
+                        subtitle: returning
+                            ? 'Retired hurt — coming back in'
+                            : 'Yet to bat • ${sheet.battingTeam}',
+                        selected: false,
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          final err = store.score(
+                            action: 'WICKET',
+                            wicketType: type.label,
+                            dismissal: type.name,
+                            fielderName: fielder == null
+                                ? null
+                                : sheet.nameOf(fielder!),
+                            newBatterId: id,
+                          );
+                          if (err != null && context.mounted) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(content: Text(err)));
+                          }
+                        },
+                      );
+                    },
+                  ),
               if (store.askFielder && type.hasFielder) ...[
-                const RowSectionLabel('WHO TOOK IT? (optional)',
-                    color: Color(0xFFDC143C)),
+                const RowSectionLabel(
+                  'WHO TOOK IT? (optional)',
+                  color: Color(0xFFDC143C),
+                ),
                 for (final id in _fieldingIds(store, sheet))
                   PlayerRow(
                     name: sheet.nameOf(id),
@@ -765,8 +848,9 @@ class _RunOutFormState extends State<RunOutForm> {
     final safeName = nonStrikerOut ? strikerName : nonStrikerName;
     // The confirm button names him the short way; the rows above carry the
     // explanation.
-    final buttonOut =
-        sheet == null ? (nonStrikerOut ? 'Non-striker' : 'Striker') : outName;
+    final buttonOut = sheet == null
+        ? (nonStrikerOut ? 'Non-striker' : 'Striker')
+        : outName;
     final badge = wicketBadge(runs);
 
     return Column(
@@ -788,8 +872,10 @@ class _RunOutFormState extends State<RunOutForm> {
             selected: runs == n,
             onTap: () => setState(() => runs = n),
           ),
-        const RowSectionLabel('2. WHO WAS DISMISSED?',
-            color: Color(0xFFDC143C)),
+        const RowSectionLabel(
+          '2. WHO WAS DISMISSED?',
+          color: Color(0xFFDC143C),
+        ),
         PlayerRow(
           name: strikerName,
           subtitle: sheet == null
@@ -806,8 +892,10 @@ class _RunOutFormState extends State<RunOutForm> {
           selected: nonStrikerOut,
           onTap: () => setState(() => nonStrikerOut = true),
         ),
-        const RowSectionLabel('3. WHICH END WAS HE OUT AT?',
-            color: Color(0xFFDC143C)),
+        const RowSectionLabel(
+          '3. WHICH END WAS HE OUT AT?',
+          color: Color(0xFFDC143C),
+        ),
         PlayerRow(
           name: "Striker's end",
           subtitle: 'Where he was facing',
@@ -829,8 +917,10 @@ class _RunOutFormState extends State<RunOutForm> {
           style: const TextStyle(fontSize: 11),
         ),
         if (sheet != null && store.askFielder) ...[
-          const RowSectionLabel('WHO TOOK IT? (optional)',
-              color: Color(0xFFDC143C)),
+          const RowSectionLabel(
+            'WHO TOOK IT? (optional)',
+            color: Color(0xFFDC143C),
+          ),
           for (final id in _fieldingIds(store, sheet))
             PlayerRow(
               name: sheet.nameOf(id),
@@ -841,14 +931,16 @@ class _RunOutFormState extends State<RunOutForm> {
         ],
         const SizedBox(height: 14),
         RectBtn(
-          onTap: () => widget.onConfirm(RunOutChoice(
-            runs: runs,
-            nonStrikerOut: nonStrikerOut,
-            outAtStrikerEnd: outAtStrikerEnd,
-            fielderName: fielder == null || sheet == null
-                ? null
-                : sheet.nameOf(fielder!),
-          )),
+          onTap: () => widget.onConfirm(
+            RunOutChoice(
+              runs: runs,
+              nonStrikerOut: nonStrikerOut,
+              outAtStrikerEnd: outAtStrikerEnd,
+              fielderName: fielder == null || sheet == null
+                  ? null
+                  : sheet.nameOf(fielder!),
+            ),
+          ),
           child: Text('$badge · $buttonOut OUT'),
         ),
       ],
@@ -897,11 +989,12 @@ void showRunOutSheet(BuildContext context, MatchStore store) {
 /// Fielding side's XI, for the optional fielder credit.
 List<String> _fieldingIds(MatchStore store, InningsSheet sheet) {
   final m = store.match!;
-  final ids =
-      sheet.bowlingTeam == m.config.teamA ? m.config.squadA : m.config.squadB;
+  final ids = sheet.bowlingTeam == m.config.teamA
+      ? m.config.squadA
+      : m.config.squadB;
   return [
     for (final id in ids)
-      if (id != sheet.strikerId && id != sheet.nonStrikerId) id
+      if (id != sheet.strikerId && id != sheet.nonStrikerId) id,
   ];
 }
 
@@ -944,12 +1037,18 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('START INNINGS • ${sheet.battingTeam}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 16)),
+                Text(
+                  'START INNINGS • ${sheet.battingTeam}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                const Text('Pick the two batters and the opening bowler.',
-                    style: TextStyle(fontSize: 12)),
+                const Text(
+                  'Pick the two batters and the opening bowler.',
+                  style: TextStyle(fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _pickGroup(
                   label: 'STRIKER — FACING',
@@ -1017,9 +1116,11 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
                           Navigator.pop(sheetCtx);
                         }
                       : null,
-                  child: Text(a == null || b == null || bowl == null
-                      ? 'PICK ALL THREE'
-                      : 'START INNINGS'),
+                  child: Text(
+                    a == null || b == null || bowl == null
+                        ? 'PICK ALL THREE'
+                        : 'START INNINGS',
+                  ),
                 ),
               ],
             ),
@@ -1056,7 +1157,7 @@ Widget _pickGroup({
       ? null
       : [
           for (final p in people)
-            if (p.id == selected) p
+            if (p.id == selected) p,
         ];
   final collapsed = chosen != null && !expanded;
   final shown = collapsed ? chosen : people;
@@ -1068,8 +1169,10 @@ Widget _pickGroup({
       if (people.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Text(emptyNote ?? 'No players.',
-              style: const TextStyle(fontSize: 12)),
+          child: Text(
+            emptyNote ?? 'No players.',
+            style: const TextStyle(fontSize: 12),
+          ),
         )
       else
         for (final p in shown)
@@ -1107,7 +1210,8 @@ void showSwapSheet(BuildContext context, MatchStore store) {
     builder: (_) => AlertDialog(
       title: const Text('SWAP ENDS?'),
       content: Text(
-          '${sheet.nameOf(sheet.strikerId ?? '')} ★ ⇄ ${sheet.nameOf(sheet.nonStrikerId ?? '')}'),
+        '${sheet.nameOf(sheet.strikerId ?? '')} ★ ⇄ ${sheet.nameOf(sheet.nonStrikerId ?? '')}',
+      ),
       actions: [
         RectBtn(
           primary: false,

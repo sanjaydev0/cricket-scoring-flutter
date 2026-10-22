@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../domain/players.dart';
 import '../math.dart';
 import '../store.dart';
@@ -31,8 +32,10 @@ void showWicketDialog(BuildContext context, MatchStore store) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('SELECT WICKET TYPE',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'SELECT WICKET TYPE',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 12),
               GridView.count(
                 crossAxisCount: 2,
@@ -83,10 +86,14 @@ Widget _wicketKey(BuildContext context, MatchStore store, DismissalType type) {
       // the enum exactly (`'Hit Wicket'` versus `Hit wicket`) used to be
       // recorded as bowled.
       store.score(
-          action: 'WICKET', wicketType: type.label, dismissal: type.name);
+        action: 'WICKET',
+        wicketType: type.label,
+        dismissal: type.name,
+      );
     },
     child: Text(
-        type == DismissalType.runOut ? 'RUN OUT ›' : type.label.toUpperCase()),
+      type == DismissalType.runOut ? 'RUN OUT ›' : type.label.toUpperCase(),
+    ),
   );
 }
 
@@ -108,12 +115,17 @@ void showOversSheet(BuildContext context, MatchStore store) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('OVERS HISTORY // INNINGS $innIdx',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w900, letterSpacing: 1)),
                     Text(
-                        '${inn.battingTeam}: ${inn.runs}/${inn.wickets} (${CricketMath.ballsToOvers(inn.legalDeliveries)} ov)',
-                        style: const TextStyle(fontSize: 12)),
+                      'OVERS HISTORY // INNINGS $innIdx',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    Text(
+                      '${inn.battingTeam}: ${inn.runs}/${inn.wickets} (${CricketMath.ballsToOvers(inn.legalDeliveries)} ov)',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -142,9 +154,12 @@ void showOversSheet(BuildContext context, MatchStore store) {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                          'OVER ${o.overNumber.toString().padLeft(2, '0')} // ${o.balls.fold<int>(0, (s, b) => s + b.totalRuns)} RUNS • ${o.balls.where((b) => b.isWicket).length} WKT',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 12)),
+                        'OVER ${o.overNumber.toString().padLeft(2, '0')} // ${o.balls.fold<int>(0, (s, b) => s + b.totalRuns)} RUNS • ${o.balls.where((b) => b.isWicket).length} WKT',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 6,
@@ -187,8 +202,9 @@ void showExtrasSheet(BuildContext context, MatchStore store) {
               Navigator.pop(context);
               store.score(action: 'WIDE', runs: runs);
             }),
-            _pillGroup('NO-BALL +', ['NB', 'NB+1', 'NB+2', 'NB+4', 'NB+6'],
-                (label) {
+            _pillGroup('NO-BALL +', ['NB', 'NB+1', 'NB+2', 'NB+4', 'NB+6'], (
+              label,
+            ) {
               final runs = label == 'NB' ? 0 : int.parse(label.substring(3));
               Navigator.pop(context);
               store.score(action: 'NB_DIRECT', runs: runs);
@@ -202,14 +218,19 @@ void showExtrasSheet(BuildContext context, MatchStore store) {
 }
 
 Widget _pillGroup(
-    String title, List<String> opts, ValueChanged<String> onPick) {
+  String title,
+  List<String> opts,
+  ValueChanged<String> onPick,
+) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+        ),
         const SizedBox(height: 6),
         Wrap(
           spacing: 8,
@@ -251,9 +272,13 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
               Row(
                 children: [
                   const Expanded(
-                    child: Text('MID-MATCH CONFIG',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    child: Text(
+                      'MID-MATCH CONFIG',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -265,20 +290,22 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
               _flatRow(
                 'MATCH OVERS',
                 StepperRow(
-                    label: '',
-                    value: overs,
-                    min: 1,
-                    max: 50,
-                    onChanged: (v) => setSheet(() => overs = v)),
+                  label: '',
+                  value: overs,
+                  min: 1,
+                  max: 50,
+                  onChanged: (v) => setSheet(() => overs = v),
+                ),
               ),
               _flatRow(
                 'PLAYERS / SIDE',
                 StepperRow(
-                    label: '',
-                    value: players,
-                    min: 2,
-                    max: 15,
-                    onChanged: (v) => setSheet(() => players = v)),
+                  label: '',
+                  value: players,
+                  min: 2,
+                  max: 15,
+                  onChanged: (v) => setSheet(() => players = v),
+                ),
               ),
               _flatRow(
                 'DOUBLE-SIDE',
@@ -362,8 +389,9 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                           lastManStanding: lms,
                         );
                         Navigator.pop(sheetCtx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(err ?? 'Saved')));
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(err ?? 'Saved')));
                       },
                       child: const Text('✓ SAVE'),
                     ),
@@ -383,8 +411,11 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                           const TeamDot(MatchStore.teamAColor, size: 10),
                           const SizedBox(width: 6),
                           Flexible(
-                              child: Text(cfg.teamA,
-                                  overflow: TextOverflow.ellipsis)),
+                            child: Text(
+                              cfg.teamA,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -400,8 +431,11 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                           const TeamDot(MatchStore.teamBColor, size: 10),
                           const SizedBox(width: 6),
                           Flexible(
-                              child: Text(cfg.teamB,
-                                  overflow: TextOverflow.ellipsis)),
+                            child: Text(
+                              cfg.teamB,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -434,9 +468,10 @@ Widget _flatRow(String title, Widget control) {
       children: [
         SizedBox(
           width: 110,
-          child: Text(title,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+          ),
         ),
         Expanded(child: control),
       ],
@@ -501,15 +536,17 @@ void showLookSheet(BuildContext context, MatchStore store) {
     showDragHandle: true,
     builder: (_) => ListenableBuilder(
       listenable: store,
-      builder: (_, __) => SafeArea(
+      builder: (_, _) => SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('STYLE',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'STYLE',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -524,8 +561,10 @@ void showLookSheet(BuildContext context, MatchStore store) {
                 ],
               ),
               const SizedBox(height: 12),
-              const Text('SCORE FONT',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'SCORE FONT',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -533,19 +572,24 @@ void showLookSheet(BuildContext context, MatchStore store) {
                 children: [
                   for (final id in ScoreFonts.ids)
                     ChoiceChip(
-                      label: Text('142/7',
-                          style: TextStyle(
-                              fontFamily: ScoreFonts.family(id),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15)),
+                      label: Text(
+                        '142/7',
+                        style: TextStyle(
+                          fontFamily: ScoreFonts.family(id),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                        ),
+                      ),
                       selected: store.fontId == id,
                       onSelected: (_) => store.setFont(id),
                     ),
                 ],
               ),
               const SizedBox(height: 12),
-              const Text('CELEBRATION',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'CELEBRATION',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -569,14 +613,20 @@ void showLookSheet(BuildContext context, MatchStore store) {
 
 /// Mid-match XI management: rows per side, search-to-add from the roster,
 /// type-a-name to create + add. Same cap and cross-exclusion as setup.
-Widget _squadSection(BuildContext context, MatchStore store,
-    StateSetter setSheet, TextEditingController squadField) {
+Widget _squadSection(
+  BuildContext context,
+  MatchStore store,
+  StateSetter setSheet,
+  TextEditingController squadField,
+) {
   final m = store.match!;
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text('SQUADS',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+      const Text(
+        'SQUADS',
+        style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+      ),
       const SizedBox(height: 8),
       for (final team in [m.config.teamA, m.config.teamB])
         _sideBlock(context, store, setSheet, team, squadField),
@@ -584,32 +634,44 @@ Widget _squadSection(BuildContext context, MatchStore store,
   );
 }
 
-Widget _sideBlock(BuildContext context, MatchStore store, StateSetter setSheet,
-    String team, TextEditingController squadField) {
+Widget _sideBlock(
+  BuildContext context,
+  MatchStore store,
+  StateSetter setSheet,
+  String team,
+  TextEditingController squadField,
+) {
   final m = store.match!;
   final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
   final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
   final cap = m.config.playersPerSide;
   // Quick adds: most frequent eligible first. Typed names go through the
   // field below (roster hit or created in-club, duplicates warned).
-  final cands = store.clubRoster.where((p) {
-    if (!p.active || mine.contains(p.id)) return false;
-    if (other.contains(p.id) && m.config.commonPlayers == 0) return false;
-    return true;
-  }).toList()
-    ..sort((a, b) => (store.playerAppearances[b.id] ?? 0)
-        .compareTo(store.playerAppearances[a.id] ?? 0));
+  final cands =
+      store.clubRoster.where((p) {
+        if (!p.active || mine.contains(p.id)) return false;
+        if (other.contains(p.id) && m.config.commonPlayers == 0) return false;
+        return true;
+      }).toList()..sort(
+        (a, b) => (store.playerAppearances[b.id] ?? 0).compareTo(
+          store.playerAppearances[a.id] ?? 0,
+        ),
+      );
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('$team (${mine.length}/$cap)',
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+      Text(
+        '$team (${mine.length}/$cap)',
+        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+      ),
       for (final id in mine.toList())
         Row(
           children: [
             Expanded(
-              child: Text(store.playerName(id),
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              child: Text(
+                store.playerName(id),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.close, size: 18),
@@ -681,8 +743,12 @@ Widget _sideBlock(BuildContext context, MatchStore store, StateSetter setSheet,
 
 /// Adds by typed name and clears the field either way, so the next player can
 /// be typed straight away.
-void _addByName(BuildContext context, MatchStore store, String team,
-    TextEditingController squadField) {
+void _addByName(
+  BuildContext context,
+  MatchStore store,
+  String team,
+  TextEditingController squadField,
+) {
   final err = store.addSquadByName(team, squadField.text);
   squadField.clear();
   if (err != null) {

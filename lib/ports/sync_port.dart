@@ -49,9 +49,7 @@ class ShareAttempt {
   /// The backend's own message, when there is one.
   final String? detail;
 
-  const ShareAttempt.ok(this.code)
-      : failure = null,
-        detail = null;
+  const ShareAttempt.ok(this.code) : failure = null, detail = null;
 
   const ShareAttempt.failed(this.failure, [this.detail]) : code = null;
 
@@ -59,13 +57,13 @@ class ShareAttempt {
 
   /// One sentence for the scorer. Names the actual cause instead of guessing.
   String get message => switch (failure) {
-        null => 'Live — code $code',
-        ShareFailure.noBackend =>
-          'Live sharing is off in this build (no backend configured)',
-        ShareFailure.noMatch => 'Start a match before sharing',
-        ShareFailure.offline => 'Cannot reach the live server — $detail',
-        ShareFailure.failed => 'Could not open a room — $detail',
-      };
+    null => 'Live — code $code',
+    ShareFailure.noBackend =>
+      'Live sharing is off in this build (no backend configured)',
+    ShareFailure.noMatch => 'Start a match before sharing',
+    ShareFailure.offline => 'Cannot reach the live server — $detail',
+    ShareFailure.failed => 'Could not open a room — $detail',
+  };
 }
 
 /// The seam between scoring and the internet.

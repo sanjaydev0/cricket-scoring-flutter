@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'dart:async';
 import 'dart:convert';
+
 import 'adapters/local_only_sync.dart';
 import 'domain/players.dart';
 import 'domain/room_snapshot.dart';
@@ -42,12 +44,14 @@ class MatchStore extends ChangeNotifier {
     // around the call would not see it, which is how a failing backend used to
     // become an unhandled async error. A ball never waits on, or fails because
     // of, the network. Dropped publishes self-heal on the next ball.
-    unawaited(sync
-        .publish(
-          code,
-          RoomSnapshot(seq: _roomSeq, match: doc, updatedAt: DateTime.now()),
-        )
-        .catchError((Object _) {}));
+    unawaited(
+      sync
+          .publish(
+            code,
+            RoomSnapshot(seq: _roomSeq, match: doc, updatedAt: DateTime.now()),
+          )
+          .catchError((Object _) {}),
+    );
   }
 
   /// Opens a live room for the current match. Returns the code, or the reason it
@@ -206,15 +210,15 @@ class MatchStore extends ChangeNotifier {
     askFielder = p.getBool(kAskFielder) ?? false;
     try {
       playerAppearances = Map<String, int>.from(
-          jsonDecode(p.getString(kAppearances) ?? '{}') as Map);
+        jsonDecode(p.getString(kAppearances) ?? '{}') as Map,
+      );
     } catch (_) {
       playerAppearances = {};
     }
     try {
-      appearanceKeys =
-          (jsonDecode(p.getString(kAppearanceKeys) ?? '[]') as List)
-              .map((e) => e.toString())
-              .toSet();
+      appearanceKeys = (jsonDecode(
+        p.getString(kAppearanceKeys) ?? '[]',
+      ) as List).map((e) => e.toString()).toSet();
     } catch (_) {
       appearanceKeys = {};
     }
@@ -251,8 +255,9 @@ class MatchStore extends ChangeNotifier {
       sheets = {};
       final sj = jsonDecode(p.getString(kSheets) ?? '{}') as Map;
       for (final e in sj.entries) {
-        sheets[e.key.toString()] =
-            InningsSheet.fromJson(Map<String, dynamic>.from(e.value as Map));
+        sheets[e.key.toString()] = InningsSheet.fromJson(
+          Map<String, dynamic>.from(e.value as Map),
+        );
       }
     } catch (_) {
       sheets = {};
@@ -296,7 +301,9 @@ class MatchStore extends ChangeNotifier {
       if (inn.completed) return false;
       final maxBalls = CricketMath.totalBalls(m.config.totalOvers);
       final maxW = CricketMath.getMaxWickets(
-          m.config.playersPerSide, m.config.rules.lastManStanding);
+        m.config.playersPerSide,
+        m.config.rules.lastManStanding,
+      );
       final tgt = m.target ?? (m.innings1.runs + 1);
       if (inn.runs >= tgt ||
           inn.legalDeliveries >= maxBalls ||
@@ -327,18 +334,26 @@ class MatchStore extends ChangeNotifier {
     await p.setString(kAppearances, jsonEncode(playerAppearances));
     await p.setString(kAppearanceKeys, jsonEncode(appearanceKeys.toList()));
     await p.setString(
-        kRoster, jsonEncode(roster.map((e) => e.toJson()).toList()));
+      kRoster,
+      jsonEncode(roster.map((e) => e.toJson()).toList()),
+    );
     await p.setString(
-        kClubs, jsonEncode(clubs.map((e) => e.toJson()).toList()));
+      kClubs,
+      jsonEncode(clubs.map((e) => e.toJson()).toList()),
+    );
     await p.setString(
-        kProfiles, jsonEncode(profiles.map((e) => e.toJson()).toList()));
+      kProfiles,
+      jsonEncode(profiles.map((e) => e.toJson()).toList()),
+    );
     if (activeProfileId != null) {
       await p.setString(kActiveProfile, activeProfileId!);
     } else {
       await p.remove(kActiveProfile);
     }
     await p.setString(
-        kSheets, jsonEncode(sheets.map((k, v) => MapEntry(k, v.toJson()))));
+      kSheets,
+      jsonEncode(sheets.map((k, v) => MapEntry(k, v.toJson()))),
+    );
   }
 
   void setTheme(String id) {
@@ -458,7 +473,9 @@ class MatchStore extends ChangeNotifier {
 
   ClubProfile createProfile({required String name, required String pin}) {
     final profile = ClubProfile.create(
-        name: name.trim(), pinHash: hashPin(pin, name.trim()));
+      name: name.trim(),
+      pinHash: hashPin(pin, name.trim()),
+    );
     profiles.add(profile);
     activeProfileId = profile.id;
     activeClubId = null;
@@ -522,21 +539,23 @@ class MatchStore extends ChangeNotifier {
     return clubRoster.any((p) => p.name.trim().toLowerCase() == q);
   }
 
-  Player? addPlayer(
-      {required String name,
-      PlayerRole role = PlayerRole.allRounder,
-      BattingStyle battingStyle = BattingStyle.rightHand,
-      BowlingStyle bowlingStyle = BowlingStyle.none,
-      String? phone}) {
+  Player? addPlayer({
+    required String name,
+    PlayerRole role = PlayerRole.allRounder,
+    BattingStyle battingStyle = BattingStyle.rightHand,
+    BowlingStyle bowlingStyle = BowlingStyle.none,
+    String? phone,
+  }) {
     final cid = activeClubId;
     if (cid == null) return null;
     if (duplicateName(name)) return null;
     final player = Player.create(
-        clubId: cid,
-        name: name.trim(),
-        role: role,
-        battingStyle: battingStyle,
-        bowlingStyle: bowlingStyle);
+      clubId: cid,
+      name: name.trim(),
+      role: role,
+      battingStyle: battingStyle,
+      bowlingStyle: bowlingStyle,
+    );
     if (phone != null && phone.trim().isNotEmpty) {
       player.phone = phone.trim();
     }
@@ -667,8 +686,9 @@ class MatchStore extends ChangeNotifier {
     final ids = members.map((p) => p.id).toSet();
     final m = match;
     if (m != null) {
-      final inSquad = ids.any((pid) =>
-          m.config.squadA.contains(pid) || m.config.squadB.contains(pid));
+      final inSquad = ids.any(
+        (pid) => m.config.squadA.contains(pid) || m.config.squadB.contains(pid),
+      );
       if (inSquad) return 'Players are in the live XI — remove them first';
       for (final sheet in sheets.values) {
         final played = ids.any((pid) {
@@ -844,8 +864,9 @@ class MatchStore extends ChangeNotifier {
     }
     pushSnapshot();
     final outgoingName = sheet.nameOf(outgoingId);
-    final newcomerName =
-        newcomerId.isEmpty ? 'nobody' : sheet.nameOf(newcomerId);
+    final newcomerName = newcomerId.isEmpty
+        ? 'nobody'
+        : sheet.nameOf(newcomerId);
     sheet.substituteBatter(
       atStrikerEnd: atStrikerEnd,
       newcomerId: newcomerId,
@@ -919,12 +940,15 @@ class MatchStore extends ChangeNotifier {
     // score() is what makes it trustworthy and this must not silently regress
     // into prompting for a bowler who will never bowl again.
     final m = match;
-    final maxBalls =
-        m == null ? 0 : CricketMath.totalBalls(m.config.totalOvers);
+    final maxBalls = m == null
+        ? 0
+        : CricketMath.totalBalls(m.config.totalOvers);
     final maxW = m == null
         ? 0
         : CricketMath.getMaxWickets(
-            m.config.playersPerSide, m.config.rules.lastManStanding);
+            m.config.playersPerSide,
+            m.config.rules.lastManStanding,
+          );
     final over = inn.legalDeliveries >= maxBalls || inn.wickets >= maxW;
     sheet.needsNewBowler = !inn.completed && !over;
   }
@@ -954,10 +978,12 @@ class MatchStore extends ChangeNotifier {
 
   void pushSnapshot() {
     if (match == null) return;
-    _undo.add(jsonEncode({
-      'm': match!.toJson(),
-      's': sheets.map((k, v) => MapEntry(k, v.toJson())),
-    }));
+    _undo.add(
+      jsonEncode({
+        'm': match!.toJson(),
+        's': sheets.map((k, v) => MapEntry(k, v.toJson())),
+      }),
+    );
     if (_undo.length > 60) _undo.removeAt(0);
     _redo.clear();
   }
@@ -977,10 +1003,12 @@ class MatchStore extends ChangeNotifier {
     lastChange = null;
     if (_undo.isEmpty) return;
     if (match != null) {
-      _redo.add(jsonEncode({
-        'm': match!.toJson(),
-        's': sheets.map((k, v) => MapEntry(k, v.toJson())),
-      }));
+      _redo.add(
+        jsonEncode({
+          'm': match!.toJson(),
+          's': sheets.map((k, v) => MapEntry(k, v.toJson())),
+        }),
+      );
     }
     final raw = _undo.removeLast();
     final env = _decodeEnvelope(raw);
@@ -990,8 +1018,9 @@ class MatchStore extends ChangeNotifier {
         sheets = {};
         final sj = Map<String, dynamic>.from((env['s'] ?? {}) as Map);
         for (final e in sj.entries) {
-          sheets[e.key.toString()] =
-              InningsSheet.fromJson(Map<String, dynamic>.from(e.value as Map));
+          sheets[e.key.toString()] = InningsSheet.fromJson(
+            Map<String, dynamic>.from(e.value as Map),
+          );
         }
       } catch (_) {}
     } else {
@@ -1018,7 +1047,9 @@ class MatchStore extends ChangeNotifier {
   void startMatch(MatchConfig cfg) {
     final batFirst = cfg.battingFirst == 'B';
     final inn = Innings.create(
-        batFirst ? cfg.teamB : cfg.teamA, batFirst ? cfg.teamA : cfg.teamB);
+      batFirst ? cfg.teamB : cfg.teamA,
+      batFirst ? cfg.teamA : cfg.teamB,
+    );
     match = Match(config: cfg, innings1: inn);
     _undo.clear();
     _redo.clear();
@@ -1044,7 +1075,9 @@ class MatchStore extends ChangeNotifier {
     final existing = sheets[key];
     if (existing != null) return existing;
     final sheet = InningsSheet(
-        battingTeam: inn.battingTeam, bowlingTeam: inn.bowlingTeam);
+      battingTeam: inn.battingTeam,
+      bowlingTeam: inn.bowlingTeam,
+    );
     final battingSquad = squadForTeam(inn.battingTeam);
     final bowlingSquad = squadForTeam(inn.bowlingTeam);
     sheet.registerSquad([...battingSquad, ...bowlingSquad]);
@@ -1064,7 +1097,7 @@ class MatchStore extends ChangeNotifier {
     final byId = {for (final p in roster) p.id: p};
     return [
       for (final id in ids)
-        if (byId[id] != null) byId[id]!
+        if (byId[id] != null) byId[id]!,
     ];
   }
 
@@ -1151,7 +1184,7 @@ class MatchStore extends ChangeNotifier {
 
   String? score({
     required String
-        action, // DOT,RUNS,FOUR,SIX,WIDE,NB_DIRECT,BYE,LEGBYE,WICKET
+    action, // DOT,RUNS,FOUR,SIX,WIDE,NB_DIRECT,BYE,LEGBYE,WICKET
     int runs = 0,
     String wicketType = 'Bowled',
     String? dismissal, // DismissalType.name when tracking players
@@ -1209,7 +1242,8 @@ class MatchStore extends ChangeNotifier {
     // the strings: `'Run Out' != 'Run out'` is what let a non-run-out slip past
     // the no-ball and free-hit guards, and what made a run-out print as
     // `b <bowler>` on the card.
-    final type = DismissalType.tryFromId(dismissal ?? wicketType) ??
+    final type =
+        DismissalType.tryFromId(dismissal ?? wicketType) ??
         DismissalType.bowled;
 
     Ball b;
@@ -1217,11 +1251,12 @@ class MatchStore extends ChangeNotifier {
       case 'DOT':
         if (nbArmed) {
           b = Ball(
-              runs: 0,
-              extra: 'NB',
-              extraRuns: rules.noBallPenalty,
-              isLegal: false,
-              badge: 'NB');
+            runs: 0,
+            extra: 'NB',
+            extraRuns: rules.noBallPenalty,
+            isLegal: false,
+            badge: 'NB',
+          );
           nbArmed = false;
         } else {
           b = Ball(runs: 0, badge: '0');
@@ -1230,11 +1265,12 @@ class MatchStore extends ChangeNotifier {
       case 'RUNS':
         if (nbArmed) {
           b = Ball(
-              runs: runs,
-              extra: 'NB',
-              extraRuns: rules.noBallPenalty,
-              isLegal: false,
-              badge: 'N$runs');
+            runs: runs,
+            extra: 'NB',
+            extraRuns: rules.noBallPenalty,
+            isLegal: false,
+            badge: 'N$runs',
+          );
           nbArmed = false;
         } else {
           b = Ball(runs: runs, badge: '$runs');
@@ -1243,11 +1279,12 @@ class MatchStore extends ChangeNotifier {
       case 'FOUR':
         if (nbArmed) {
           b = Ball(
-              runs: 4,
-              extra: 'NB',
-              extraRuns: rules.noBallPenalty,
-              isLegal: false,
-              badge: 'N4');
+            runs: 4,
+            extra: 'NB',
+            extraRuns: rules.noBallPenalty,
+            isLegal: false,
+            badge: 'N4',
+          );
           nbArmed = false;
         } else {
           b = Ball(runs: 4, badge: '4');
@@ -1256,11 +1293,12 @@ class MatchStore extends ChangeNotifier {
       case 'SIX':
         if (nbArmed) {
           b = Ball(
-              runs: 6,
-              extra: 'NB',
-              extraRuns: rules.noBallPenalty,
-              isLegal: false,
-              badge: 'N6');
+            runs: 6,
+            extra: 'NB',
+            extraRuns: rules.noBallPenalty,
+            isLegal: false,
+            badge: 'N6',
+          );
           nbArmed = false;
         } else {
           b = Ball(runs: 6, badge: '6');
@@ -1270,35 +1308,39 @@ class MatchStore extends ChangeNotifier {
         // runs = overthrow runs on top of the wide penalty.
         final total = rules.widePenalty + runs;
         b = Ball(
-            runs: 0,
-            extra: 'WD',
-            extraRuns: total,
-            isLegal: false,
-            badge: total <= 1 ? 'WD' : 'WD$total');
+          runs: 0,
+          extra: 'WD',
+          extraRuns: total,
+          isLegal: false,
+          badge: total <= 1 ? 'WD' : 'WD$total',
+        );
         break;
       case 'NB_DIRECT':
         b = Ball(
-            runs: runs,
-            extra: 'NB',
-            extraRuns: rules.noBallPenalty,
-            isLegal: false,
-            badge: runs > 0 ? 'N$runs' : 'NB');
+          runs: runs,
+          extra: 'NB',
+          extraRuns: rules.noBallPenalty,
+          isLegal: false,
+          badge: runs > 0 ? 'N$runs' : 'NB',
+        );
         break;
       case 'BYE':
         b = Ball(
-            runs: 0,
-            extra: 'B',
-            extraRuns: runs,
-            isLegal: true,
-            badge: 'B$runs');
+          runs: 0,
+          extra: 'B',
+          extraRuns: runs,
+          isLegal: true,
+          badge: 'B$runs',
+        );
         break;
       case 'LEGBYE':
         b = Ball(
-            runs: 0,
-            extra: 'LB',
-            extraRuns: runs,
-            isLegal: true,
-            badge: 'LB$runs');
+          runs: 0,
+          extra: 'LB',
+          extraRuns: runs,
+          isLegal: true,
+          badge: 'LB$runs',
+        );
         break;
       case 'WICKET':
         // Wickets are recorded as standalone legal balls (a run-out on a
@@ -1312,13 +1354,14 @@ class MatchStore extends ChangeNotifier {
             return 'Only run-out possible on no-ball';
           }
           b = Ball(
-              runs: runs,
-              extra: 'NB',
-              extraRuns: rules.noBallPenalty,
-              isLegal: false,
-              isWicket: true,
-              wicketType: type.label,
-              badge: wicketBadge(runs));
+            runs: runs,
+            extra: 'NB',
+            extraRuns: rules.noBallPenalty,
+            isLegal: false,
+            isWicket: true,
+            wicketType: type.label,
+            badge: wicketBadge(runs),
+          );
           if (rules.freeHit) inn.isFreeHitActive = true;
           break;
         }
@@ -1327,10 +1370,11 @@ class MatchStore extends ChangeNotifier {
         } else {
           // Run-outs with completed runs read W+1 / W+2 on the strip.
           b = Ball(
-              runs: runs,
-              isWicket: true,
-              wicketType: type.label,
-              badge: wicketBadge(runs));
+            runs: runs,
+            isWicket: true,
+            wicketType: type.label,
+            badge: wicketBadge(runs),
+          );
         }
         inn.isFreeHitActive = false;
         break;
@@ -1358,8 +1402,11 @@ class MatchStore extends ChangeNotifier {
     }
     _addBall(inn, b);
     if (sheet != null) {
-      sheet.applyDelivery(b,
-          dismissalType: b.isWicket ? type : null, fielderName: fielderName);
+      sheet.applyDelivery(
+        b,
+        dismissalType: b.isWicket ? type : null,
+        fielderName: fielderName,
+      );
     }
 
     // Settle the innings BEFORE deciding whether anything is owed. The old
@@ -1375,8 +1422,9 @@ class MatchStore extends ChangeNotifier {
         // changed, so it also decides who faces the next ball.
         final outIsNonStriker =
             outAtNonStrikerEnd && type == DismissalType.runOut;
-        final outId =
-            outIsNonStriker ? (sheet.nonStrikerId ?? '') : (b.strikerId ?? '');
+        final outId = outIsNonStriker
+            ? (sheet.nonStrikerId ?? '')
+            : (b.strikerId ?? '');
         // Crossing is DERIVED, never a manual toggle: dismissing the
         // non-striker means the batters must have crossed for him to be out
         // at that end, and an odd number of completed runs always changes
@@ -1590,7 +1638,9 @@ class MatchStore extends ChangeNotifier {
       return 'Overs below balls already bowled';
     }
     final maxW = CricketMath.getMaxWickets(
-        newPlayers, lastManStanding ?? cfg.rules.lastManStanding);
+      newPlayers,
+      lastManStanding ?? cfg.rules.lastManStanding,
+    );
     if (inn.wickets >= maxW && !inn.completed) {
       return 'Players below wickets already fallen';
     }
@@ -1639,7 +1689,9 @@ class MatchStore extends ChangeNotifier {
     final inn = innings!;
     final maxBalls = CricketMath.totalBalls(m.config.totalOvers);
     final maxW = CricketMath.getMaxWickets(
-        m.config.playersPerSide, m.config.rules.lastManStanding);
+      m.config.playersPerSide,
+      m.config.rules.lastManStanding,
+    );
     if (m.currentInnings == 1) {
       if (inn.legalDeliveries >= maxBalls || inn.wickets >= maxW) {
         inn.completed = true;
@@ -1682,7 +1734,10 @@ class MatchStore extends ChangeNotifier {
   void startSecondInnings() {
     final m = match!;
     m.innings2 = Innings.create(
-        m.innings1.bowlingTeam, m.innings1.battingTeam, m.target);
+      m.innings1.bowlingTeam,
+      m.innings1.battingTeam,
+      m.target,
+    );
     m.currentInnings = 2;
     nbArmed = false;
     if (m.config.trackPlayers) _ensureSheet(2);
@@ -1725,8 +1780,9 @@ class MatchStore extends ChangeNotifier {
     try {
       final sj = Map<String, dynamic>.from((rec['sheets'] ?? {}) as Map);
       for (final e in sj.entries) {
-        out[e.key.toString()] =
-            InningsSheet.fromJson(Map<String, dynamic>.from(e.value as Map));
+        out[e.key.toString()] = InningsSheet.fromJson(
+          Map<String, dynamic>.from(e.value as Map),
+        );
       }
     } catch (_) {}
     return out;
@@ -1750,7 +1806,9 @@ class MatchStore extends ChangeNotifier {
     if (idx >= 0 && idx < h.length) {
       h.removeAt(idx);
       await p.setString(
-          kHistory, jsonEncode(h.map((e) => e.toJson()).toList()));
+        kHistory,
+        jsonEncode(h.map((e) => e.toJson()).toList()),
+      );
       notifyListeners();
     }
   }

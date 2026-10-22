@@ -22,13 +22,15 @@ void main() {
   test('boundary and wicket clips carry audible body', () {
     // A boundary that is one click long reads as "no sound" in the hand.
     for (final n in ['four', 'six', 'wicket']) {
-      expect(File('assets/audio/$n.ogg').lengthSync(), greaterThan(4000),
-          reason: '$n.ogg too small to be a real effect');
+      expect(
+        File('assets/audio/$n.ogg').lengthSync(),
+        greaterThan(4000),
+        reason: '$n.ogg too small to be a real effect',
+      );
     }
   });
 
-  test('firing sounds without a platform channel is safe and stays silent',
-      () async {
+  test('firing sounds without a platform channel is safe and stays silent', () async {
     // No init() in unit tests: no pools exist, and _play must no-op instead of
     // throwing uncatchable async errors.
     expect(SoundService.instance.ready, isFalse);

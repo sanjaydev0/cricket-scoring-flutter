@@ -36,7 +36,7 @@ class _ClubScreenState extends State<ClubScreen> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: widget.store,
-      builder: (_, __) {
+      builder: (_, _) {
         final store = widget.store;
         return Scaffold(
           appBar: AppBar(title: const Text('CLUB')),
@@ -103,8 +103,10 @@ class _ClubScreenState extends State<ClubScreen> {
             children: [
               const Text('CLUB', style: TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
-              const Text('Players belong to the club.',
-                  style: TextStyle(fontSize: 12)),
+              const Text(
+                'Players belong to the club.',
+                style: TextStyle(fontSize: 12),
+              ),
               const SizedBox(height: 8),
               RectBtn(
                 onTap: () => _clubSheet(context, store),
@@ -142,8 +144,11 @@ class _ClubScreenState extends State<ClubScreen> {
                       onPressed: () => _renameClubSheet(context, store, c),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          size: 18, color: Color(0xFFDC143C)),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: Color(0xFFDC143C),
+                      ),
                       tooltip: 'Delete club',
                       onPressed: () => _deleteClubConfirm(context, store, c),
                     ),
@@ -183,7 +188,9 @@ class _ClubScreenState extends State<ClubScreen> {
           controller: name,
           textCapitalization: TextCapitalization.characters,
           decoration: const InputDecoration(
-              labelText: 'Club name', border: OutlineInputBorder()),
+            labelText: 'Club name',
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
           RectBtn(
@@ -259,14 +266,18 @@ class _ClubScreenState extends State<ClubScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('NEW CLUB',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'NEW CLUB',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: name,
                 textCapitalization: TextCapitalization.characters,
                 decoration: const InputDecoration(
-                    labelText: 'Club name', border: OutlineInputBorder()),
+                  labelText: 'Club name',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               RectBtn(
@@ -314,7 +325,9 @@ class _ClubScreenState extends State<ClubScreen> {
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
-                    labelText: 'Add player', border: OutlineInputBorder()),
+                  labelText: 'Add player',
+                  border: OutlineInputBorder(),
+                ),
                 onSubmitted: (_) => _add(store),
               ),
             ),
@@ -329,14 +342,18 @@ class _ClubScreenState extends State<ClubScreen> {
               child: DropdownButtonFormField<BattingStyle>(
                 initialValue: _bat,
                 decoration: const InputDecoration(
-                    labelText: 'Batting', border: OutlineInputBorder()),
+                  labelText: 'Batting',
+                  border: OutlineInputBorder(),
+                ),
                 items: const [
                   DropdownMenuItem(
-                      value: BattingStyle.rightHand,
-                      child: Text('Right-hand bat')),
+                    value: BattingStyle.rightHand,
+                    child: Text('Right-hand bat'),
+                  ),
                   DropdownMenuItem(
-                      value: BattingStyle.leftHand,
-                      child: Text('Left-hand bat')),
+                    value: BattingStyle.leftHand,
+                    child: Text('Left-hand bat'),
+                  ),
                 ],
                 onChanged: (v) =>
                     setState(() => _bat = v ?? BattingStyle.rightHand),
@@ -347,11 +364,15 @@ class _ClubScreenState extends State<ClubScreen> {
               child: DropdownButtonFormField<BowlingStyle>(
                 initialValue: _bowl,
                 decoration: const InputDecoration(
-                    labelText: 'Bowling', border: OutlineInputBorder()),
+                  labelText: 'Bowling',
+                  border: OutlineInputBorder(),
+                ),
                 items: [
                   for (final b in BowlingStyle.values)
                     DropdownMenuItem(
-                        value: b, child: Text(bowlingStyleName(b))),
+                      value: b,
+                      child: Text(bowlingStyleName(b)),
+                    ),
                 ],
                 onChanged: (v) =>
                     setState(() => _bowl = v ?? BowlingStyle.none),
@@ -382,8 +403,10 @@ class _ClubScreenState extends State<ClubScreen> {
           const Card(
             child: Padding(
               padding: EdgeInsets.all(20),
-              child: Text('No players yet — add your first above.',
-                  textAlign: TextAlign.center),
+              child: Text(
+                'No players yet — add your first above.',
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
         for (final p in list)
@@ -404,12 +427,12 @@ class _ClubScreenState extends State<ClubScreen> {
                     '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}',
                 valueLabel: 'MATCHES',
                 value: '${store.careerMatches(p.id)}',
-                trailing: Icon(Icons.chevron_right,
-                    size: 20,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.45)),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.45),
+                ),
                 onTap: () => _playerSheet(context, store, p),
               ),
             ),
@@ -431,10 +454,11 @@ class _ClubScreenState extends State<ClubScreen> {
       return;
     }
     final created = store.addPlayer(
-        name: _name.text.trim(),
-        role: _role,
-        battingStyle: _bat,
-        bowlingStyle: _bowl);
+      name: _name.text.trim(),
+      role: _role,
+      battingStyle: _bat,
+      bowlingStyle: _bowl,
+    );
     if (created == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Create a club first.')));
@@ -452,26 +476,32 @@ class _ClubScreenState extends State<ClubScreen> {
       builder: (_) => SafeArea(
         child: Padding(
           padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+            left: 20,
+            right: 20,
+            top: 12,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('BULK ADD',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'BULK ADD',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 4),
-              const Text('One per line. Optional role: "Name - bowler".',
-                  style: TextStyle(fontSize: 12)),
+              const Text(
+                'One per line. Optional role: "Name - bowler".',
+                style: TextStyle(fontSize: 12),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: _bulk,
                 maxLines: 6,
                 decoration: const InputDecoration(
-                    hintText: 'Rohit Sharma\nRavi Patel - bowler',
-                    border: OutlineInputBorder()),
+                  hintText: 'Rohit Sharma\nRavi Patel - bowler',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               RectBtn(
@@ -479,10 +509,15 @@ class _ClubScreenState extends State<ClubScreen> {
                   final res = store.addPlayersBulk(_bulk.text);
                   _bulk.clear();
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(res.skipped > 0
-                          ? '${res.added.length} added, ${res.skipped} already existed'
-                          : '${res.added.length} added')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        res.skipped > 0
+                            ? '${res.added.length} added, ${res.skipped} already existed'
+                            : '${res.added.length} added',
+                      ),
+                    ),
+                  );
                   setState(() {});
                 },
                 child: const Text('ADD ALL'),
@@ -500,7 +535,8 @@ class _ClubScreenState extends State<ClubScreen> {
       builder: (_) => AlertDialog(
         title: Text('DELETE ${p.name}?'),
         content: const Text(
-            'Removes them from the roster and club lists. Past matches keep their name.'),
+          'Removes them from the roster and club lists. Past matches keep their name.',
+        ),
         actions: [
           RectBtn(
             primary: false,
@@ -539,8 +575,10 @@ class _ClubScreenState extends State<ClubScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('NAME ALREADY TAKEN',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'NAME ALREADY TAKEN',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 8),
               Text(
                 '${clash.name} is already in ${store.activeClub?.name ?? 'the club'}'
@@ -585,9 +623,10 @@ class _ClubScreenState extends State<ClubScreen> {
       builder: (_) => AlertDialog(
         title: const Text('RENAME'),
         content: TextField(
-            controller: c,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(border: OutlineInputBorder())),
+          controller: c,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
         actions: [
           RectBtn(
             primary: false,
@@ -611,10 +650,12 @@ class _ClubScreenState extends State<ClubScreen> {
 
   Widget _statsList(BuildContext context, MatchStore store) {
     final list = store.clubRoster.toList()
-      ..sort((a, b) => store
-          .careerBatting(b.id)
-          .runs
-          .compareTo(store.careerBatting(a.id).runs));
+      ..sort(
+        (a, b) => store
+            .careerBatting(b.id)
+            .runs
+            .compareTo(store.careerBatting(a.id).runs),
+      );
     if (list.isEmpty) {
       return const Card(
         child: Padding(
@@ -629,8 +670,10 @@ class _ClubScreenState extends State<ClubScreen> {
           Card(
             child: ListTile(
               leading: CircleAvatar(child: Text(_initials(p.name))),
-              title: Text(p.name,
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              title: Text(
+                p.name,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
               subtitle: Text(_careerLine(store, p.id)),
               onTap: () => _playerSheet(context, store, p),
             ),
@@ -672,14 +715,22 @@ class _ClubScreenState extends State<ClubScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(p.name.toUpperCase(),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w900, fontSize: 18)),
-              Text('${_roleName(p.role)} • $m matches',
-                  style: const TextStyle(fontSize: 12)),
+              Text(
+                p.name.toUpperCase(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+              Text(
+                '${_roleName(p.role)} • $m matches',
+                style: const TextStyle(fontSize: 12),
+              ),
               const SizedBox(height: 12),
-              const Text('BATTING',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'BATTING',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 4),
               _grid({
                 'Innings': '${b.innings}',
@@ -696,8 +747,10 @@ class _ClubScreenState extends State<ClubScreen> {
                 '50s': '${b.fifties}',
               }),
               const SizedBox(height: 12),
-              const Text('BOWLING',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'BOWLING',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 4),
               _grid({
                 'Innings': '${w.innings}',
@@ -714,14 +767,12 @@ class _ClubScreenState extends State<ClubScreen> {
                 '3w': '${w.threeHauls}',
               }),
               const SizedBox(height: 12),
-              const Text('FIELDING',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'FIELDING',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 4),
-              _grid({
-                'Catches': '$fC',
-                'Run outs': '$fR',
-                'Stumpings': '$fS',
-              }),
+              _grid({'Catches': '$fC', 'Run outs': '$fR', 'Stumpings': '$fS'}),
               const SizedBox(height: 16),
               // The row shows the player; the actions live here so the roster
               // stays one clean line per person.
@@ -784,12 +835,20 @@ class _ClubScreenState extends State<ClubScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(e.key,
-                    style: const TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.w800)),
-                Text(e.value,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w900)),
+                Text(
+                  e.key,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  e.value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ],
             ),
           ),
@@ -799,11 +858,11 @@ class _ClubScreenState extends State<ClubScreen> {
 
   String _num(double? v) => v == null ? '—' : v.toStringAsFixed(1);
   String _roleName(PlayerRole r) => switch (r) {
-        PlayerRole.batter => 'Batter',
-        PlayerRole.bowler => 'Bowler',
-        PlayerRole.allRounder => 'All-rounder',
-        PlayerRole.keeper => 'Keeper',
-      };
+    PlayerRole.batter => 'Batter',
+    PlayerRole.bowler => 'Bowler',
+    PlayerRole.allRounder => 'All-rounder',
+    PlayerRole.keeper => 'Keeper',
+  };
   String _initials(String n) {
     final parts = n.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty) return '?';
@@ -818,8 +877,11 @@ class _ClubScreenState extends State<ClubScreen> {
 /// Used by the club roster and by the match-setup squad picker, so a player
 /// created while picking a XI is a REAL club player — the old flow forced a
 /// trip to CLUB first, which is where people got stuck.
-Future<Player?> showAddPlayerSheet(BuildContext context, MatchStore store,
-    {String title = 'ADD PLAYER'}) async {
+Future<Player?> showAddPlayerSheet(
+  BuildContext context,
+  MatchStore store, {
+  String title = 'ADD PLAYER',
+}) async {
   final nameCtl = TextEditingController();
   var role = PlayerRole.allRounder;
   var bat = BattingStyle.rightHand;
@@ -833,30 +895,38 @@ Future<Player?> showAddPlayerSheet(BuildContext context, MatchStore store,
       builder: (ctx, setSheet) => SafeArea(
         child: Padding(
           padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 12,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+            left: 20,
+            right: 20,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 16)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                const Text('Saved to the club roster and this XI.',
-                    style: TextStyle(fontSize: 12)),
+                const Text(
+                  'Saved to the club roster and this XI.',
+                  style: TextStyle(fontSize: 12),
+                ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: nameCtl,
                   autofocus: true,
                   textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
-                      labelText: 'Name',
-                      errorText: error,
-                      border: const OutlineInputBorder()),
+                    labelText: 'Name',
+                    errorText: error,
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -865,14 +935,18 @@ Future<Player?> showAddPlayerSheet(BuildContext context, MatchStore store,
                       child: DropdownButtonFormField<BattingStyle>(
                         initialValue: bat,
                         decoration: const InputDecoration(
-                            labelText: 'Batting', border: OutlineInputBorder()),
+                          labelText: 'Batting',
+                          border: OutlineInputBorder(),
+                        ),
                         items: const [
                           DropdownMenuItem(
-                              value: BattingStyle.rightHand,
-                              child: Text('Right-hand bat')),
+                            value: BattingStyle.rightHand,
+                            child: Text('Right-hand bat'),
+                          ),
                           DropdownMenuItem(
-                              value: BattingStyle.leftHand,
-                              child: Text('Left-hand bat')),
+                            value: BattingStyle.leftHand,
+                            child: Text('Left-hand bat'),
+                          ),
                         ],
                         onChanged: (v) =>
                             setSheet(() => bat = v ?? BattingStyle.rightHand),
@@ -883,11 +957,15 @@ Future<Player?> showAddPlayerSheet(BuildContext context, MatchStore store,
                       child: DropdownButtonFormField<BowlingStyle>(
                         initialValue: bowl,
                         decoration: const InputDecoration(
-                            labelText: 'Bowling', border: OutlineInputBorder()),
+                          labelText: 'Bowling',
+                          border: OutlineInputBorder(),
+                        ),
                         items: [
                           for (final b in BowlingStyle.values)
                             DropdownMenuItem(
-                                value: b, child: Text(bowlingStyleName(b))),
+                              value: b,
+                              child: Text(bowlingStyleName(b)),
+                            ),
                         ],
                         onChanged: (v) =>
                             setSheet(() => bowl = v ?? BowlingStyle.none),
@@ -922,10 +1000,11 @@ Future<Player?> showAddPlayerSheet(BuildContext context, MatchStore store,
                       return;
                     }
                     final p = store.addPlayer(
-                        name: name,
-                        role: role,
-                        battingStyle: bat,
-                        bowlingStyle: bowl);
+                      name: name,
+                      role: role,
+                      battingStyle: bat,
+                      bowlingStyle: bowl,
+                    );
                     if (p == null) {
                       setSheet(() => error = 'Create a club first');
                       return;
@@ -948,8 +1027,8 @@ Future<Player?> showAddPlayerSheet(BuildContext context, MatchStore store,
 
 /// Role label shared by the club form and the add-player sheet.
 String _roleNameOf(PlayerRole r) => switch (r) {
-      PlayerRole.batter => 'Batter',
-      PlayerRole.bowler => 'Bowler',
-      PlayerRole.allRounder => 'All-rounder',
-      PlayerRole.keeper => 'Keeper',
-    };
+  PlayerRole.batter => 'Batter',
+  PlayerRole.bowler => 'Bowler',
+  PlayerRole.allRounder => 'All-rounder',
+  PlayerRole.keeper => 'Keeper',
+};

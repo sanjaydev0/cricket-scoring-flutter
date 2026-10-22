@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../domain/players.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -7,15 +8,48 @@ import 'scoreboard.dart';
 import 'sheets.dart';
 import 'player_sheets.dart';
 
-class ScoringScreen extends StatelessWidget {
+class ScoringScreen extends StatefulWidget {
   final MatchStore store;
   const ScoringScreen(this.store, {super.key});
 
   @override
+  State<ScoringScreen> createState() => _ScoringScreenState();
+}
+
+class _ScoringScreenState extends State<ScoringScreen> {
+  MatchStore get store => widget.store;
+
+  /// Which innings the picker has already been offered for.
+  ///
+  /// The picker opens ITSELF when the openers are missing: after START
+  /// SCORING the umpire should not have to hunt for a "SET" button, and the
+  /// same is true at the start of the second innings. Once offered, it is not
+  /// offered again in that innings — the blue SET card stays as the fallback.
+  int? _offeredInnings;
+
+  void _offerInningsStart() {
+    final store = widget.store;
+    final m = store.match;
+    if (m == null || !m.config.trackPlayers) return;
+    final sheet = store.currentSheet;
+    if (sheet == null) return;
+    // Nothing to ask: both batters are in and the bowler is picked.
+    if (sheet.strikerId != null && sheet.bowlerId != null) return;
+    if (_offeredInnings == m.currentInnings) return;
+    _offeredInnings = m.currentInnings;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showInningsStartSheet(context, store);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _offerInningsStart();
     return ListenableBuilder(
-      listenable: store,
-      builder: (_, __) {
+      listenable: widget.store,
+      builder: (_, _) {
+        final store = widget.store;
         final m = store.match;
         if (m == null) {
           return const Scaffold(body: Center(child: Text('No live match')));
@@ -23,14 +57,16 @@ class ScoringScreen extends StatelessWidget {
         if (m.completed && store.breakDest == null) {
           goOnce(context, '/result');
           return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         if (m.currentInnings == 1 &&
             m.innings1.completed &&
             store.breakDest == null) {
           goOnce(context, '/break');
           return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         final inn = store.innings!;
         final cur = inn.currentOverBalls;
@@ -40,304 +76,313 @@ class ScoringScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('INN ${m.currentInnings} • ${inn.battingTeam}',
-                style:
-                    const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+            title: Text(
+              'INN ${m.currentInnings} • ${inn.battingTeam}',
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+            ),
             actions: [
               if (store.roomCode != null) ...[
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 12),
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   alignment: Alignment.center,
-                  child: Text(store.roomCode!,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                          color: Colors.white)),
+                  child: Text(
+                    store.roomCode!,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
                 IconButton(
-                    icon: const Icon(Icons.stop_circle_outlined),
-                    tooltip: 'Stop sharing',
-                    onPressed: () => store.stopSharing()),
+                  icon: const Icon(Icons.stop_circle_outlined),
+                  tooltip: 'Stop sharing',
+                  onPressed: () => store.stopSharing(),
+                ),
               ] else
                 IconButton(
-                    icon: const Icon(Icons.ios_share),
-                    tooltip: 'Share live score',
-                    onPressed: () => _shareSheet(context)),
+                  icon: const Icon(Icons.ios_share),
+                  tooltip: 'Share live score',
+                  onPressed: () => _shareSheet(context),
+                ),
               IconButton(
-                  icon:
-                      Icon(store.soundOn ? Icons.volume_up : Icons.volume_off),
-                  tooltip: store.soundOn ? 'Mute sounds' : 'Unmute',
-                  onPressed: () => store.setSound(!store.soundOn)),
+                icon: Icon(store.soundOn ? Icons.volume_up : Icons.volume_off),
+                tooltip: store.soundOn ? 'Mute sounds' : 'Unmute',
+                onPressed: () => store.setSound(!store.soundOn),
+              ),
               IconButton(
-                  icon: const Icon(Icons.list_alt),
-                  tooltip: 'Overs',
-                  onPressed: () => _oversSheet(context)),
+                icon: const Icon(Icons.list_alt),
+                tooltip: 'Overs',
+                onPressed: () => _oversSheet(context),
+              ),
               IconButton(
-                  icon: const Icon(Icons.palette_outlined),
-                  tooltip: 'Style & font',
-                  onPressed: () => showLookSheet(context, store)),
+                icon: const Icon(Icons.palette_outlined),
+                tooltip: 'Style & font',
+                onPressed: () => showLookSheet(context, store),
+              ),
             ],
           ),
           body: SafeArea(
-              child: ResponsiveCenter(
-                  maxWidth: 640,
-                  child: ListView(
-                    padding: const EdgeInsets.all(12),
-                    children: [
-                      Scoreboard(
-                        match: m,
-                        innings: inn,
-                        preset: preset,
-                        scoreFamily: scoreFamily,
-                        animationGen: store.ballGen,
-                        celebId: store.celebId,
-                        stripTrailing: TextButton(
-                          onPressed: () => _oversSheet(context),
-                          child: Text(
-                              '${cur.fold<int>(0, (s, b) => s + b.totalRuns)}r • ${cur.where((b) => b.isWicket).length}w ›',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w800)),
+            child: ResponsiveCenter(
+              maxWidth: 640,
+              child: ListView(
+                padding: const EdgeInsets.all(12),
+                children: [
+                  Scoreboard(
+                    match: m,
+                    innings: inn,
+                    preset: preset,
+                    scoreFamily: scoreFamily,
+                    animationGen: store.ballGen,
+                    celebId: store.celebId,
+                    // A compact tap-through, not a TextButton: the button's
+                    // own padding pushed the strip row past the card edge
+                    // on a 360dp phone.
+                    stripTrailing: InkWell(
+                      onTap: () => _oversSheet(context),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${cur.fold<int>(0, (s, b) => s + b.totalRuns)}r • ${cur.where((b) => b.isWicket).length}w',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, size: 16),
+                          ],
                         ),
                       ),
-                      if (store.breakDest != null) ...[
-                        const SizedBox(height: 10),
-                        Card(
-                          color: const Color(0xFF131316),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    store.breakDest == '/break'
-                                        ? 'INNINGS COMPLETE — BREAK IN ${store.breakWait}s'
-                                        : 'MATCH OVER — RESULT IN ${store.breakWait}s',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1),
-                                  ),
-                                ),
-                                RectBtn(
-                                  onTap: () => store.skipBreakWait(),
-                                  child: const Text('NEXT →'),
-                                ),
-                              ],
-                            ),
-                          ),
+                    ),
+                  ),
+                  if (store.breakDest != null) ...[
+                    const SizedBox(height: 10),
+                    Card(
+                      color: const Color(0xFF131316),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                      ],
-                      if (store.tracking &&
-                          store.currentSheet?.needsNewBowler == true) ...[
-                        const SizedBox(height: 10),
-                        Card(
-                          color: const Color(0xFF1D4ED8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: Row(
-                              children: [
-                                const Expanded(
-                                  child: Text(
-                                    'SELECT THE NEW BOWLER TO CONTINUE',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1),
-                                  ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                store.breakDest == '/break'
+                                    ? 'INNINGS COMPLETE — BREAK IN ${store.breakWait}s'
+                                    : 'MATCH OVER — RESULT IN ${store.breakWait}s',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
                                 ),
-                                RectBtn(
-                                  primary: false,
-                                  onTap: () => showBowlerSheet(context, store,
-                                      auto: true),
-                                  child: const Text('SET'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (store.tracking &&
-                          (store.currentSheet?.strikerId == null ||
-                              store.currentSheet?.bowlerId == null)) ...[
-                        const SizedBox(height: 10),
-                        Card(
-                          color: const Color(0xFF1D4ED8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: Row(
-                              children: [
-                                const Expanded(
-                                  child: Text(
-                                    'SET BATTERS + BOWLER TO START',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1),
-                                  ),
-                                ),
-                                RectBtn(
-                                  primary: false,
-                                  onTap: () =>
-                                      showInningsStartSheet(context, store),
-                                  child: const Text('SET'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 10),
-                      RepaintBoundary(
-                          child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (nb)
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: 8),
-                                  child: Center(
-                                    child: Text('NB ARMED',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: 2,
-                                            color: Color(0xFF7B2CBF))),
-                                  ),
-                                ),
-                              GridView.count(
-                                crossAxisCount: 3,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                mainAxisSpacing: 8,
-                                crossAxisSpacing: 8,
-                                childAspectRatio: 1.5,
-                                children: [
-                                  KeyBtn(
-                                      label: '0',
-                                      sub: nb ? 'NB' : 'DOT',
-                                      armed: nb,
-                                      radius: preset.keyRadius,
-                                      color: Colors.white,
-                                      fg: Colors.black,
-                                      onTap: () => _tap(context, 'DOT')),
-                                  KeyBtn(
-                                      label: '1',
-                                      sub: nb ? 'N1' : 'RUN',
-                                      armed: nb,
-                                      radius: preset.keyRadius,
-                                      color: Colors.white,
-                                      fg: Colors.black,
-                                      onTap: () =>
-                                          _tap(context, 'RUNS', runs: 1)),
-                                  KeyBtn(
-                                      label: '2',
-                                      sub: nb ? 'N2' : 'RUNS',
-                                      armed: nb,
-                                      radius: preset.keyRadius,
-                                      color: Colors.white,
-                                      fg: Colors.black,
-                                      onTap: () =>
-                                          _tap(context, 'RUNS', runs: 2)),
-                                  KeyBtn(
-                                      label: '3',
-                                      sub: nb ? 'N3' : 'RUNS',
-                                      armed: nb,
-                                      radius: preset.keyRadius,
-                                      color: Colors.white,
-                                      fg: Colors.black,
-                                      onTap: () =>
-                                          _tap(context, 'RUNS', runs: 3)),
-                                  KeyBtn(
-                                      label: '4',
-                                      sub: nb ? 'N4' : 'FOUR',
-                                      color: const Color(0xFF15803D),
-                                      fg: Colors.white,
-                                      armed: nb,
-                                      radius: preset.keyRadius,
-                                      onTap: () => _tap(context, 'FOUR')),
-                                  KeyBtn(
-                                      label: '6',
-                                      sub: nb ? 'N6' : 'SIX',
-                                      color: const Color(0xFFEC008C),
-                                      fg: Colors.white,
-                                      armed: nb,
-                                      radius: preset.keyRadius,
-                                      onTap: () => _tap(context, 'SIX')),
-                                  KeyBtn(
-                                      label: 'WD',
-                                      sub: '+${m.config.rules.widePenalty}',
-                                      color: const Color(0xFFFFBA08),
-                                      fg: Colors.black,
-                                      radius: preset.keyRadius,
-                                      onTap: () => _tap(context, 'WIDE')),
-                                  KeyBtn(
-                                      label: 'NB',
-                                      sub: nb
-                                          ? 'ARMED'
-                                          : '+${m.config.rules.noBallPenalty}',
-                                      color: const Color(0xFF7B2CBF),
-                                      fg: Colors.white,
-                                      armed: nb,
-                                      radius: preset.keyRadius,
-                                      onTap: () => store.toggleNb()),
-                                  KeyBtn(
-                                      label: 'W',
-                                      sub: 'WICKET',
-                                      color: const Color(0xFFDC143C),
-                                      fg: Colors.white,
-                                      radius: preset.keyRadius,
-                                      onTap: () => _wicketDialog(context)),
-                                ],
                               ),
-                              const SizedBox(height: 12),
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      if (store.tracking) ...[
-                                        Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            SizedBox(
-                                              width: 72,
-                                              height: 72,
-                                              child: FilledButton(
-                                                style: FilledButton.styleFrom(
-                                                  backgroundColor:
-                                                      const Color(0xFF1D4ED8),
-                                                  foregroundColor: Colors.white,
-                                                  padding: EdgeInsets.zero,
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              20)),
-                                                ),
-                                                onPressed: () =>
-                                                    showPlayerStatsSheet(
-                                                        context, store),
-                                                child: const Icon(
-                                                    Icons.groups_outlined,
-                                                    size: 28),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            const Text('PLAYERS',
-                                                style: TextStyle(
-                                                    fontSize: 9,
-                                                    fontWeight:
-                                                        FontWeight.w800)),
-                                          ],
-                                        ),
-                                        const SizedBox(width: 10),
-                                      ],
+                            ),
+                            RectBtn(
+                              onTap: () => store.skipBreakWait(),
+                              child: const Text('NEXT →'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (store.tracking &&
+                      store.currentSheet?.needsNewBowler == true) ...[
+                    const SizedBox(height: 10),
+                    Card(
+                      color: const Color(0xFF1D4ED8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'SELECT THE NEW BOWLER TO CONTINUE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                            RectBtn(
+                              primary: false,
+                              onTap: () =>
+                                  showBowlerSheet(context, store, auto: true),
+                              child: const Text('SET'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (store.tracking &&
+                      (store.currentSheet?.strikerId == null ||
+                          store.currentSheet?.bowlerId == null)) ...[
+                    const SizedBox(height: 10),
+                    Card(
+                      color: const Color(0xFF1D4ED8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'SET BATTERS + BOWLER TO START',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                            RectBtn(
+                              primary: false,
+                              onTap: () =>
+                                  showInningsStartSheet(context, store),
+                              child: const Text('SET'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  RepaintBoundary(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (nb)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 8),
+                                child: Center(
+                                  child: Text(
+                                    'NB ARMED',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 2,
+                                      color: Color(0xFF7B2CBF),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            GridView.count(
+                              crossAxisCount: 3,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              childAspectRatio: 1.5,
+                              children: [
+                                KeyBtn(
+                                  label: '0',
+                                  sub: nb ? 'NB' : 'DOT',
+                                  armed: nb,
+                                  radius: preset.keyRadius,
+                                  color: Colors.white,
+                                  fg: Colors.black,
+                                  onTap: () => _tap(context, 'DOT'),
+                                ),
+                                KeyBtn(
+                                  label: '1',
+                                  sub: nb ? 'N1' : 'RUN',
+                                  armed: nb,
+                                  radius: preset.keyRadius,
+                                  color: Colors.white,
+                                  fg: Colors.black,
+                                  onTap: () => _tap(context, 'RUNS', runs: 1),
+                                ),
+                                KeyBtn(
+                                  label: '2',
+                                  sub: nb ? 'N2' : 'RUNS',
+                                  armed: nb,
+                                  radius: preset.keyRadius,
+                                  color: Colors.white,
+                                  fg: Colors.black,
+                                  onTap: () => _tap(context, 'RUNS', runs: 2),
+                                ),
+                                KeyBtn(
+                                  label: '3',
+                                  sub: nb ? 'N3' : 'RUNS',
+                                  armed: nb,
+                                  radius: preset.keyRadius,
+                                  color: Colors.white,
+                                  fg: Colors.black,
+                                  onTap: () => _tap(context, 'RUNS', runs: 3),
+                                ),
+                                KeyBtn(
+                                  label: '4',
+                                  sub: nb ? 'N4' : 'FOUR',
+                                  color: const Color(0xFF15803D),
+                                  fg: Colors.white,
+                                  armed: nb,
+                                  radius: preset.keyRadius,
+                                  onTap: () => _tap(context, 'FOUR'),
+                                ),
+                                KeyBtn(
+                                  label: '6',
+                                  sub: nb ? 'N6' : 'SIX',
+                                  color: const Color(0xFFEC008C),
+                                  fg: Colors.white,
+                                  armed: nb,
+                                  radius: preset.keyRadius,
+                                  onTap: () => _tap(context, 'SIX'),
+                                ),
+                                KeyBtn(
+                                  label: 'WD',
+                                  sub: '+${m.config.rules.widePenalty}',
+                                  color: const Color(0xFFFFBA08),
+                                  fg: Colors.black,
+                                  radius: preset.keyRadius,
+                                  onTap: () => _tap(context, 'WIDE'),
+                                ),
+                                KeyBtn(
+                                  label: 'NB',
+                                  sub: nb
+                                      ? 'ARMED'
+                                      : '+${m.config.rules.noBallPenalty}',
+                                  color: const Color(0xFF7B2CBF),
+                                  fg: Colors.white,
+                                  armed: nb,
+                                  radius: preset.keyRadius,
+                                  onTap: () => store.toggleNb(),
+                                ),
+                                KeyBtn(
+                                  label: 'W',
+                                  sub: 'WICKET',
+                                  color: const Color(0xFFDC143C),
+                                  fg: Colors.white,
+                                  radius: preset.keyRadius,
+                                  onTap: () => _wicketDialog(context),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (store.tracking) ...[
                                       Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
@@ -346,67 +391,119 @@ class ScoringScreen extends StatelessWidget {
                                             height: 72,
                                             child: FilledButton(
                                               style: FilledButton.styleFrom(
-                                                backgroundColor:
-                                                    const Color(0xFF0A0A0A),
+                                                backgroundColor: const Color(
+                                                  0xFF1D4ED8,
+                                                ),
                                                 foregroundColor: Colors.white,
                                                 padding: EdgeInsets.zero,
                                                 shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20)),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                ),
                                               ),
-                                              onPressed: store.canUndo
-                                                  ? () => store.undo()
-                                                  : null,
-                                              child: const Icon(Icons.undo,
-                                                  size: 28),
+                                              onPressed: () =>
+                                                  showPlayerStatsSheet(
+                                                    context,
+                                                    store,
+                                                  ),
+                                              child: const Icon(
+                                                Icons.groups_outlined,
+                                                size: 28,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(height: 2),
-                                          const Text('UNDO',
-                                              style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w800)),
+                                          const Text(
+                                            'PLAYERS',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
                                         ],
                                       ),
-                                      if (store.advancedExtras) ...[
-                                        const SizedBox(width: 10),
-                                        FilledButton.tonal(
-                                          onPressed: () => _moreSheet(context),
-                                          child: const Text('EXTRAS'),
+                                      const SizedBox(width: 10),
+                                    ],
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 72,
+                                          height: 72,
+                                          child: FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: const Color(
+                                                0xFF0A0A0A,
+                                              ),
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.zero,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                            ),
+                                            onPressed: store.canUndo
+                                                ? () => store.undo()
+                                                : null,
+                                            child: const Icon(
+                                              Icons.undo,
+                                              size: 28,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        const Text(
+                                          'UNDO',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                          ),
                                         ),
                                       ],
+                                    ),
+                                    if (store.advancedExtras) ...[
+                                      const SizedBox(width: 10),
+                                      FilledButton.tonal(
+                                        onPressed: () => _moreSheet(context),
+                                        child: const Text('EXTRAS'),
+                                      ),
                                     ],
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: SizedBox(
-                                      width: 48,
-                                      height: 48,
-                                      child: OutlinedButton(
-                                        style: OutlinedButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(14)),
+                                  ],
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                         ),
-                                        onPressed: () =>
-                                            _settingsSheet(context),
-                                        child: const Icon(
-                                            Icons.settings_outlined,
-                                            size: 22),
+                                      ),
+                                      onPressed: () => _settingsSheet(context),
+                                      child: const Icon(
+                                        Icons.settings_outlined,
+                                        size: 22,
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      )),
-                    ],
-                  ))),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
@@ -461,8 +558,10 @@ class ScoringScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('SELECT WICKET TYPE',
-                    style: TextStyle(fontWeight: FontWeight.w900)),
+                const Text(
+                  'SELECT WICKET TYPE',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 12),
                 GridView.count(
                   crossAxisCount: 2,
@@ -515,9 +614,9 @@ class ScoringScreen extends StatelessWidget {
         }
         showDismissalSheet(context, store, type);
       },
-      child: Text(type == DismissalType.runOut
-          ? 'RUN OUT ›'
-          : type.label.toUpperCase()),
+      child: Text(
+        type == DismissalType.runOut ? 'RUN OUT ›' : type.label.toUpperCase(),
+      ),
     );
   }
 
@@ -536,10 +635,13 @@ class ScoringScreen extends StatelessWidget {
     // Names the actual cause. The first version reported every failure as
     // "no backend configured in this build", which sent the diagnosis after
     // the build flags instead of the real error.
-    messenger.showSnackBar(SnackBar(
-      content:
-          Text(result.ok ? '${result.message} (read-only)' : result.message),
-      duration: const Duration(seconds: 6),
-    ));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          result.ok ? '${result.message} (read-only)' : result.message,
+        ),
+        duration: const Duration(seconds: 6),
+      ),
+    );
   }
 }

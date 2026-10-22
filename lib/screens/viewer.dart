@@ -88,32 +88,42 @@ class _ViewerScreenState extends State<ViewerScreen> {
   Widget build(BuildContext context) {
     final preset = StylePreset.of(widget.store.styleId);
     final m = _match;
-    final inn =
-        m == null ? null : (m.currentInnings == 1 ? m.innings1 : m.innings2);
-    final stale = _updatedAt == null ||
+    final inn = m == null
+        ? null
+        : (m.currentInnings == 1 ? m.innings1 : m.innings2);
+    final stale =
+        _updatedAt == null ||
         DateTime.now().difference(_updatedAt!).inSeconds > 45;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LIVE',
-            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+        title: const Text(
+          'LIVE',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color:
-                      stale ? const Color(0xFF64748B) : const Color(0xFFDC143C),
+                  color: stale
+                      ? const Color(0xFF64748B)
+                      : const Color(0xFFDC143C),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(_staleness.isEmpty ? 'CONNECTING' : _staleness,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 11)),
+                child: Text(
+                  _staleness.isEmpty ? 'CONNECTING' : _staleness,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                  ),
+                ),
               ),
             ),
           ),
@@ -126,7 +136,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
               ? _waiting(context)
               : ListenableBuilder(
                   listenable: widget.store,
-                  builder: (_, __) => ListView(
+                  builder: (_, _) => ListView(
                     padding: const EdgeInsets.all(12),
                     children: [
                       Scoreboard(
@@ -139,16 +149,17 @@ class _ViewerScreenState extends State<ViewerScreen> {
                         live: true,
                       ),
                       const SizedBox(height: 10),
-                      Text('Room ${widget.code} • read-only',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 11,
-                              letterSpacing: 1.5,
-                              fontWeight: FontWeight.w800,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.7))),
+                      Text(
+                        'Room ${widget.code} • read-only',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w800,
+                          color: Theme.of(context).colorScheme.onSurface
+                              .withValues(alpha: 0.7),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -158,29 +169,30 @@ class _ViewerScreenState extends State<ViewerScreen> {
   }
 
   Widget _waiting(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cell_tower, size: 44),
-              const SizedBox(height: 12),
-              Text(
-                _problem ?? 'Waiting for the scorer…',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              Text('Room ${widget.code}',
-                  style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.6))),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cell_tower, size: 44),
+          const SizedBox(height: 12),
+          Text(
+            _problem ?? 'Waiting for the scorer…',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
-        ),
-      );
+          const SizedBox(height: 8),
+          Text(
+            'Room ${widget.code}',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface
+                  .withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Entry point: type the code someone read you.
@@ -221,16 +233,21 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
     final online = widget.store.sync.state != SyncState.unconfigured;
     return Scaffold(
       appBar: AppBar(
-          title: const Text('WATCH LIVE',
-              style: TextStyle(fontWeight: FontWeight.w900))),
+        title: const Text(
+          'WATCH LIVE',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
       body: SafeArea(
         child: ResponsiveCenter(
           maxWidth: 480,
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              const Text('Enter the 5-character code',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              const Text(
+                'Enter the 5-character code',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: _controller,
@@ -240,9 +257,10 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                 // Large, spaced, unambiguous: this gets typed one-handed while
                 // someone reads the code aloud.
                 style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 10),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 10,
+                ),
                 decoration: InputDecoration(
                   counterText: '',
                   suffixIcon: IconButton(
@@ -255,10 +273,11 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                   ),
                   hintText: 'ABCDE',
                   hintStyle: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 10,
-                      color: Color(0xFF94A3B8)),
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 10,
+                    color: Color(0xFF94A3B8),
+                  ),
                   border: const OutlineInputBorder(),
                   errorText: _error,
                 ),
@@ -288,7 +307,9 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
 class _UpperCaseFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }

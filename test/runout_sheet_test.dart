@@ -24,13 +24,14 @@ MatchStore _fixture({bool tracked = true, bool askFielder = false}) {
   final a = [for (var i = 1; i <= 5; i++) s.addPlayer(name: 'A$i')!.id];
   final b = [for (var i = 1; i <= 5; i++) s.addPlayer(name: 'B$i')!.id];
   s.draft = MatchConfig(
-      teamA: 'Lions',
-      teamB: 'Tigers',
-      totalOvers: 2,
-      playersPerSide: 5,
-      trackPlayers: tracked,
-      squadA: tracked ? a : const [],
-      squadB: tracked ? b : const []);
+    teamA: 'Lions',
+    teamB: 'Tigers',
+    totalOvers: 2,
+    playersPerSide: 5,
+    trackPlayers: tracked,
+    squadA: tracked ? a : const [],
+    squadB: tracked ? b : const [],
+  );
   s.startMatch(s.draft);
   if (tracked) {
     s.setOpeners(a[0], a[1]);
@@ -75,8 +76,11 @@ void main() {
     test('a run-out is stored as a run-out in either spelling', () {
       for (final spelling in ['Run out', 'Run Out']) {
         final s = _fixture(tracked: false);
-        expect(s.score(action: 'WICKET', runs: 2, wicketType: spelling), isNull,
-            reason: spelling);
+        expect(
+          s.score(action: 'WICKET', runs: 2, wicketType: spelling),
+          isNull,
+          reason: spelling,
+        );
         final ball = s.innings!.overs.last.balls.last;
         expect(ball.badge, 'W+2', reason: spelling);
         // Stored canonically, so a re-read resolves without the fallback.
@@ -109,9 +113,10 @@ void main() {
       s.setBowler(b[0]);
 
       s.score(
-          action: 'WICKET',
-          wicketType: DismissalType.bowled.label,
-          dismissal: DismissalType.bowled.name);
+        action: 'WICKET',
+        wicketType: DismissalType.bowled.label,
+        dismissal: DismissalType.bowled.name,
+      );
       final bowled = s.currentSheet!.batting[a[0]]!;
       expect(bowled.dismissal, DismissalType.bowled);
       final bowledText = bowled.dismissal!.text(bowler: bowled.bowlerName);
@@ -119,19 +124,25 @@ void main() {
 
       // Two runs, then the non-striker is short at the bowler's end.
       s.score(
-          action: 'WICKET',
-          runs: 2,
-          wicketType: DismissalType.runOut.label,
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: true,
-          outAtStrikerEnd: false);
+        action: 'WICKET',
+        runs: 2,
+        wicketType: DismissalType.runOut.label,
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: true,
+        outAtStrikerEnd: false,
+      );
       final runOut = s.currentSheet!.batting[a[1]]!;
       expect(runOut.dismissal, DismissalType.runOut);
-      final runOutText = runOut.dismissal!
-          .text(fielder: runOut.dismissedByName, bowler: runOut.bowlerName);
+      final runOutText = runOut.dismissal!.text(
+        fielder: runOut.dismissedByName,
+        bowler: runOut.bowlerName,
+      );
       expect(runOutText, 'run out');
-      expect(runOutText, isNot(bowledText),
-          reason: 'a run-out must not read like a bowled');
+      expect(
+        runOutText,
+        isNot(bowledText),
+        reason: 'a run-out must not read like a bowled',
+      );
       expect(s.innings!.runs, 2, reason: 'the two runs still count');
       expect(s.innings!.wickets, 2);
     });
@@ -146,61 +157,77 @@ void main() {
       // The striker is out at the striker's end and there is no newcomer. The
       // end must be vacated, not left pointing at a man who is already out.
       sheet.seatAfterDismissal(
-          dismissedId: a[0], atStrikerEnd: true, newcomerId: null);
+        dismissedId: a[0],
+        atStrikerEnd: true,
+        newcomerId: null,
+      );
       expect(sheet.strikerId, isNull);
       expect(sheet.nonStrikerId, a[1]);
 
       // And the same at the bowler's end.
       sheet.seatAfterDismissal(
-          dismissedId: a[1], atStrikerEnd: false, newcomerId: null);
+        dismissedId: a[1],
+        atStrikerEnd: false,
+        newcomerId: null,
+      );
       expect(sheet.nonStrikerId, isNull);
     });
   });
 
-  testWidgets('every question is on screen and the confirm button is reachable',
-      (tester) async {
-    // The phone's real surface: 1080x1920 at 2.625 → 411 x 731 logical.
-    tester.view.physicalSize = const Size(1080, 1920);
-    tester.view.devicePixelRatio = 2.625;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'every question is on screen and the confirm button is reachable',
+    (tester) async {
+      // The phone's real surface: 1080x1920 at 2.625 → 411 x 731 logical.
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 2.625;
+      addTearDown(tester.view.reset);
 
-    final s = _fixture();
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (ctx) => Center(
-            child: TextButton(
-              onPressed: () => showRunOutSheet(ctx, s),
-              child: const Text('open'),
+      final s = _fixture();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => Center(
+                child: TextButton(
+                  onPressed: () => showRunOutSheet(ctx, s),
+                  child: const Text('open'),
+                ),
+              ),
             ),
           ),
         ),
-      ),
-    ));
-    await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
 
-    // The old capped, non-scrollable sheet threw a RenderFlex overflow here.
-    expect(tester.takeException(), isNull,
-        reason: 'the sheet must not overflow the modal');
+      // The old capped, non-scrollable sheet threw a RenderFlex overflow here.
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'the sheet must not overflow the modal',
+      );
 
-    expect(find.text('1. RUNS COMPLETED'), findsOneWidget);
-    expect(find.text('2. WHO WAS DISMISSED?'), findsOneWidget);
-    expect(find.text('3. WHICH END WAS HE OUT AT?'), findsOneWidget);
+      expect(find.text('1. RUNS COMPLETED'), findsOneWidget);
+      expect(find.text('2. WHO WAS DISMISSED?'), findsOneWidget);
+      expect(find.text('3. WHICH END WAS HE OUT AT?'), findsOneWidget);
 
-    // The four run options are labelled with the badge, not a bare number.
-    for (final badge in ['W', 'W+1', 'W+2', 'W+3']) {
-      expect(find.text(badge), findsOneWidget, reason: '$badge is an option');
-    }
+      // The four run options are labelled with the badge, not a bare number.
+      for (final badge in ['W', 'W+1', 'W+2', 'W+3']) {
+        expect(find.text(badge), findsOneWidget, reason: '$badge is an option');
+      }
 
-    // Reachable means inside the screen: the old button measured 1007..1021
-    // against a 731-tall screen.
-    final confirm = find.text('W · A1 OUT');
-    expect(confirm, findsOneWidget);
-    final rect = tester.getRect(confirm);
-    expect(rect.bottom, lessThanOrEqualTo(731.0),
-        reason: 'the confirm button must be on screen without scrolling');
-  });
+      // Reachable means inside the screen: the old button measured 1007..1021
+      // against a 731-tall screen.
+      final confirm = find.text('W · A1 OUT');
+      expect(confirm, findsOneWidget);
+      final rect = tester.getRect(confirm);
+      expect(
+        rect.bottom,
+        lessThanOrEqualTo(731.0),
+        reason: 'the confirm button must be on screen without scrolling',
+      );
+    },
+  );
 
   testWidgets('backing out of the sheet records nothing', (tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
@@ -210,18 +237,20 @@ void main() {
     final s = _fixture();
     int balls() => s.innings!.overs.fold(0, (n, o) => n + o.balls.length);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (ctx) => Center(
-            child: TextButton(
-              onPressed: () => showRunOutSheet(ctx, s),
-              child: const Text('open'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (ctx) => Center(
+              child: TextButton(
+                onPressed: () => showRunOutSheet(ctx, s),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(find.text('3. WHICH END WAS HE OUT AT?'), findsOneWidget);
@@ -238,26 +267,29 @@ void main() {
     expect(s.innings!.runs, 0);
   });
 
-  testWidgets('the answers reach the store as the ball that was described',
-      (tester) async {
+  testWidgets('the answers reach the store as the ball that was described', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 2.625;
     addTearDown(tester.view.reset);
 
     final s = _fixture();
     final a = s.squadForTeam('Lions').map((p) => p.id).toList();
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (ctx) => Center(
-            child: TextButton(
-              onPressed: () => showRunOutSheet(ctx, s),
-              child: const Text('open'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (ctx) => Center(
+              child: TextButton(
+                onPressed: () => showRunOutSheet(ctx, s),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
@@ -281,30 +313,36 @@ void main() {
     final sheet = s.currentSheet!;
     expect(sheet.batting[a[1]]!.isNotOut, isFalse, reason: 'A2 is out');
     expect(sheet.strikerId, a[0], reason: 'A1 stays on strike');
-    expect(sheet.nonStrikerId, isNot(a[1]),
-        reason: 'the dismissed man is on neither end');
+    expect(
+      sheet.nonStrikerId,
+      isNot(a[1]),
+      reason: 'the dismissed man is on neither end',
+    );
     expect(sheet.nonStrikerId, isNot(a[0]));
   });
 
-  testWidgets('an untracked match is asked the same three questions',
-      (tester) async {
+  testWidgets('an untracked match is asked the same three questions', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 2.625;
     addTearDown(tester.view.reset);
 
     final s = _fixture(tracked: false);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Builder(
-          builder: (ctx) => Center(
-            child: TextButton(
-              onPressed: () => showRunOutSheet(ctx, s),
-              child: const Text('open'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (ctx) => Center(
+              child: TextButton(
+                onPressed: () => showRunOutSheet(ctx, s),
+                child: const Text('open'),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 

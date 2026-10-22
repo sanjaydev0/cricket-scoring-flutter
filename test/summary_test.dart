@@ -12,13 +12,14 @@ MatchStore trackedStore() {
     s.roster.add(mk(n));
   }
   final cfg = MatchConfig(
-      teamA: 'A',
-      teamB: 'B',
-      totalOvers: 2,
-      playersPerSide: 4,
-      trackPlayers: true,
-      squadA: const ['p_A1', 'p_A2', 'p_A3', 'p_A4'],
-      squadB: const ['p_B1', 'p_B2', 'p_B3']);
+    teamA: 'A',
+    teamB: 'B',
+    totalOvers: 2,
+    playersPerSide: 4,
+    trackPlayers: true,
+    squadA: const ['p_A1', 'p_A2', 'p_A3', 'p_A4'],
+    squadB: const ['p_B1', 'p_B2', 'p_B3'],
+  );
   s.startMatch(cfg);
   return s;
 }

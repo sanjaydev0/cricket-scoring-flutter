@@ -18,11 +18,13 @@ class AppConfig {
   /// The project's *publishable* key (Settings -> API). The legacy `anon` JWT
   /// also works. Never the service_role key — that bypasses row level security
   /// and must never ship inside an app.
-  static const String supabasePublishableKey =
-      String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+  static const String supabasePublishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+  );
 
-  static const String supabaseAnonKeyFallback =
-      String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const String supabaseAnonKeyFallback = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+  );
 
   static String get key => supabasePublishableKey.isNotEmpty
       ? supabasePublishableKey

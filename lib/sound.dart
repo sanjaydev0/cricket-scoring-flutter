@@ -43,8 +43,9 @@ class SoundService extends ChangeNotifier {
   /// System default output (speaker or a connected headset), but SFX take
   /// audio focus so nothing ducks them, and the ringer/silent switch is
   /// ignored: an umpire must hear a wicket even on silent.
-  static final AudioContext _ctx =
-      AudioContextConfig(focus: AudioContextConfigFocus.gain).build();
+  static final AudioContext _ctx = AudioContextConfig(
+    focus: AudioContextConfigFocus.gain,
+  ).build();
 
   final Map<String, AudioPool> _pools = {};
   final Map<String, int> _lastMs = {};

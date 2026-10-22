@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../store.dart';
 import '../domain/players.dart';
 import '../models.dart';
@@ -53,238 +54,287 @@ class _SetupScreenState extends State<SetupScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('MATCH SETUP')),
       body: SafeArea(
-          child: ResponsiveCenter(
-              child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('TEAMS',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                  const SizedBox(height: 8),
-                  Row(
+        child: ResponsiveCenter(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const TeamDot(MatchStore.teamAColor),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: a,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: InputDecoration(
-                              labelText: 'Team A',
-                              errorText: _triedSubmit && a.text.trim().isEmpty
-                                  ? 'Required'
-                                  : null,
-                              border: const OutlineInputBorder()),
-                          onChanged: (v) =>
-                              setState(() => cfg.teamA = v.toUpperCase()),
+                      const Text(
+                        'TEAMS',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const TeamDot(MatchStore.teamAColor),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: a,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: InputDecoration(
+                                labelText: 'Team A',
+                                errorText: _triedSubmit && a.text.trim().isEmpty
+                                    ? 'Required'
+                                    : null,
+                                border: const OutlineInputBorder(),
+                              ),
+                              onChanged: (v) =>
+                                  setState(() => cfg.teamA = v.toUpperCase()),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const TeamDot(MatchStore.teamBColor),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: b,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: InputDecoration(
+                                labelText: 'Team B',
+                                errorText: _triedSubmit && b.text.trim().isEmpty
+                                    ? 'Required'
+                                    : null,
+                                border: const OutlineInputBorder(),
+                              ),
+                              onChanged: (v) =>
+                                  setState(() => cfg.teamB = v.toUpperCase()),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'BATTING FIRST',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      SegmentedButton<String>(
+                        segments: [
+                          ButtonSegment(
+                            value: 'A',
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const TeamDot(MatchStore.teamAColor, size: 10),
+                                const SizedBox(width: 6),
+                                Text(cfg.teamA.isEmpty ? 'BLUE' : cfg.teamA),
+                              ],
+                            ),
+                          ),
+                          ButtonSegment(
+                            value: 'B',
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const TeamDot(MatchStore.teamBColor, size: 10),
+                                const SizedBox(width: 6),
+                                Text(cfg.teamB.isEmpty ? 'RED' : cfg.teamB),
+                              ],
+                            ),
+                          ),
+                        ],
+                        selected: {cfg.battingFirst},
+                        onSelectionChanged: (s) =>
+                            setState(() => cfg.battingFirst = s.first),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Row(
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const TeamDot(MatchStore.teamBColor),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: b,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: InputDecoration(
-                              labelText: 'Team B',
-                              errorText: _triedSubmit && b.text.trim().isEmpty
-                                  ? 'Required'
-                                  : null,
-                              border: const OutlineInputBorder()),
-                          onChanged: (v) =>
-                              setState(() => cfg.teamB = v.toUpperCase()),
+                      Text(
+                        'FORMAT • ${cfg.sidesLabel}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      StepperRow(
+                        label: 'Overs',
+                        value: cfg.totalOvers,
+                        min: 1,
+                        max: 50,
+                        onChanged: (v) => setState(() => cfg.totalOvers = v),
+                      ),
+                      StepperRow(
+                        label: 'Players / side',
+                        value: cfg.playersPerSide,
+                        min: 2,
+                        max: 15,
+                        onChanged: (v) =>
+                            setState(() => cfg.playersPerSide = v),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Double-side player',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      SegmentedButton<int>(
+                        segments: const [
+                          ButtonSegment(value: 0, label: Text('None')),
+                          ButtonSegment(value: 1, label: Text('+1 common')),
+                        ],
+                        selected: {cfg.commonPlayers},
+                        onSelectionChanged: (s) =>
+                            setState(() => cfg.commonPlayers = s.first),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  const Text('BATTING FIRST',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                  const SizedBox(height: 6),
-                  SegmentedButton<String>(
-                    segments: [
-                      ButtonSegment(
-                          value: 'A',
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const TeamDot(MatchStore.teamAColor, size: 10),
-                              const SizedBox(width: 6),
-                              Text(cfg.teamA.isEmpty ? 'BLUE' : cfg.teamA),
-                            ],
-                          )),
-                      ButtonSegment(
-                          value: 'B',
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const TeamDot(MatchStore.teamBColor, size: 10),
-                              const SizedBox(width: 6),
-                              Text(cfg.teamB.isEmpty ? 'RED' : cfg.teamB),
-                            ],
-                          )),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'RULES',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      StepperRow(
+                        label: 'Wide penalty',
+                        hint: 'Default 1',
+                        value: cfg.rules.widePenalty,
+                        min: 0,
+                        max: 2,
+                        onChanged: (v) =>
+                            setState(() => cfg.rules.widePenalty = v),
+                      ),
+                      StepperRow(
+                        label: 'No-ball penalty',
+                        hint: 'Default 0',
+                        value: cfg.rules.noBallPenalty,
+                        min: 0,
+                        max: 2,
+                        onChanged: (v) =>
+                            setState(() => cfg.rules.noBallPenalty = v),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Free hit on no-ball'),
+                        value: cfg.rules.freeHit,
+                        onChanged: (v) => setState(() => cfg.rules.freeHit = v),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Last man standing'),
+                        value: cfg.rules.lastManStanding,
+                        onChanged: (v) =>
+                            setState(() => cfg.rules.lastManStanding = v),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Advanced extras keys'),
+                        subtitle: const Text('WD+overthrows, byes, NB+runs'),
+                        value: widget.store.advancedExtras,
+                        onChanged: (v) => widget.store.setAdvancedExtras(v),
+                      ),
                     ],
-                    selected: {cfg.battingFirst},
-                    onSelectionChanged: (s) =>
-                        setState(() => cfg.battingFirst = s.first),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('FORMAT • ${cfg.sidesLabel}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                  const SizedBox(height: 8),
-                  StepperRow(
-                      label: 'Overs',
-                      value: cfg.totalOvers,
-                      min: 1,
-                      max: 50,
-                      onChanged: (v) => setState(() => cfg.totalOvers = v)),
-                  StepperRow(
-                      label: 'Players / side',
-                      value: cfg.playersPerSide,
-                      min: 2,
-                      max: 15,
-                      onChanged: (v) => setState(() => cfg.playersPerSide = v)),
-                  const SizedBox(height: 4),
-                  const Text('Double-side player',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  SegmentedButton<int>(
-                    segments: const [
-                      ButtonSegment(value: 0, label: Text('None')),
-                      ButtonSegment(value: 1, label: Text('+1 common')),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Track players + stats'),
+                        subtitle: const Text('Squads + scorecard. Off = fast.'),
+                        value: _track,
+                        onChanged: (v) => setState(() => _track = v),
+                      ),
+                      if (_track) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Squads come from CLUB roster (${widget.store.clubRoster.length} players).',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                        _teamSquad(
+                          'TEAM A',
+                          cfg.teamA,
+                          _squadA,
+                          _squadB,
+                          _qa,
+                          (v) => setState(() => _qa = v),
+                        ),
+                        const SizedBox(height: 8),
+                        _teamSquad(
+                          'TEAM B',
+                          cfg.teamB,
+                          _squadB,
+                          _squadA,
+                          _qb,
+                          (v) => setState(() => _qb = v),
+                        ),
+                      ],
                     ],
-                    selected: {cfg.commonPlayers},
-                    onSelectionChanged: (s) =>
-                        setState(() => cfg.commonPlayers = s.first),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('RULES',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                  StepperRow(
-                      label: 'Wide penalty',
-                      hint: 'Default 1',
-                      value: cfg.rules.widePenalty,
-                      min: 0,
-                      max: 2,
-                      onChanged: (v) =>
-                          setState(() => cfg.rules.widePenalty = v)),
-                  StepperRow(
-                      label: 'No-ball penalty',
-                      hint: 'Default 0',
-                      value: cfg.rules.noBallPenalty,
-                      min: 0,
-                      max: 2,
-                      onChanged: (v) =>
-                          setState(() => cfg.rules.noBallPenalty = v)),
-                  SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Free hit on no-ball'),
-                      value: cfg.rules.freeHit,
-                      onChanged: (v) => setState(() => cfg.rules.freeHit = v)),
-                  SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Last man standing'),
-                      value: cfg.rules.lastManStanding,
-                      onChanged: (v) =>
-                          setState(() => cfg.rules.lastManStanding = v)),
-                  SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Advanced extras keys'),
-                      subtitle: const Text('WD+overthrows, byes, NB+runs'),
-                      value: widget.store.advancedExtras,
-                      onChanged: (v) => widget.store.setAdvancedExtras(v)),
-                ],
+              const SizedBox(height: 16),
+              RectBtn(
+                onTap: () {
+                  setState(() => _triedSubmit = true);
+                  if (a.text.trim().isEmpty || b.text.trim().isEmpty) {
+                    return;
+                  }
+                  if (_track && (_squadA.length < 2 || _squadB.length < 2)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Pick at least 2 players per side (or turn tracking off).',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  cfg.trackPlayers = _track;
+                  cfg.squadA = _squadA.toList();
+                  cfg.squadB = _squadB.toList();
+                  widget.store.draft = cfg;
+                  widget.store.startMatch(cfg);
+                  Navigator.pushReplacementNamed(context, '/scoring');
+                },
+                child: const Text('START SCORING'),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Track players + stats'),
-                    subtitle: const Text('Squads + scorecard. Off = fast.'),
-                    value: _track,
-                    onChanged: (v) => setState(() => _track = v),
-                  ),
-                  if (_track) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                        'Squads come from CLUB roster (${widget.store.clubRoster.length} players).',
-                        style: const TextStyle(fontSize: 12)),
-                    const SizedBox(height: 8),
-                    _teamSquad('TEAM A', cfg.teamA, _squadA, _squadB, _qa,
-                        (v) => setState(() => _qa = v)),
-                    const SizedBox(height: 8),
-                    _teamSquad('TEAM B', cfg.teamB, _squadB, _squadA, _qb,
-                        (v) => setState(() => _qb = v)),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          RectBtn(
-            onTap: () {
-              setState(() => _triedSubmit = true);
-              if (a.text.trim().isEmpty || b.text.trim().isEmpty) {
-                return;
-              }
-              if (_track && (_squadA.length < 2 || _squadB.length < 2)) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text(
-                        'Pick at least 2 players per side (or turn tracking off).')));
-                return;
-              }
-              cfg.trackPlayers = _track;
-              cfg.squadA = _squadA.toList();
-              cfg.squadB = _squadB.toList();
-              widget.store.draft = cfg;
-              widget.store.startMatch(cfg);
-              Navigator.pushReplacementNamed(context, '/scoring');
-            },
-            child: const Text('START SCORING'),
-          ),
-        ],
-      ))),
+        ),
+      ),
     );
   }
 
@@ -294,8 +344,14 @@ class _SetupScreenState extends State<SetupScreen> {
   /// long scroll away and neither team's state was visible at a glance. Now
   /// each team is a row (dot, name, picked count, chevron) and the open team
   /// shows its list underneath.
-  Widget _teamSquad(String side, String team, Set<String> sel,
-      Set<String> otherSel, String query, ValueChanged<String> onQuery) {
+  Widget _teamSquad(
+    String side,
+    String team,
+    Set<String> sel,
+    Set<String> otherSel,
+    String query,
+    ValueChanged<String> onQuery,
+  ) {
     final isA = side == 'TEAM A';
     final color = isA ? MatchStore.teamAColor : MatchStore.teamBColor;
     final open = _openTeam == side;
@@ -328,13 +384,16 @@ class _SetupScreenState extends State<SetupScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w900, fontSize: 15),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                        ),
                       ),
                       Text(
                         '${sel.length} of $cap picked',
                         style: TextStyle(
-                            fontSize: 11.5,
-                            color: cs.onSurface.withValues(alpha: 0.65)),
+                          fontSize: 11.5,
+                          color: cs.onSurface.withValues(alpha: 0.65),
+                        ),
                       ),
                     ],
                   ),
@@ -346,10 +405,11 @@ class _SetupScreenState extends State<SetupScreen> {
                     Text(
                       'PICKED',
                       style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
-                          color: cs.onSurface.withValues(alpha: 0.6)),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: cs.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
                     Text(
                       '${sel.length}/$cap',
@@ -362,8 +422,11 @@ class _SetupScreenState extends State<SetupScreen> {
                   ],
                 ),
                 const SizedBox(width: 4),
-                Icon(open ? Icons.expand_less : Icons.expand_more,
-                    size: 22, color: cs.onSurface),
+                Icon(
+                  open ? Icons.expand_less : Icons.expand_more,
+                  size: 22,
+                  color: cs.onSurface,
+                ),
               ],
             ),
           ),
@@ -377,8 +440,14 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   /// The open team's list: search, inline add, and the players themselves.
-  Widget _squadPanel(String side, String team, Set<String> sel,
-      Set<String> otherSel, String query, ValueChanged<String> onQuery) {
+  Widget _squadPanel(
+    String side,
+    String team,
+    Set<String> sel,
+    Set<String> otherSel,
+    String query,
+    ValueChanged<String> onQuery,
+  ) {
     final store = widget.store;
     final q = query.toLowerCase().trim();
     // Cross-exclusion: a player picked for one side never appears on the
@@ -415,32 +484,37 @@ class _SetupScreenState extends State<SetupScreen> {
     // players-per-side brings the rest straight back.
     final cap = cfg.playersPerSide;
     final full = sel.length >= cap;
-    final listedFull =
-        full ? listed.where((p) => sel.contains(p.id)).toList() : listed;
-    final visible =
-        expanded ? listedFull.take(12).toList() : listedFull.take(8).toList();
+    final listedFull = full
+        ? listed.where((p) => sel.contains(p.id)).toList()
+        : listed;
+    final visible = expanded
+        ? listedFull.take(12).toList()
+        : listedFull.take(8).toList();
     final hidden = listedFull.length - visible.length;
     final otherLabel = side == 'TEAM A' ? cfg.teamB : cfg.teamA;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          controller:
-              _searchCtrls.putIfAbsent(side, () => TextEditingController()),
+          controller: _searchCtrls.putIfAbsent(
+            side,
+            () => TextEditingController(),
+          ),
           decoration: InputDecoration(
-              labelText: 'Select players',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: query.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear, size: 20),
-                      tooltip: 'Clear search',
-                      onPressed: () {
-                        _searchCtrls[side]?.clear();
-                        onQuery('');
-                      },
-                    ),
-              border: const OutlineInputBorder()),
+            labelText: 'Select players',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: query.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _searchCtrls[side]?.clear();
+                      onQuery('');
+                    },
+                  ),
+            border: const OutlineInputBorder(),
+          ),
           onChanged: onQuery,
           onTap: () => setState(() => _expanded.add(side)),
         ),
@@ -450,13 +524,20 @@ class _SetupScreenState extends State<SetupScreen> {
         InkWell(
           onTap: () async {
             if (sel.length >= cap) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content:
-                      Text('XI full at $cap — raise players per side first.')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'XI full at $cap — raise players per side first.',
+                  ),
+                ),
+              );
               return;
             }
-            final p = await showAddPlayerSheet(context, store,
-                title: 'ADD TO ${team.trim().isEmpty ? side : team.trim()}');
+            final p = await showAddPlayerSheet(
+              context,
+              store,
+              title: 'ADD TO ${team.trim().isEmpty ? side : team.trim()}',
+            );
             if (p == null || !mounted) return;
             setState(() => sel.add(p.id));
           },
@@ -465,28 +546,34 @@ class _SetupScreenState extends State<SetupScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               border: Border.all(
-                  color: Theme.of(context).colorScheme.outline, width: 1.5),
+                color: Theme.of(context).colorScheme.outline,
+                width: 1.5,
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Row(
               children: [
                 Icon(Icons.person_add, size: 18),
                 SizedBox(width: 8),
-                Text('+ ADD PLAYER',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                Text(
+                  '+ ADD PLAYER',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 4),
         if (pool.isEmpty)
-          const Text('No players yet — add one above.',
-              style: TextStyle(fontSize: 12)),
+          const Text(
+            'No players yet — add one above.',
+            style: TextStyle(fontSize: 12),
+          ),
         if (full && pool.isNotEmpty)
           const Text(
-              'XI full. Raise players/side to pick more, or tap one to remove.',
-              style: TextStyle(fontSize: 12)),
+            'XI full. Raise players/side to pick more, or tap one to remove.',
+            style: TextStyle(fontSize: 12),
+          ),
         for (final p in visible)
           DetailRow(
             title: p.name,
@@ -501,10 +588,8 @@ class _SetupScreenState extends State<SetupScreen> {
               size: 20,
               color: sel.contains(p.id)
                   ? const Color(0xFF16A34A)
-                  : Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.4),
+                  : Theme.of(context).colorScheme.onSurface
+                        .withValues(alpha: 0.4),
             ),
             onTap: () => setState(() {
               if (sel.contains(p.id)) {
@@ -524,9 +609,9 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   String _roleName(PlayerRole r) => switch (r) {
-        PlayerRole.batter => 'Batter',
-        PlayerRole.bowler => 'Bowler',
-        PlayerRole.allRounder => 'All-rounder',
-        PlayerRole.keeper => 'Keeper',
-      };
+    PlayerRole.batter => 'Batter',
+    PlayerRole.bowler => 'Bowler',
+    PlayerRole.allRounder => 'All-rounder',
+    PlayerRole.keeper => 'Keeper',
+  };
 }

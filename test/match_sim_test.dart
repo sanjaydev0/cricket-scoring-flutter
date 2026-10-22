@@ -8,8 +8,12 @@ import 'package:cricket_scoring/store.dart';
 /// A tracked match with [perSide] players each, ready for openers.
 /// [xiA]/[xiB] is how many players start in each XI; [cap] is playersPerSide,
 /// so a test can leave room for a mid-match add.
-MatchStore trackedFixture(
-    {int xiA = 5, int xiB = 5, int cap = 5, int overs = 2}) {
+MatchStore trackedFixture({
+  int xiA = 5,
+  int xiB = 5,
+  int cap = 5,
+  int overs = 2,
+}) {
   final s = MatchStore(sync: FakeSync());
   // Scoring fires haptics through a platform channel; these are pure logic
   // tests with no widget binding, so keep the master toggle off.
@@ -24,14 +28,15 @@ MatchStore trackedFixture(
     b.add(s.addPlayer(name: 'B$i', role: PlayerRole.allRounder)!.id);
   }
   s.draft = MatchConfig(
-      teamA: 'Lions',
-      teamB: 'Tigers',
-      totalOvers: overs,
-      playersPerSide: cap,
-      trackPlayers: true,
-      squadA: a,
-      squadB: b,
-      rules: Rules(widePenalty: 1, noBallPenalty: 1));
+    teamA: 'Lions',
+    teamB: 'Tigers',
+    totalOvers: overs,
+    playersPerSide: cap,
+    trackPlayers: true,
+    squadA: a,
+    squadB: b,
+    rules: Rules(widePenalty: 1, noBallPenalty: 1),
+  );
   s.startMatch(s.draft);
   return s;
 }
@@ -47,7 +52,9 @@ void main() {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
 
       // Six legal balls: the over completes ON the sixth.
@@ -55,8 +62,11 @@ void main() {
         expect(s.score(action: 'DOT'), isNull, reason: 'ball ${i + 1}');
       }
       final sheet = s.currentSheet!;
-      expect(sheet.needsNewBowler, isTrue,
-          reason: 'the over ended, so a change is owed');
+      expect(
+        sheet.needsNewBowler,
+        isTrue,
+        reason: 'the over ended, so a change is owed',
+      );
       expect(sheet.lastBowlerId, b[0]);
       expect(s.innings!.legalDeliveries, 6);
 
@@ -70,15 +80,20 @@ void main() {
       // in a loop of "pick a bowler" prompts.
       expect(s.score(action: 'RUNS', runs: 1), isNull);
       expect(s.innings!.legalDeliveries, 7);
-      expect(sheet.needsNewBowler, isFalse,
-          reason: 'the new over must not immediately ask again');
+      expect(
+        sheet.needsNewBowler,
+        isFalse,
+        reason: 'the new over must not immediately ask again',
+      );
     });
 
     test('a maiden is credited exactly once', () {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
       for (var i = 0; i < 6; i++) {
         s.score(action: 'DOT');
@@ -88,8 +103,11 @@ void main() {
       for (var i = 0; i < 3; i++) {
         expect(s.score(action: 'DOT'), MatchStore.needBowlerMsg);
       }
-      expect(s.currentSheet!.bowling[b[0]]!.maidens, 1,
-          reason: 'a repeated close would hand out a second maiden');
+      expect(
+        s.currentSheet!.bowling[b[0]]!.maidens,
+        1,
+        reason: 'a repeated close would hand out a second maiden',
+      );
       s.setBowler(b[1]);
       s.score(action: 'DOT');
       expect(s.currentSheet!.bowling[b[0]]!.maidens, 1);
@@ -99,7 +117,9 @@ void main() {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
       for (var i = 0; i < 5; i++) {
         s.score(action: 'DOT');
@@ -112,7 +132,9 @@ void main() {
       final s = trackedFixture(xiA: 5, xiB: 5, cap: 5, overs: 3);
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
 
       var changes = 0;
@@ -130,15 +152,20 @@ void main() {
       expect(s.innings!.legalDeliveries, 18);
       // Overs 1 and 2 each owe a change; over 3 is the innings' last, and
       // nothing is owed once the innings is over.
-      expect(changes, 2,
-          reason: 'one change per completed over that is followed by another');
+      expect(
+        changes,
+        2,
+        reason: 'one change per completed over that is followed by another',
+      );
     });
 
     test('undo restores the latch', () async {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
       for (var i = 0; i < 6; i++) {
         s.score(action: 'DOT');
@@ -146,8 +173,11 @@ void main() {
       expect(s.currentSheet!.needsNewBowler, isTrue);
       await s.undo(); // take back the 6th ball
       expect(s.innings!.legalDeliveries, 5);
-      expect(s.currentSheet!.needsNewBowler, isFalse,
-          reason: 'undoing the last ball un-ends the over');
+      expect(
+        s.currentSheet!.needsNewBowler,
+        isFalse,
+        reason: 'undoing the last ball un-ends the over',
+      );
     });
   });
 
@@ -156,7 +186,9 @@ void main() {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
       for (var i = 0; i < 6; i++) {
         s.score(action: 'DOT');
@@ -175,7 +207,9 @@ void main() {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
       for (var i = 0; i < 5; i++) {
         s.score(action: 'DOT');
@@ -189,17 +223,25 @@ void main() {
       expect(c.noBalls, 1);
       // 5 legal + 2 extras = 7 balls, but only FIVE overs balls.
       expect(c.legalBalls, 5);
-      expect(c.oversDisplay, '0.5',
-          reason: 'a wide is not a legal ball (Law 17.3)');
-      expect(c.economy, closeTo(c.runsConceded * 6 / 5, 1e-9),
-          reason: 'economy is runs per six LEGAL balls');
+      expect(
+        c.oversDisplay,
+        '0.5',
+        reason: 'a wide is not a legal ball (Law 17.3)',
+      );
+      expect(
+        c.economy,
+        closeTo(c.runsConceded * 6 / 5, 1e-9),
+        reason: 'economy is runs per six LEGAL balls',
+      );
     });
 
     test('runs conceded include wide and no-ball penalties', () {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
       s.score(action: 'RUNS', runs: 4);
       s.score(action: 'WIDE');
@@ -214,7 +256,9 @@ void main() {
       final s = trackedFixture();
       final b = s.squadForTeam('Tigers').map((p) => p.id).toList();
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(b[0]);
       s.score(action: 'BYE', runs: 1);
       s.score(action: 'LEGBYE', runs: 1);
@@ -245,8 +289,11 @@ void main() {
       // The bug: the name was blocked by a player no list could show.
       expect(s.duplicateName('Sanjay'), isTrue);
       final found = s.searchRoster('sanjay').map((p) => p.id).toList();
-      expect(found, contains(id),
-          reason: 'a name that blocks must be findable and editable');
+      expect(
+        found,
+        contains(id),
+        reason: 'a name that blocks must be findable and editable',
+      );
       expect(s.playerByName('Sanjay')!.id, id);
     });
 
@@ -299,9 +346,9 @@ void main() {
       expect(s.addSquadByName('Tigers', 'Mukesh'), isNull);
       expect(s.clubRoster.length, before + 1);
       expect(
-          s.match!.config.squadB
-              .any((id) => s.playerById(id)!.name == 'Mukesh'),
-          isTrue);
+        s.match!.config.squadB.any((id) => s.playerById(id)!.name == 'Mukesh'),
+        isTrue,
+      );
     });
 
     test('a typed name that matches an INACTIVE player adds them', () {
@@ -317,15 +364,19 @@ void main() {
     test('a player added mid-innings is registered on live sheets', () {
       final s = trackedFixture(xiA: 5, cap: 6);
       s.setOpeners(
-          s.squadForTeam('Lions')[0].id, s.squadForTeam('Lions')[1].id);
+        s.squadForTeam('Lions')[0].id,
+        s.squadForTeam('Lions')[1].id,
+      );
       s.setBowler(s.squadForTeam('Tigers')[0].id);
       expect(s.addSquadByName('Lions', 'Latecomer'), isNull);
       // Registered, so they can actually bat: they are a valid next batter.
       final sheet = s.currentSheet!;
       final latecomer = s.match!.config.squadA.last;
       expect(sheet.names.containsKey(latecomer), isTrue);
-      expect(sheet.nextBatterOptions(sheet.strikerId!).contains(latecomer),
-          isTrue);
+      expect(
+        sheet.nextBatterOptions(sheet.strikerId!).contains(latecomer),
+        isTrue,
+      );
     });
 
     test('the XI cap still holds mid-match', () {
@@ -352,14 +403,20 @@ void main() {
         expect(s.score(action: 'DOT'), isNull);
       }
       expect(sheet.bowling[b[0]]!.maidens, 1, reason: 'a maiden');
-      expect(sheet.strikerId, partner,
-          reason: 'Law 41.6: ends switch after a completed over');
+      expect(
+        sheet.strikerId,
+        partner,
+        reason: 'Law 41.6: ends switch after a completed over',
+      );
       expect(sheet.nonStrikerId, opener);
 
       s.setBowler(b[1]);
       expect(s.score(action: 'DOT'), isNull);
-      expect(sheet.batting[partner]!.balls, 1,
-          reason: 'the non-opener faces the first ball of the next over');
+      expect(
+        sheet.batting[partner]!.balls,
+        1,
+        reason: 'the non-opener faces the first ball of the next over',
+      );
       expect(sheet.batting[opener]!.balls, 6);
     });
 
@@ -395,12 +452,17 @@ void main() {
       s.score(action: 'RUNS', runs: 1);
       expect(sheet.needsNewBowler, isTrue, reason: 'the over completed');
       s.setBowler(b[1]);
-      expect(sheet.strikerId, a[0],
-          reason:
-              'the over ended and the ends changed, so A is back on strike');
+      expect(
+        sheet.strikerId,
+        a[0],
+        reason: 'the over ended and the ends changed, so A is back on strike',
+      );
       expect(s.score(action: 'DOT'), isNull);
-      expect(sheet.batting[a[0]]!.balls, 7,
-          reason: 'A faced ball 7 of the new over');
+      expect(
+        sheet.batting[a[0]]!.balls,
+        7,
+        reason: 'A faced ball 7 of the new over',
+      );
     });
 
     test('ends change at every over boundary, odd run or not', () {
@@ -456,7 +518,7 @@ void main() {
         'DOT',
         'DOT',
         'RUNS',
-        'WIDE'
+        'WIDE',
       ];
       var li = 0;
       while (s.innings!.legalDeliveries < 12 && li < 200) {
@@ -473,10 +535,16 @@ void main() {
           // The ball itself records WHO faced it, which is the only
           // ground truth that is not re-derived by this test. Assert against
           // that, then apply the Laws to the expectation for the next ball.
-          expect(last.strikerId, expectStriker,
-              reason: 'ball $li: wrong striker faced it');
-          expect(last.nonStrikerId, expectNon,
-              reason: 'ball $li: wrong non-striker');
+          expect(
+            last.strikerId,
+            expectStriker,
+            reason: 'ball $li: wrong striker faced it',
+          );
+          expect(
+            last.nonStrikerId,
+            expectNon,
+            reason: 'ball $li: wrong non-striker',
+          );
         }
         if (last.runs % 2 == 1) {
           final t = expectStriker;
@@ -485,16 +553,20 @@ void main() {
         }
         // Over boundary: ends switch whatever the over scored.
         if (s.innings!.overs.last.balls.where((x) => x.isLegal).length >= 6) {
-          final hadOdd =
-              s.innings!.overs.last.balls.any((x) => x.runs % 2 == 1);
+          final hadOdd = s.innings!.overs.last.balls.any(
+            (x) => x.runs % 2 == 1,
+          );
           if (!hadOdd) {
             final t = expectStriker;
             expectStriker = expectNon;
             expectNon = t;
           }
           // After the boundary the store must already agree with the model.
-          expect(sheet.strikerId, expectStriker,
-              reason: 'ball $li: wrong striker after the over ended');
+          expect(
+            sheet.strikerId,
+            expectStriker,
+            reason: 'ball $li: wrong striker after the over ended',
+          );
         }
       }
       expect(s.innings!.legalDeliveries, 12);
@@ -514,8 +586,11 @@ void main() {
       expect(s.currentSheet!.needsNewBowler, isFalse, reason: 'still playing');
       s.score(action: 'DOT'); // sixth legal ball: innings over
       expect(s.innings!.completed, isTrue);
-      expect(s.currentSheet!.needsNewBowler, isFalse,
-          reason: 'no next over to bowl, so no bowler prompt');
+      expect(
+        s.currentSheet!.needsNewBowler,
+        isFalse,
+        reason: 'no next over to bowl, so no bowler prompt',
+      );
     });
 
     test('8 players, 7 wickets: all out with no batter prompt', () {
@@ -525,13 +600,14 @@ void main() {
       final a = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'A$i')!.id];
       final b = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'B$i')!.id];
       s.draft = MatchConfig(
-          teamA: 'Lions',
-          teamB: 'Tigers',
-          totalOvers: 20,
-          playersPerSide: 8,
-          trackPlayers: true,
-          squadA: a,
-          squadB: b);
+        teamA: 'Lions',
+        teamB: 'Tigers',
+        totalOvers: 20,
+        playersPerSide: 8,
+        trackPlayers: true,
+        squadA: a,
+        squadB: b,
+      );
       s.startMatch(s.draft);
       s.setOpeners(a[0], a[1]);
       s.setBowler(b[0]);
@@ -575,22 +651,24 @@ void main() {
       final a = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'A$i')!.id];
       final b = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'B$i')!.id];
       s.draft = MatchConfig(
-          teamA: 'Lions',
-          teamB: 'Tigers',
-          totalOvers: 20,
-          playersPerSide: 8,
-          trackPlayers: true,
-          squadA: a,
-          squadB: b,
-          rules: Rules(lastManStanding: true));
+        teamA: 'Lions',
+        teamB: 'Tigers',
+        totalOvers: 20,
+        playersPerSide: 8,
+        trackPlayers: true,
+        squadA: a,
+        squadB: b,
+        rules: Rules(lastManStanding: true),
+      );
       s.startMatch(s.draft);
       s.setOpeners(a[0], a[1]);
       s.setBowler(b[0]);
       for (var w = 0; w < 7; w++) {
         s.score(action: 'WICKET', wicketType: 'Bowled');
         if (!s.innings!.completed) {
-          final opts = s.currentSheet!
-              .nextBatterOptions(s.currentSheet!.strikerId ?? '');
+          final opts = s.currentSheet!.nextBatterOptions(
+            s.currentSheet!.strikerId ?? '',
+          );
           if (opts.isNotEmpty) s.currentSheet!.bringIn(opts.first);
         }
       }
@@ -608,19 +686,27 @@ void main() {
       final sheet = s.currentSheet!;
 
       expect(
-          s.score(
-              action: 'WICKET',
-              wicketType: 'Run Out',
-              dismissal: DismissalType.runOut.name,
-              fielderName: 'Keeper',
-              outAtNonStrikerEnd: true),
-          isNull);
+        s.score(
+          action: 'WICKET',
+          wicketType: 'Run Out',
+          dismissal: DismissalType.runOut.name,
+          fielderName: 'Keeper',
+          outAtNonStrikerEnd: true,
+        ),
+        isNull,
+      );
 
-      expect(sheet.batting[a[1]]!.isNotOut, isFalse,
-          reason: 'the NON-striker is out');
+      expect(
+        sheet.batting[a[1]]!.isNotOut,
+        isFalse,
+        reason: 'the NON-striker is out',
+      );
       expect(sheet.batting[a[1]]!.dismissal, DismissalType.runOut);
-      expect(sheet.batting[a[0]]!.isNotOut, isTrue,
-          reason: 'the striker survives');
+      expect(
+        sheet.batting[a[0]]!.isNotOut,
+        isTrue,
+        reason: 'the striker survives',
+      );
       expect(s.innings!.wickets, 1);
     });
 
@@ -632,16 +718,20 @@ void main() {
       s.setBowler(b[0]);
       final sheet = s.currentSheet!;
       s.score(
-          action: 'WICKET',
-          runs: 1,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name);
+        action: 'WICKET',
+        runs: 1,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+      );
       expect(sheet.batting[a[0]]!.isNotOut, isFalse);
       // Odd runs changed the ends, so the incoming batter is at the striker's
       // end and the partner (a[1]) is now the non-striker.
       expect(sheet.strikerId == a[0], isFalse);
-      expect(sheet.nonStrikerId == a[0], isFalse,
-          reason: 'the dismissed striker is not left on either end');
+      expect(
+        sheet.nonStrikerId == a[0],
+        isFalse,
+        reason: 'the dismissed striker is not left on either end',
+      );
     });
 
     test('a run-out never credits the bowler', () {
@@ -651,9 +741,10 @@ void main() {
       s.setOpeners(a[0], a[1]);
       s.setBowler(b[0]);
       s.score(
-          action: 'WICKET',
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name);
+        action: 'WICKET',
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+      );
       expect(s.currentSheet!.bowling[b[0]]!.wickets, 0);
     });
   });
@@ -672,19 +763,29 @@ void main() {
       s.setBowler(b[0]);
       final sheet = s.currentSheet!;
       s.score(
-          action: 'WICKET',
-          wicketType: 'Caught',
-          dismissal: DismissalType.caught.name,
-          fielderName: 'Ravi');
+        action: 'WICKET',
+        wicketType: 'Caught',
+        dismissal: DismissalType.caught.name,
+        fielderName: 'Ravi',
+      );
       expect(sheet.batting[a[0]]!.isNotOut, isFalse);
-      expect(sheet.strikerId, isNot(a[0]),
-          reason: 'the dismissed batter is off the sheet');
-      expect(sheet.nonStrikerId, a[1],
-          reason: 'the partner stays at the bowler\'s end');
+      expect(
+        sheet.strikerId,
+        isNot(a[0]),
+        reason: 'the dismissed batter is off the sheet',
+      );
+      expect(
+        sheet.nonStrikerId,
+        a[1],
+        reason: 'the partner stays at the bowler\'s end',
+      );
       // Manual swap lands it correctly for the rare crossed catch.
       s.swapStrike();
-      expect(sheet.strikerId, a[1],
-          reason: 'after one manual swap the crosser is on strike');
+      expect(
+        sheet.strikerId,
+        a[1],
+        reason: 'after one manual swap the crosser is on strike',
+      );
     });
 
     test('odd runs still change the ends on any dismissal', () {
@@ -695,12 +796,16 @@ void main() {
       s.setBowler(b[0]);
       final sheet = s.currentSheet!;
       s.score(
-          action: 'WICKET',
-          runs: 1,
-          wicketType: 'Caught',
-          dismissal: DismissalType.caught.name);
-      expect(sheet.strikerId, a[1],
-          reason: 'an odd run completed on the dismissal changes the ends');
+        action: 'WICKET',
+        runs: 1,
+        wicketType: 'Caught',
+        dismissal: DismissalType.caught.name,
+      );
+      expect(
+        sheet.strikerId,
+        a[1],
+        reason: 'an odd run completed on the dismissal changes the ends',
+      );
     });
   });
 
@@ -716,17 +821,21 @@ void main() {
       final sheet = s.currentSheet!;
 
       s.score(
-          action: 'WICKET',
-          runs: 1,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: false,
-          outAtStrikerEnd: false);
+        action: 'WICKET',
+        runs: 1,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: false,
+        outAtStrikerEnd: false,
+      );
 
       expect(s.innings!.runs, 1, reason: 'the completed run is scored');
       expect(s.innings!.wickets, 1);
-      expect(sheet.strikerId, a[1],
-          reason: 'out at the bowler\'s end, so the crosser is on strike');
+      expect(
+        sheet.strikerId,
+        a[1],
+        reason: 'out at the bowler\'s end, so the crosser is on strike',
+      );
     });
 
     test('a W+n wicket carries the runs and the wicket', () {
@@ -736,10 +845,11 @@ void main() {
       s.setOpeners(a[0], a[1]);
       s.setBowler(b[0]);
       s.score(
-          action: 'WICKET',
-          runs: 2,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name);
+        action: 'WICKET',
+        runs: 2,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+      );
       expect(s.innings!.runs, 2);
       expect(s.innings!.wickets, 1);
       expect(s.innings!.overs.last.balls.last.badge, 'W+2');
@@ -752,10 +862,11 @@ void main() {
       s.setOpeners(a[0], a[1]);
       s.setBowler(b[0]);
       s.score(
-          action: 'WICKET',
-          runs: 0,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name);
+        action: 'WICKET',
+        runs: 0,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+      );
       expect(s.innings!.runs, 0);
       expect(s.innings!.wickets, 1);
     });
@@ -765,19 +876,22 @@ void main() {
       final s = MatchStore(sync: FakeSync());
       s.hapticsOn = false;
       s.draft = MatchConfig(
-          teamA: 'A',
-          teamB: 'B',
-          totalOvers: 2,
-          playersPerSide: 5,
-          trackPlayers: false);
+        teamA: 'A',
+        teamB: 'B',
+        totalOvers: 2,
+        playersPerSide: 5,
+        trackPlayers: false,
+      );
       s.startMatch(s.draft);
       expect(
-          s.score(
-              action: 'WICKET',
-              runs: 1,
-              wicketType: 'Run Out',
-              outAtNonStrikerEnd: true),
-          isNull);
+        s.score(
+          action: 'WICKET',
+          runs: 1,
+          wicketType: 'Run Out',
+          outAtNonStrikerEnd: true,
+        ),
+        isNull,
+      );
       expect(s.innings!.runs, 1);
       expect(s.innings!.wickets, 1);
       expect(s.innings!.overs.last.balls.last.badge, 'W+1');
@@ -798,22 +912,29 @@ void main() {
       final sheet = s.currentSheet!;
 
       s.score(
-          action: 'WICKET',
-          runs: 1,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: true,
-          outAtStrikerEnd: false);
+        action: 'WICKET',
+        runs: 1,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: true,
+        outAtStrikerEnd: false,
+      );
 
       expect(s.innings!.runs, 1, reason: 'one run completed');
       expect(s.innings!.wickets, 1);
       expect(s.innings!.overs.last.balls.last.badge, 'W+1');
       expect(sheet.batting[a[1]]!.isNotOut, isFalse, reason: 'B is out');
       expect(sheet.batting[a[0]]!.isNotOut, isTrue, reason: 'A survived');
-      expect(sheet.strikerId, a[0],
-          reason: 'A completed his run and stays on strike');
-      expect(sheet.strikerId, isNot(a[1]),
-          reason: 'the dismissed batter must never be listed on strike');
+      expect(
+        sheet.strikerId,
+        a[0],
+        reason: 'A completed his run and stays on strike',
+      );
+      expect(
+        sheet.strikerId,
+        isNot(a[1]),
+        reason: 'the dismissed batter must never be listed on strike',
+      );
       expect(sheet.nonStrikerId, a[2], reason: 'the newcomer fills the gap');
       expect(sheet.batting[a[0]]!.runs, 1);
       expect(sheet.batting[a[0]]!.balls, 1);
@@ -831,21 +952,28 @@ void main() {
       }
       // Sixth ball: the same run-out, and the over ends with it.
       s.score(
-          action: 'WICKET',
-          runs: 1,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: true,
-          outAtStrikerEnd: false);
+        action: 'WICKET',
+        runs: 1,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: true,
+        outAtStrikerEnd: false,
+      );
       expect(s.currentSheet!.needsNewBowler, isTrue);
       // The wicket ball is the SIXTH legal ball, so the over closes in the same
       // commit. The dismissal seats first (A1 safe on strike, A3 opposite him),
       // then Law 41.6 changes the ends - putting the newcomer, who was at the
       // bowler's end, on strike for the new over. Exactly the case described.
-      expect(sheet.strikerId, a[2],
-          reason: 'newcomer was at the bowler end, ends now change');
-      expect(sheet.nonStrikerId, a[0],
-          reason: 'A completed his run and the ends changed once');
+      expect(
+        sheet.strikerId,
+        a[2],
+        reason: 'newcomer was at the bowler end, ends now change',
+      );
+      expect(
+        sheet.nonStrikerId,
+        a[0],
+        reason: 'A completed his run and the ends changed once',
+      );
       expect(sheet.batting[a[1]]!.isNotOut, isFalse, reason: 'B is still out');
       s.setBowler(b[1]);
       expect(s.score(action: 'DOT'), isNull);
@@ -864,19 +992,25 @@ void main() {
           final outId = nonStriker ? a[1] : a[0];
 
           s.score(
-              action: 'WICKET',
-              runs: runs,
-              wicketType: 'Run Out',
-              dismissal: DismissalType.runOut.name,
-              outAtNonStrikerEnd: nonStriker,
-              // Vary the end too, so all four combinations are covered.
-              outAtStrikerEnd:
-                  runs.isEven ? true : (nonStriker ? false : true));
+            action: 'WICKET',
+            runs: runs,
+            wicketType: 'Run Out',
+            dismissal: DismissalType.runOut.name,
+            outAtNonStrikerEnd: nonStriker,
+            // Vary the end too, so all four combinations are covered.
+            outAtStrikerEnd: runs.isEven ? true : (nonStriker ? false : true),
+          );
 
-          expect(sheet.strikerId, isNot(outId),
-              reason: 'runs=$runs nonStriker=$nonStriker: out man on strike');
-          expect(sheet.nonStrikerId, isNot(outId),
-              reason: 'runs=$runs nonStriker=$nonStriker: out man at the end');
+          expect(
+            sheet.strikerId,
+            isNot(outId),
+            reason: 'runs=$runs nonStriker=$nonStriker: out man on strike',
+          );
+          expect(
+            sheet.nonStrikerId,
+            isNot(outId),
+            reason: 'runs=$runs nonStriker=$nonStriker: out man at the end',
+          );
           expect(sheet.batting[outId]!.isNotOut, isFalse);
           expect(sheet.strikerId, isNotNull);
         }
@@ -891,12 +1025,13 @@ void main() {
       s.setBowler(b[0]);
       final sheet = s.currentSheet!;
       s.score(
-          action: 'WICKET',
-          runs: 1,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: false,
-          outAtStrikerEnd: false);
+        action: 'WICKET',
+        runs: 1,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: false,
+        outAtStrikerEnd: false,
+      );
       expect(sheet.strikerId, a[1], reason: 'A1 crossed and is out; A2 is on');
       expect(sheet.batting[a[0]]!.isNotOut, isFalse);
     });
@@ -909,12 +1044,13 @@ void main() {
       s.setBowler(b[0]);
       final sheet = s.currentSheet!;
       s.score(
-          action: 'WICKET',
-          runs: 0,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: false,
-          outAtStrikerEnd: true);
+        action: 'WICKET',
+        runs: 0,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: false,
+        outAtStrikerEnd: true,
+      );
       expect(sheet.strikerId, a[2], reason: 'newcomer takes the striker end');
       expect(sheet.nonStrikerId, a[1], reason: 'partner stays put');
     });
@@ -934,18 +1070,22 @@ void main() {
             final outId = nonStriker ? a[1] : a[0];
 
             s.score(
-                action: 'WICKET',
-                runs: runs,
-                wicketType: 'Run Out',
-                dismissal: DismissalType.runOut.name,
-                outAtNonStrikerEnd: nonStriker,
-                outAtStrikerEnd: strikerEnd);
+              action: 'WICKET',
+              runs: runs,
+              wicketType: 'Run Out',
+              dismissal: DismissalType.runOut.name,
+              outAtNonStrikerEnd: nonStriker,
+              outAtStrikerEnd: strikerEnd,
+            );
 
             final why = 'nonStriker=$nonStriker strikerEnd=$strikerEnd r=$runs';
             expect(sheet.batting[outId]!.isNotOut, isFalse, reason: why);
             expect(sheet.strikerId, isNot(outId), reason: '$why: on strike');
-            expect(sheet.nonStrikerId, isNot(outId),
-                reason: '$why: at the end');
+            expect(
+              sheet.nonStrikerId,
+              isNot(outId),
+              reason: '$why: at the end',
+            );
             expect(s.innings!.runs, runs, reason: why);
             expect(s.innings!.wickets, 1, reason: why);
           }
@@ -961,14 +1101,18 @@ void main() {
       s.setBowler(b[0]);
       final sheet = s.currentSheet!;
       s.score(
-          action: 'WICKET',
-          runs: 0,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: true,
-          outAtStrikerEnd: true);
-      expect(sheet.strikerId, a[2],
-          reason: 'he was dismissed at the striker end, newcomer is next');
+        action: 'WICKET',
+        runs: 0,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: true,
+        outAtStrikerEnd: true,
+      );
+      expect(
+        sheet.strikerId,
+        a[2],
+        reason: 'he was dismissed at the striker end, newcomer is next',
+      );
       expect(sheet.nonStrikerId, a[0], reason: 'A crossed and holds his end');
       expect(sheet.batting[a[1]]!.isNotOut, isFalse);
     });
@@ -981,16 +1125,20 @@ void main() {
       s.setBowler(b[0]);
       final sheet = s.currentSheet!;
       s.score(
-          action: 'WICKET',
-          runs: 0,
-          wicketType: 'Run Out',
-          dismissal: DismissalType.runOut.name,
-          outAtNonStrikerEnd: false,
-          outAtStrikerEnd: false);
+        action: 'WICKET',
+        runs: 0,
+        wicketType: 'Run Out',
+        dismissal: DismissalType.runOut.name,
+        outAtNonStrikerEnd: false,
+        outAtStrikerEnd: false,
+      );
       // A1 was facing but is out at the far end, so A2 holds the striker's end
       // (he is the crosser) and the newcomer fills the bowler's end.
-      expect(sheet.strikerId, a[1],
-          reason: 'dismissed at the far end, so the other man is on strike');
+      expect(
+        sheet.strikerId,
+        a[1],
+        reason: 'dismissed at the far end, so the other man is on strike',
+      );
       expect(sheet.nonStrikerId, a[2], reason: 'newcomer fills that end');
       expect(sheet.batting[a[0]]!.isNotOut, isFalse);
     });
@@ -1005,13 +1153,17 @@ void main() {
       // Caught on an odd run: the batters crossed, so the crosser is on strike
       // whatever the end flag says (the flag is a run-out concept).
       s.score(
-          action: 'WICKET',
-          runs: 1,
-          wicketType: 'Caught',
-          dismissal: DismissalType.caught.name,
-          outAtStrikerEnd: true);
-      expect(sheet.strikerId, a[1],
-          reason: 'an odd run on the dismissal changes the ends');
+        action: 'WICKET',
+        runs: 1,
+        wicketType: 'Caught',
+        dismissal: DismissalType.caught.name,
+        outAtStrikerEnd: true,
+      );
+      expect(
+        sheet.strikerId,
+        a[1],
+        reason: 'an odd run on the dismissal changes the ends',
+      );
       expect(sheet.strikerId, isNot(a[0]));
     });
   });
@@ -1033,8 +1185,9 @@ void main() {
           bi = (bi + 1) % tigers.length;
           expect(s.setBowler(tigers[bi]), isNull);
         } else if (err == MatchStore.needSetupMsg) {
-          final opts = s.currentSheet!
-              .nextBatterOptions(s.currentSheet!.strikerId ?? '');
+          final opts = s.currentSheet!.nextBatterOptions(
+            s.currentSheet!.strikerId ?? '',
+          );
           if (opts.isEmpty) break;
           s.retireStriker(DismissalType.retiredHurt);
         } else {
@@ -1050,20 +1203,28 @@ void main() {
 
     // Team score must equal the sum of every batter's runs plus extras.
     final batRuns = sheet.batting.values.fold<int>(0, (t, c) => t + c.runs);
-    expect(inn.runs, batRuns + inn.wides + inn.noBalls + inn.byes + inn.legByes,
-        reason: 'score is derived from the ball sequence, never set directly');
+    expect(
+      inn.runs,
+      batRuns + inn.wides + inn.noBalls + inn.byes + inn.legByes,
+      reason: 'score is derived from the ball sequence, never set directly',
+    );
 
     // Overs in the strip must equal the innings legal count.
-    final legalInStrip = inn.overs
-        .fold<int>(0, (t, o) => t + o.balls.where((x) => x.isLegal).length);
+    final legalInStrip = inn.overs.fold<int>(
+      0,
+      (t, o) => t + o.balls.where((x) => x.isLegal).length,
+    );
     expect(legalInStrip, inn.legalDeliveries);
 
     // Every bowler's overs must be legal-ball based and add up.
     final bowlerLegal = sheet.bowling.values
         .where((c) => c.bowledAny)
         .fold<int>(0, (t, c) => t + c.legalBalls);
-    expect(bowlerLegal, inn.legalDeliveries,
-        reason: 'every legal ball belongs to exactly one bowler');
+    expect(
+      bowlerLegal,
+      inn.legalDeliveries,
+      reason: 'every legal ball belongs to exactly one bowler',
+    );
 
     // No bowler bowled two consecutive overs.
     var last = '';
@@ -1072,8 +1233,11 @@ void main() {
       if (o.balls.isEmpty) continue;
       final who = o.balls.first.bowlerId ?? '';
       if (who.isNotEmpty) {
-        expect(who == previous, isFalse,
-            reason: 'Law 17.4: $who bowled consecutive overs');
+        expect(
+          who == previous,
+          isFalse,
+          reason: 'Law 17.4: $who bowled consecutive overs',
+        );
         previous = last;
         last = who;
       }

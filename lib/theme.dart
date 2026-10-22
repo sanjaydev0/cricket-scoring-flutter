@@ -178,55 +178,61 @@ class _NoTransition extends PageTransitionsBuilder {
   const _NoTransition();
   @override
   Widget buildTransitions<T>(
-      PageRoute<T> route,
-      BuildContext context,
-      Animation<double> animation,
-      Animation<double> secondaryAnimation,
-      Widget child) {
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
     return child;
   }
 }
 
 class UmpireTheme {
   static ChipThemeData _chips(ColorScheme scheme) => ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        showCheckmark: false,
-        // 44px+ touch targets per platform guidance.
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-        selectedColor: const Color(0xFF131316),
-        labelStyle:
-            TextStyle(fontWeight: FontWeight.w800, color: scheme.onSurface),
-        secondaryLabelStyle:
-            const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-        side: BorderSide(color: scheme.outline),
-      );
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    showCheckmark: false,
+    // 44px+ touch targets per platform guidance.
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+    selectedColor: const Color(0xFF131316),
+    labelStyle: TextStyle(fontWeight: FontWeight.w800, color: scheme.onSurface),
+    secondaryLabelStyle: const TextStyle(
+      fontWeight: FontWeight.w800,
+      color: Colors.white,
+    ),
+    side: BorderSide(color: scheme.outline),
+  );
 
   static SegmentedButtonThemeData _segmented() => SegmentedButtonThemeData(
-        style: ButtonStyle(
-          shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-          // 44px+ touch targets per platform guidance.
-          minimumSize: const WidgetStatePropertyAll(Size(48, 44)),
-          backgroundColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.selected)
-                  ? const Color(0xFF131316)
-                  : null),
-          foregroundColor: WidgetStateProperty.resolveWith(
-              (s) => s.contains(WidgetState.selected) ? Colors.white : null),
-          textStyle: const WidgetStatePropertyAll(
-              TextStyle(fontWeight: FontWeight.w800)),
-        ),
-      );
+    style: ButtonStyle(
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      // 44px+ touch targets per platform guidance.
+      minimumSize: const WidgetStatePropertyAll(Size(48, 44)),
+      backgroundColor: WidgetStateProperty.resolveWith(
+        (s) =>
+            s.contains(WidgetState.selected) ? const Color(0xFF131316) : null,
+      ),
+      foregroundColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? Colors.white : null,
+      ),
+      textStyle: const WidgetStatePropertyAll(
+        TextStyle(fontWeight: FontWeight.w800),
+      ),
+    ),
+  );
   static ThemeData light() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF1D4ED8),
-      brightness: Brightness.light,
-    ).copyWith(
-      surface: Colors.white,
-      onSurface: const Color(0xFF0A0A0A),
-      surfaceContainerHighest: const Color(0xFFF1F1F1),
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1D4ED8),
+          brightness: Brightness.light,
+        ).copyWith(
+          surface: Colors.white,
+          onSurface: const Color(0xFF0A0A0A),
+          surfaceContainerHighest: const Color(0xFFF1F1F1),
+        );
     return ThemeData(
       useMaterial3: true,
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -252,24 +258,28 @@ class UmpireTheme {
       segmentedButtonTheme: _segmented(),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          textStyle:
-              const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
   }
 
   static ThemeData dark() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF60A5FA),
-      brightness: Brightness.dark,
-    ).copyWith(
-      surface: const Color(0xFF131316),
-      onSurface: Colors.white,
-      surfaceContainerHighest: const Color(0xFF232327),
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF60A5FA),
+          brightness: Brightness.dark,
+        ).copyWith(
+          surface: const Color(0xFF131316),
+          onSurface: Colors.white,
+          surfaceContainerHighest: const Color(0xFF232327),
+        );
     return ThemeData(
       useMaterial3: true,
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -295,10 +305,13 @@ class UmpireTheme {
       segmentedButtonTheme: _segmented(),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          textStyle:
-              const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );

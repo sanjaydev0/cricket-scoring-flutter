@@ -7,8 +7,12 @@ InningsSheet trackedSheet() {
   final a = Player(id: 'a', clubId: 'c', name: 'Rohit Sharma');
   final b = Player(id: 'b', clubId: 'c', name: 'Vikram Singh');
   final c = Player(id: 'c', clubId: 'c', name: 'Deepak Kumar');
-  final r =
-      Player(id: 'r', clubId: 'c', name: 'Ravi Patel', role: PlayerRole.bowler);
+  final r = Player(
+    id: 'r',
+    clubId: 'c',
+    name: 'Ravi Patel',
+    role: PlayerRole.bowler,
+  );
   s.registerSquad([a, b, c, r]);
   s.setOpeners('a', 'b');
   s.setBowler('r');
@@ -48,7 +52,8 @@ void main() {
   test('a wide is never faced and never a batter ball', () {
     final s = trackedSheet();
     s.applyDelivery(
-        Ball(runs: 0, extra: 'WD', extraRuns: 1, isLegal: false, badge: 'WD'));
+      Ball(runs: 0, extra: 'WD', extraRuns: 1, isLegal: false, badge: 'WD'),
+    );
     expect(s.batting['a']!.balls, 0);
     final bowl = s.bowling['r']!;
     expect(bowl.balls, 1);
@@ -59,7 +64,8 @@ void main() {
   test('a no-ball is faced but the penalty is not bat runs', () {
     final s = trackedSheet();
     s.applyDelivery(
-        Ball(runs: 2, extra: 'NB', extraRuns: 1, isLegal: false, badge: 'N2'));
+      Ball(runs: 2, extra: 'NB', extraRuns: 1, isLegal: false, badge: 'N2'),
+    );
     final bat = s.batting['a']!;
     expect(bat.balls, 1);
     expect(bat.runs, 2);
@@ -69,7 +75,8 @@ void main() {
   test('byes are faced but charged to nobody', () {
     final s = trackedSheet();
     s.applyDelivery(
-        Ball(runs: 0, extra: 'B', extraRuns: 2, isLegal: true, badge: 'B2'));
+      Ball(runs: 0, extra: 'B', extraRuns: 2, isLegal: true, badge: 'B2'),
+    );
     expect(s.batting['a']!.balls, 1);
     expect(s.batting['a']!.runs, 0);
     expect(s.bowling['r']!.runsConceded, 0);
@@ -78,8 +85,10 @@ void main() {
 
   test('a bowled wicket credits the bowler and brings in the next batter', () {
     final s = trackedSheet();
-    s.applyDelivery(Ball(isWicket: true, wicketType: 'Bowled', badge: 'W'),
-        dismissalType: DismissalType.bowled);
+    s.applyDelivery(
+      Ball(isWicket: true, wicketType: 'Bowled', badge: 'W'),
+      dismissalType: DismissalType.bowled,
+    );
     expect(s.batting['a']!.isNotOut, isFalse);
     expect(s.bowling['r']!.wickets, 1);
     expect(s.bringIn('c'), isTrue);
@@ -90,9 +99,10 @@ void main() {
   test('a run-out credits nobody', () {
     final s = trackedSheet();
     s.applyDelivery(
-        Ball(runs: 1, isWicket: true, wicketType: 'Run Out', badge: 'W+1'),
-        dismissalType: DismissalType.runOut,
-        fielderName: 'Ravi Patel');
+      Ball(runs: 1, isWicket: true, wicketType: 'Run Out', badge: 'W+1'),
+      dismissalType: DismissalType.runOut,
+      fielderName: 'Ravi Patel',
+    );
     expect(s.bowling['r']!.wickets, 0);
     expect(s.batting['a']!.dismissal, DismissalType.runOut);
     expect(s.fielding['r']!.runOuts, 1);
@@ -119,11 +129,17 @@ void main() {
     c.wides = 2;
     c.runsConceded = 30;
     expect(c.oversDisplay, '4.3', reason: '6 legal balls make an over');
-    expect(c.economy, closeTo(30 * 6 / 27, 1e-9),
-        reason: 'economy is per six LEGAL balls');
+    expect(
+      c.economy,
+      closeTo(30 * 6 / 27, 1e-9),
+      reason: 'economy is per six LEGAL balls',
+    );
     expect(c.penaltyRuns, 2);
-    expect(c.runsConceded, 30,
-        reason: 'runs given already contains the wide penalties');
+    expect(
+      c.runsConceded,
+      30,
+      reason: 'runs given already contains the wide penalties',
+    );
   });
 
   test('undefined stats are null, never zero', () {
@@ -167,8 +183,10 @@ void main() {
     c.add(i1);
     c.add(i2);
     expect(c.innings, 2);
-    expect(c.average,
-        40.0); // 40 runs, one dismissal; the not-out innings is excluded
+    expect(
+      c.average,
+      40.0,
+    ); // 40 runs, one dismissal; the not-out innings is excluded
     expect(c.strikeRate, closeTo(133.3, 0.1));
   });
 
@@ -223,19 +241,21 @@ void main() {
   test('retirements are not numbered as wickets', () {
     final s = trackedSheet();
     s.applyDelivery(
-        Ball(isWicket: true, wicketType: 'Retired Hurt', badge: 'W'),
-        dismissalType: DismissalType.retiredHurt);
+      Ball(isWicket: true, wicketType: 'Retired Hurt', badge: 'W'),
+      dismissalType: DismissalType.retiredHurt,
+    );
     expect(s.batting['a']!.wicketNumber, 0);
     expect(s.fallOfWickets, isEmpty);
   });
 
   test('player styles survive a JSON round trip', () {
     final p = Player(
-        id: 'x',
-        clubId: 'c',
-        name: 'Test',
-        battingStyle: BattingStyle.leftHand,
-        bowlingStyle: BowlingStyle.leftSpin);
+      id: 'x',
+      clubId: 'c',
+      name: 'Test',
+      battingStyle: BattingStyle.leftHand,
+      bowlingStyle: BowlingStyle.leftSpin,
+    );
     final back = Player.fromJson(p.toJson());
     expect(back.battingStyle, BattingStyle.leftHand);
     expect(back.bowlingStyle, BowlingStyle.leftSpin);
