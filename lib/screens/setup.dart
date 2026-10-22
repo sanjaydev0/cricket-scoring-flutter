@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../store.dart';
 import '../domain/players.dart';
 import '../models.dart';
+import 'club.dart';
 import 'widgets.dart';
 
 class SetupScreen extends StatefulWidget {
@@ -21,6 +22,10 @@ class _SetupScreenState extends State<SetupScreen> {
   String _qa = '';
   String _qb = '';
   final Set<String> _expanded = {};
+
+  /// Which squad panel is open. Only one at a time: two long lists stacked
+  /// meant Team B was always a scroll away.
+  String? _openTeam = 'TEAM A';
   final Map<String, TextEditingController> _searchCtrls = {};
   @override
   void initState() {
@@ -117,7 +122,7 @@ class _SetupScreenState extends State<SetupScreen> {
                             children: [
                               const TeamDot(MatchStore.teamAColor, size: 10),
                               const SizedBox(width: 6),
-                              Text(cfg.teamA.isEmpty ? 'TEAM A' : cfg.teamA),
+                              Text(cfg.teamA.isEmpty ? 'BLUE' : cfg.teamA),
                             ],
                           )),
                       ButtonSegment(
@@ -127,7 +132,7 @@ class _SetupScreenState extends State<SetupScreen> {
                             children: [
                               const TeamDot(MatchStore.teamBColor, size: 10),
                               const SizedBox(width: 6),
-                              Text(cfg.teamB.isEmpty ? 'TEAM B' : cfg.teamB),
+                              Text(cfg.teamB.isEmpty ? 'RED' : cfg.teamB),
                             ],
                           )),
                     ],
@@ -246,10 +251,10 @@ class _SetupScreenState extends State<SetupScreen> {
                         'Squads come from CLUB roster (${widget.store.clubRoster.length} players).',
                         style: const TextStyle(fontSize: 12)),
                     const SizedBox(height: 8),
-                    _squadPicker('TEAM A', cfg.teamA, _squadA, _squadB, _qa,
+                    _teamSquad('TEAM A', cfg.teamA, _squadA, _squadB, _qa,
                         (v) => setState(() => _qa = v)),
                     const SizedBox(height: 8),
-                    _squadPicker('TEAM B', cfg.teamB, _squadB, _squadA, _qb,
+                    _teamSquad('TEAM B', cfg.teamB, _squadB, _squadA, _qb,
                         (v) => setState(() => _qb = v)),
                   ],
                 ],
@@ -283,7 +288,96 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Widget _squadPicker(String side, String team, Set<String> sel,
+  /// Two team summary rows, one open at a time.
+  ///
+  /// The old layout stacked both full squad lists, so Team B was always a
+  /// long scroll away and neither team's state was visible at a glance. Now
+  /// each team is a row (dot, name, picked count, chevron) and the open team
+  /// shows its list underneath.
+  Widget _teamSquad(String side, String team, Set<String> sel,
+      Set<String> otherSel, String query, ValueChanged<String> onQuery) {
+    final isA = side == 'TEAM A';
+    final color = isA ? MatchStore.teamAColor : MatchStore.teamBColor;
+    final open = _openTeam == side;
+    final cap = cfg.playersPerSide;
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _openTeam = open ? null : side),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: open
+                  ? Color(color).withValues(alpha: 0.10)
+                  : Colors.transparent,
+              border: Border.all(color: Color(color), width: 1.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                TeamDot(color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        team.trim().isEmpty ? side : team.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900, fontSize: 15),
+                      ),
+                      Text(
+                        '${sel.length} of $cap picked',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            color: cs.onSurface.withValues(alpha: 0.65)),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'PICKED',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: cs.onSurface.withValues(alpha: 0.6)),
+                    ),
+                    Text(
+                      '${sel.length}/$cap',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 4),
+                Icon(open ? Icons.expand_less : Icons.expand_more,
+                    size: 22, color: cs.onSurface),
+              ],
+            ),
+          ),
+        ),
+        if (open) ...[
+          const SizedBox(height: 8),
+          _squadPanel(side, team, sel, otherSel, query, onQuery),
+        ],
+      ],
+    );
+  }
+
+  /// The open team's list: search, inline add, and the players themselves.
+  Widget _squadPanel(String side, String team, Set<String> sel,
       Set<String> otherSel, String query, ValueChanged<String> onQuery) {
     final store = widget.store;
     final q = query.toLowerCase().trim();
@@ -309,11 +403,11 @@ class _SetupScreenState extends State<SetupScreen> {
       return freq(b.id).compareTo(freq(a.id));
     });
     final expanded = _expanded.contains(side);
-    // Collapsed until tapped: only picked players show, so a long roster does
-    // not bury the form. Tapping search reveals frequent-first + More.
-    final showPool = expanded || q.isNotEmpty;
-    final listed =
-        showPool ? pool : pool.where((p) => sel.contains(p.id)).toList();
+    // The panel is only built when the team row is OPEN, so the roster is
+    // listed straight away. The "More" toggle only widens it. The old code
+    // hid the roster until the search field was tapped, which left an open
+    // team looking empty.
+    final listed = pool;
     // The XI can never exceed players-per-side. Once it is full the remaining
     // players are HIDDEN, not greyed out: a row you cannot tap is noise on a
     // phone, and a dimmed row still invites mis-taps between matches. The
@@ -326,12 +420,10 @@ class _SetupScreenState extends State<SetupScreen> {
     final visible =
         expanded ? listedFull.take(12).toList() : listedFull.take(8).toList();
     final hidden = listedFull.length - visible.length;
+    final otherLabel = side == 'TEAM A' ? cfg.teamB : cfg.teamA;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$side • $team (${sel.length}/$cap picked)',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-        const SizedBox(height: 6),
         TextField(
           controller:
               _searchCtrls.putIfAbsent(side, () => TextEditingController()),
@@ -352,18 +444,68 @@ class _SetupScreenState extends State<SetupScreen> {
           onChanged: onQuery,
           onTap: () => setState(() => _expanded.add(side)),
         ),
+        const SizedBox(height: 6),
+        // Add a player without leaving the setup: the old flow said "add them
+        // in CLUB first" and sent the umpire to another screen to do it.
+        InkWell(
+          onTap: () async {
+            if (sel.length >= cap) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content:
+                      Text('XI full at $cap — raise players per side first.')));
+              return;
+            }
+            final p = await showAddPlayerSheet(context, store,
+                title: 'ADD TO ${team.trim().isEmpty ? side : team.trim()}');
+            if (p == null || !mounted) return;
+            setState(() => sel.add(p.id));
+          },
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(
+                  color: Theme.of(context).colorScheme.outline, width: 1.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.person_add, size: 18),
+                SizedBox(width: 8),
+                Text('+ ADD PLAYER',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 4),
         if (pool.isEmpty)
-          const Text('No players — add them in CLUB first.',
+          const Text('No players yet — add one above.',
               style: TextStyle(fontSize: 12)),
-        if (!showPool && pool.isNotEmpty)
-          Text(
-              full
-                  ? 'XI full at $cap. Raise players/side to pick more, or tap one to remove.'
-                  : 'Tap Select players to choose (${pool.length} in club)',
-              style: const TextStyle(fontSize: 12)),
+        if (full && pool.isNotEmpty)
+          const Text(
+              'XI full. Raise players/side to pick more, or tap one to remove.',
+              style: TextStyle(fontSize: 12)),
         for (final p in visible)
-          InkWell(
+          DetailRow(
+            title: p.name,
+            subtitle:
+                '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}${otherSel.contains(p.id) ? ' • also in $otherLabel' : ''}',
+            valueLabel: freq(p.id) > 0 ? 'MATCHES' : null,
+            value: freq(p.id) > 0 ? '${freq(p.id)}' : null,
+            trailing: Icon(
+              sel.contains(p.id)
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
+              size: 20,
+              color: sel.contains(p.id)
+                  ? const Color(0xFF16A34A)
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.4),
+            ),
             onTap: () => setState(() {
               if (sel.contains(p.id)) {
                 sel.remove(p.id);
@@ -371,32 +513,6 @@ class _SetupScreenState extends State<SetupScreen> {
                 sel.add(p.id);
               }
             }),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(p.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w800)),
-                        Text(
-                            '${_roleName(p.role)} | ${battingStyleLabel(p.battingStyle)} ${bowlingStyleLabel(p.bowlingStyle)}${freq(p.id) > 0 ? ' | ${freq(p.id)} played' : ''}',
-                            style: const TextStyle(fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    sel.contains(p.id)
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
-                    color: sel.contains(p.id) ? Colors.green : Colors.grey,
-                  ),
-                ],
-              ),
-            ),
           ),
         if (hidden > 0)
           TextButton(

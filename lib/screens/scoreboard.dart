@@ -349,6 +349,10 @@ class _OverStripState extends State<OverStrip> {
     final row = SingleChildScrollView(
       controller: _ctrl,
       scrollDirection: Axis.horizontal,
+      // Soft edges: the strip resists progressively past the last ball instead
+      // of stopping dead like a clamped Android scroller.
+      physics:
+          const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       child: Row(
         children: [
           // Gaps between badges only — exactly 6 full balls per window.

@@ -5,6 +5,34 @@ import '../models.dart';
 import '../store.dart';
 import '../theme.dart';
 
+/// Apple-design sheet primitive: one drag handle, one motion language,
+/// reduced-motion aware. The settle follows the design spec (280ms ease-out
+/// with a slight overshoot) instead of Material's fixed 250ms curve, and
+/// collapses to a short fade when reduced motion is requested.
+Future showAppSheet(
+  BuildContext context, {
+  bool showDragHandle = true,
+  bool isScrollControlled = true,
+  required WidgetBuilder builder,
+}) {
+  final reduced = MediaQuery.disableAnimationsOf(context);
+  final dur = reduced
+      ? const Duration(milliseconds: 120)
+      : const Duration(milliseconds: 280);
+  return showModalBottomSheet(
+    context: context,
+    showDragHandle: showDragHandle,
+    isScrollControlled: isScrollControlled,
+    sheetAnimationStyle: AnimationStyle(
+      duration: dur,
+      reverseDuration: dur,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeOutCubic,
+    ),
+    builder: builder,
+  );
+}
+
 /// Carbon-black rectangular buttons (8px corners, white text) for all
 /// dialogs, sheets and primary actions. Secondary = surface fill with
 /// black border. No pills anywhere.
@@ -37,6 +65,12 @@ class RectBtn extends StatelessWidget {
             ? null
             : const BorderSide(color: Colors.black, width: 1.5),
         textStyle: const TextStyle(fontWeight: FontWeight.w800),
+      ).copyWith(
+        // Design spec: feedback lands on pointer-down and is strong enough for
+        // sunlight. Overlay darkens the fill instantly; nothing animates layout.
+        overlayColor: WidgetStateProperty.resolveWith((s) => danger
+            ? const Color(0xCC000000)
+            : (primary ? const Color(0xCC000000) : const Color(0x1A000000))),
       ),
       child: child,
     );
@@ -218,6 +252,13 @@ class KeyBtn extends StatelessWidget {
           side: const BorderSide(color: Colors.black38, width: 1.5),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(radius)),
+        ).copyWith(
+          // Instant, high-contrast press state. A ripple is invisible in
+          // direct sun; the fill visibly darkens the moment the finger lands.
+          overlayColor: WidgetStateProperty.resolveWith((s) =>
+              s.contains(WidgetState.pressed)
+                  ? const Color(0x40000000)
+                  : const Color(0x00000000)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -435,7 +476,9 @@ class PlayerRow extends StatelessWidget {
     return InkWell(
       onTap: enabled ? onTap : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        // 48dp minimum: a name row is a target, not a line of text.
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
           // Selection is a filled slab, not a tint: readable in sunlight.
           color: selected ? const Color(0xFF131316) : Colors.transparent,
@@ -489,6 +532,120 @@ class PlayerRow extends StatelessWidget {
                     ? const Color(0xFF22C55E)
                     : cs.onSurface.withValues(alpha: dim ? 0.25 : 0.5),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Detail row — the shared "person" line format across the app.
+///
+/// Bold name with a quiet subtitle on the left, a small caps label over a bold
+/// value on the right, hairline separator beneath. Club roster, setup squads
+/// and the scorecard all use it, so the same person is never drawn two ways.
+class DetailRow extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+
+  /// Small caps caption above the value (e.g. "MATCHES", "ECON").
+  final String? valueLabel;
+
+  /// The number itself. Tabular figures so live values do not jitter.
+  final String? value;
+
+  /// Trailing affordance (check, chevron, arrow).
+  final Widget? trailing;
+
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  /// Dims the row and blocks the tap (XI full, already picked elsewhere).
+  final bool dimmed;
+
+  const DetailRow({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.valueLabel,
+    this.value,
+    this.trailing,
+    this.onTap,
+    this.enabled = true,
+    this.dimmed = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final ink = dimmed ? cs.onSurface.withValues(alpha: 0.4) : cs.onSurface;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 54),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 15, color: ink),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11.5, color: ink.withValues(alpha: 0.65)),
+                    ),
+                ],
+              ),
+            ),
+            if (valueLabel != null || value != null) ...[
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (valueLabel != null)
+                    Text(
+                      valueLabel!,
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: ink.withValues(alpha: 0.6)),
+                    ),
+                  if (value != null)
+                    Text(
+                      value!,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        color: ink,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              trailing!,
+            ],
           ],
         ),
       ),

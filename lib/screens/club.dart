@@ -249,8 +249,8 @@ class _ClubScreenState extends State<ClubScreen> {
 
   void _clubSheet(BuildContext context, MatchStore store) {
     final name = TextEditingController();
-    showModalBottomSheet(
-      context: context,
+    showAppSheet(
+      context,
       showDragHandle: true,
       builder: (_) => SafeArea(
         child: Padding(
@@ -393,46 +393,23 @@ class _ClubScreenState extends State<ClubScreen> {
             opacity: p.active ? 1.0 : 0.62,
             child: Card(
               margin: const EdgeInsets.only(bottom: 6),
-              child: ListTile(
-                dense: true,
-                visualDensity: VisualDensity.compact,
-                leading: CircleAvatar(
-                    radius: 16,
-                    child: Text(_initials(p.name),
-                        style: const TextStyle(fontSize: 12))),
-                title: Text(
-                  p.active ? p.name : '${p.name}  •  INACTIVE',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: p.active ? null : const Color(0xFF94A3B8),
-                  ),
-                ),
-                subtitle: Text(
-                    '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)} • ${store.careerMatches(p.id)} matches',
-                    style: const TextStyle(fontSize: 11)),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(p.active
-                          ? Icons.check_circle
-                          : Icons.cancel_outlined),
-                      tooltip: p.active ? 'Active' : 'Inactive',
-                      onPressed: () => store.setPlayerActive(p.id, !p.active),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      tooltip: 'Rename player',
-                      onPressed: () => _renameSheet(context, store, p),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          size: 20, color: Color(0xFFDC143C)),
-                      tooltip: 'Delete player',
-                      onPressed: () => _deleteConfirm(context, store, p),
-                    ),
-                  ],
-                ),
+              clipBehavior: Clip.antiAlias,
+              // Detail-row format: name + role on the left, MATCHES over the
+              // count on the right, chevron for "there is more". The three
+              // actions moved into the player sheet so the row stays scannable
+              // on a phone.
+              child: DetailRow(
+                title: p.active ? p.name : '${p.name}  •  INACTIVE',
+                subtitle:
+                    '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}',
+                valueLabel: 'MATCHES',
+                value: '${store.careerMatches(p.id)}',
+                trailing: Icon(Icons.chevron_right,
+                    size: 20,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.45)),
                 onTap: () => _playerSheet(context, store, p),
               ),
             ),
@@ -468,8 +445,8 @@ class _ClubScreenState extends State<ClubScreen> {
   }
 
   void _bulkSheet(BuildContext context, MatchStore store) {
-    showModalBottomSheet(
-      context: context,
+    showAppSheet(
+      context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (_) => SafeArea(
@@ -552,8 +529,8 @@ class _ClubScreenState extends State<ClubScreen> {
   /// Resolves a name clash by showing the player that holds the name, with
   /// the two actions that actually clear it.
   void _duplicateSheet(BuildContext context, MatchStore store, Player clash) {
-    showModalBottomSheet(
-      context: context,
+    showAppSheet(
+      context,
       showDragHandle: true,
       builder: (_) => SafeArea(
         child: Padding(
@@ -685,8 +662,8 @@ class _ClubScreenState extends State<ClubScreen> {
         fS += f.stumpings;
       }
     }
-    showModalBottomSheet(
-      context: context,
+    showAppSheet(
+      context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (_) => SafeArea(
@@ -745,6 +722,45 @@ class _ClubScreenState extends State<ClubScreen> {
                 'Run outs': '$fR',
                 'Stumpings': '$fS',
               }),
+              const SizedBox(height: 16),
+              // The row shows the player; the actions live here so the roster
+              // stays one clean line per person.
+              Row(
+                children: [
+                  Expanded(
+                    child: RectBtn(
+                      primary: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _renameSheet(context, store, p);
+                      },
+                      child: const Text('RENAME'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: RectBtn(
+                      primary: false,
+                      onTap: () {
+                        store.setPlayerActive(p.id, !p.active);
+                        Navigator.pop(context);
+                      },
+                      child: Text(p.active ? 'DEACTIVATE' : 'ACTIVATE'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: RectBtn(
+                      danger: true,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _deleteConfirm(context, store, p);
+                      },
+                      child: const Text('DELETE'),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -796,3 +812,144 @@ class _ClubScreenState extends State<ClubScreen> {
         .toUpperCase();
   }
 }
+
+/// Shared "add player" sheet.
+///
+/// Used by the club roster and by the match-setup squad picker, so a player
+/// created while picking a XI is a REAL club player — the old flow forced a
+/// trip to CLUB first, which is where people got stuck.
+Future<Player?> showAddPlayerSheet(BuildContext context, MatchStore store,
+    {String title = 'ADD PLAYER'}) async {
+  final nameCtl = TextEditingController();
+  var role = PlayerRole.allRounder;
+  var bat = BattingStyle.rightHand;
+  var bowl = BowlingStyle.none;
+  Player? created;
+  String? error;
+
+  await showAppSheet(
+    context,
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (ctx, setSheet) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 4),
+                const Text('Saved to the club roster and this XI.',
+                    style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: nameCtl,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                      labelText: 'Name',
+                      errorText: error,
+                      border: const OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<BattingStyle>(
+                        initialValue: bat,
+                        decoration: const InputDecoration(
+                            labelText: 'Batting', border: OutlineInputBorder()),
+                        items: const [
+                          DropdownMenuItem(
+                              value: BattingStyle.rightHand,
+                              child: Text('Right-hand bat')),
+                          DropdownMenuItem(
+                              value: BattingStyle.leftHand,
+                              child: Text('Left-hand bat')),
+                        ],
+                        onChanged: (v) =>
+                            setSheet(() => bat = v ?? BattingStyle.rightHand),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<BowlingStyle>(
+                        initialValue: bowl,
+                        decoration: const InputDecoration(
+                            labelText: 'Bowling', border: OutlineInputBorder()),
+                        items: [
+                          for (final b in BowlingStyle.values)
+                            DropdownMenuItem(
+                                value: b, child: Text(bowlingStyleName(b))),
+                        ],
+                        onChanged: (v) =>
+                            setSheet(() => bowl = v ?? BowlingStyle.none),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final r in PlayerRole.values)
+                      ChoiceChip(
+                        label: Text(_roleNameOf(r)),
+                        selected: role == r,
+                        onSelected: (_) => setSheet(() => role = r),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                RectBtn(
+                  onTap: () {
+                    final name = nameCtl.text.trim();
+                    if (name.isEmpty) {
+                      setSheet(() => error = 'Name required');
+                      return;
+                    }
+                    final clash = store.playerByName(name);
+                    if (clash != null) {
+                      setSheet(() => error = 'Already in the club');
+                      return;
+                    }
+                    final p = store.addPlayer(
+                        name: name,
+                        role: role,
+                        battingStyle: bat,
+                        bowlingStyle: bowl);
+                    if (p == null) {
+                      setSheet(() => error = 'Create a club first');
+                      return;
+                    }
+                    created = p;
+                    Navigator.pop(sheetCtx);
+                  },
+                  child: const Text('ADD PLAYER'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  nameCtl.dispose();
+  return created;
+}
+
+/// Role label shared by the club form and the add-player sheet.
+String _roleNameOf(PlayerRole r) => switch (r) {
+      PlayerRole.batter => 'Batter',
+      PlayerRole.bowler => 'Bowler',
+      PlayerRole.allRounder => 'All-rounder',
+      PlayerRole.keeper => 'Keeper',
+    };

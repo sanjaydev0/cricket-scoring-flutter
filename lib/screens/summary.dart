@@ -211,18 +211,34 @@ class ScorecardView extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(c.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800, fontSize: 13)),
+                            Text(
+                              c.playerId == sheet.strikerId
+                                  ? '${c.name} *'
+                                  : c.name,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  // The pair at the crease is called out, so
+                                  // the card answers "who is in?" at a glance.
+                                  color: (c.playerId == sheet.strikerId ||
+                                          c.playerId == sheet.nonStrikerId)
+                                      ? const Color(0xFF1D4ED8)
+                                      : null),
+                            ),
                             Text(
                               c.position == 0
                                   ? ''
-                                  : c.isNotOut
-                                      ? 'not out'
-                                      : (c.dismissal?.text(
-                                              fielder: c.dismissedByName,
-                                              bowler: c.bowlerName) ??
-                                          'out'),
+                                  : c.playerId == sheet.strikerId
+                                      ? 'on strike'
+                                      : c.playerId == sheet.nonStrikerId
+                                          ? 'at the other end'
+                                          : c.isNotOut
+                                              ? 'not out'
+                                              : (c.dismissal?.text(
+                                                      fielder:
+                                                          c.dismissedByName,
+                                                      bowler: c.bowlerName) ??
+                                                  'out'),
                               style: const TextStyle(fontSize: 11),
                             ),
                           ],

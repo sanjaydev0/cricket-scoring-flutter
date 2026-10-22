@@ -39,8 +39,8 @@ class MatchConfig {
   List<String> squadA; // player ids for team A (when tracking)
   List<String> squadB; // player ids for team B (when tracking)
   MatchConfig({
-    this.teamA = 'EAGLES XI',
-    this.teamB = 'TITANS',
+    this.teamA = 'BLUE',
+    this.teamB = 'RED',
     this.battingFirst = 'A',
     this.totalOvers = 6,
     this.playersPerSide = 8,
@@ -53,13 +53,17 @@ class MatchConfig {
         squadA = squadA ?? [],
         squadB = squadB ?? [];
   factory MatchConfig.fromJson(Map<String, dynamic> j) => MatchConfig(
-        teamA: (j['teamA'] ?? 'EAGLES XI').toString(),
-        teamB: (j['teamB'] ?? 'TITANS').toString(),
+        teamA: (j['teamA'] ?? 'BLUE').toString(),
+        teamB: (j['teamB'] ?? 'RED').toString(),
         battingFirst: (j['battingFirst'] ?? 'A').toString(),
         totalOvers: (j['totalOvers'] ?? 6) as int,
         playersPerSide: (j['playersPerSide'] ?? 8) as int,
         commonPlayers: (j['commonPlayers'] ?? 0) as int,
-        rules: Rules.fromJson((j['rules'] ?? {}) as Map<String, dynamic>),
+        // A config saved before the rules block had no 'rules' key. The cast
+        // to Map<String, dynamic> threw on the empty literal, so an old save
+        // could not be read back at all.
+        rules: Rules.fromJson(
+            Map<String, dynamic>.from((j['rules'] ?? {}) as Map)),
         trackPlayers: (j['trackPlayers'] ?? false) as bool,
         squadA: ((j['squadA'] ?? []) as List).map((e) => e.toString()).toList(),
         squadB: ((j['squadB'] ?? []) as List).map((e) => e.toString()).toList(),

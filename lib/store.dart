@@ -803,6 +803,75 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replaces the batter at one end, mid-over.
+  ///
+  /// One commit: the departing player is recorded as retired and the newcomer
+  /// takes that exact end. A single snapshot means ONE undo puts both men
+  /// back, which is what the umpire wants after a mistap — not a half state.
+  ///
+  /// [atStrikerEnd] decides the consequence, and it is the whole point:
+  ///   - striker retired -> the newcomer faces the next ball;
+  ///   - non-striker retired -> the striker keeps his strike.
+  ///
+  /// [retireAs] is how the departing man is recorded: retired hurt (he may
+  /// come back later, no wicket falls) or retired out (a wicket falls).
+  String? substituteBatter({
+    required bool atStrikerEnd,
+    required String newcomerId,
+    DismissalType retireAs = DismissalType.retiredHurt,
+  }) {
+    final sheet = currentSheet;
+    if (sheet == null) return 'Player tracking is off';
+    if (retireAs != DismissalType.retiredHurt &&
+        retireAs != DismissalType.retiredOut) {
+      return 'Not a retirement';
+    }
+    // The bowler must be settled first: a substitution in the middle of a
+    // refused delivery would leave the over half-scored.
+    if (sheet.needsNewBowler) return 'Pick the next bowler first';
+    final outgoingId = atStrikerEnd ? sheet.strikerId : sheet.nonStrikerId;
+    if (outgoingId == null) return 'No batter at that end';
+    // An empty newcomer means "retire, nobody comes in" — the innings is over
+    // and there is no one left to bat.
+    if (newcomerId.isNotEmpty) {
+      if (newcomerId == outgoingId) return 'Same player';
+      final otherEnd = atStrikerEnd ? sheet.nonStrikerId : sheet.strikerId;
+      if (!sheet
+          .replacementOptions(outgoingId, otherEnd)
+          .contains(newcomerId)) {
+        return 'That player cannot come in';
+      }
+    }
+    pushSnapshot();
+    final outgoingName = sheet.nameOf(outgoingId);
+    final newcomerName =
+        newcomerId.isEmpty ? 'nobody' : sheet.nameOf(newcomerId);
+    sheet.substituteBatter(
+      atStrikerEnd: atStrikerEnd,
+      newcomerId: newcomerId,
+      retireAs: retireAs,
+    );
+    // Retired-out is a dismissal in the Laws: it counts toward all-out.
+    // Retired-hurt does not.
+    if (retireAs == DismissalType.retiredOut) {
+      final inn = innings;
+      if (inn != null) {
+        inn.wickets++;
+        _checkEnd();
+      }
+    }
+    // The players sheet shows this with an UNDO button: a substitution the
+    // umpire does not like must be one tap from being undone.
+    lastChange = '$outgoingName → $newcomerName';
+    _persist();
+    notifyListeners();
+    return null;
+  }
+
+  /// One-line description of the last batter change, for the undo banner.
+  /// Cleared by undo and by the next delivery.
+  String? lastChange;
+
   void swapStrike() {
     final sheet = currentSheet;
     if (sheet == null) return;
@@ -903,6 +972,9 @@ class MatchStore extends ChangeNotifier {
 
   Future<void> undo() async {
     nbArmed = false;
+    // The undo banner describes the change that was just undone, so it goes
+    // with it.
+    lastChange = null;
     if (_undo.isEmpty) return;
     if (match != null) {
       _redo.add(jsonEncode({
@@ -1127,6 +1199,9 @@ class MatchStore extends ChangeNotifier {
       if (gate.needsNewBowler) return needBowlerMsg;
     }
     pushSnapshot();
+    // A new delivery supersedes the undo banner: the change it described is
+    // now part of the match, not a pending edit.
+    lastChange = null;
     final rules = m.config.rules;
 
     // The dismissal type is settled ONCE, from the enum id when the UI sent

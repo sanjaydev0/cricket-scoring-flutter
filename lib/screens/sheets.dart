@@ -4,6 +4,7 @@ import '../math.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'player_sheets.dart';
+import 'scorecard.dart';
 import 'widgets.dart';
 
 /// Scoring dialogs & sheets in the reference layout:
@@ -93,8 +94,8 @@ void showOversSheet(BuildContext context, MatchStore store) {
   final inn = store.innings!;
   final m = store.match!;
   final innIdx = m.currentInnings;
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     builder: (_) => SafeArea(
       child: ListView(
@@ -121,6 +122,15 @@ void showOversSheet(BuildContext context, MatchStore store) {
                 child: const Text('✕ CLOSE'),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          RectBtn(
+            primary: false,
+            onTap: () {
+              Navigator.pop(context);
+              showScorecard(context, store, inningsNo: innIdx);
+            },
+            child: const Text('SCORECARD'),
           ),
           const SizedBox(height: 12),
           for (final o in inn.overs)
@@ -152,8 +162,8 @@ void showOversSheet(BuildContext context, MatchStore store) {
 }
 
 void showExtrasSheet(BuildContext context, MatchStore store) {
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     builder: (_) => SafeArea(
       child: SingleChildScrollView(
@@ -226,8 +236,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
   // Owned by the sheet so the mid-match "add a player" field survives
   // rebuilds and can be cleared after each add.
   final squadField = TextEditingController();
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheetCtx) => StatefulBuilder(
@@ -486,8 +496,8 @@ void _confirmAbandon(BuildContext context, MatchStore store) {
 
 /// Compact style + font + celebration picker (palette icon in AppBar).
 void showLookSheet(BuildContext context, MatchStore store) {
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     builder: (_) => ListenableBuilder(
       listenable: store,

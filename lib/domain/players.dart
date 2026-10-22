@@ -624,6 +624,71 @@ class InningsSheet {
     return true;
   }
 
+  /// Who can replace the batter at one end, mid-over.
+  ///
+  /// [outId] is the batter leaving. [otherEndId] is whoever holds the OTHER
+  /// end and therefore cannot be the replacement: the striker when the
+  /// non-striker is being replaced, the non-striker when the striker is.
+  ///
+  /// The old signature always excluded the non-striker, which was correct for
+  /// a striker's dismissal and wrong for a non-striker's — replacing the
+  /// non-striker with the man standing at the other end is not a substitution.
+  List<String> replacementOptions(String outId, String? otherEndId) {
+    final opts = <String>[];
+    for (final id in names.keys) {
+      if (id == outId || id == otherEndId) continue;
+      final c = batting[id];
+      if (c == null) continue;
+      if (c.position == 0) {
+        opts.add(id);
+        continue;
+      }
+      // Batted before: only a retired-hurt returnee may come again, and they
+      // are recorded not-out=false, so this check must come first.
+      if (c.dismissal == DismissalType.retiredHurt) {
+        opts.add(id);
+        continue;
+      }
+      if (!c.isNotOut) continue;
+    }
+    return opts;
+  }
+
+  /// Mid-over substitution: the batter at [atStrikerEnd] steps down and
+  /// [newcomerId] takes that exact end.
+  ///
+  /// Cricket: a substitution is not a dismissal and not a run — nobody moves
+  /// ends, the newcomer simply stands where the departing man stood. So:
+  ///   - striker retires -> the newcomer faces the next ball;
+  ///   - non-striker retires -> the striker keeps his strike.
+  ///
+  /// [retireAs] records WHY the man left on his card. `retiredHurt` may come
+  /// back later; `retiredOut` is a dismissal and falls a wicket (the store
+  /// counts that, not the card).
+  void substituteBatter({
+    required bool atStrikerEnd,
+    required String newcomerId,
+    required DismissalType retireAs,
+  }) {
+    final outgoingId = atStrikerEnd ? strikerId : nonStrikerId;
+    final outgoing = outgoingId == null ? null : batting[outgoingId];
+    if (outgoing != null) {
+      outgoing.dismissal = retireAs;
+      outgoing.isNotOut = false;
+    }
+    if (!names.containsKey(newcomerId)) return;
+    // The pair changed, so the partnership ends here and a new one starts.
+    _bankPartnership();
+    _seat(newcomerId);
+    if (atStrikerEnd) {
+      strikerId = newcomerId;
+    } else {
+      nonStrikerId = newcomerId;
+    }
+    partnershipRuns = 0;
+    partnershipBalls = 0;
+  }
+
   /// Dismissed this innings, in fall order.
   List<BattingCard> get fallOfWickets {
     final gone = batting.values

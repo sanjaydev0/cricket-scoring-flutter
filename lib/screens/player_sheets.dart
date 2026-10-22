@@ -4,6 +4,7 @@ import '../domain/players.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
+import 'scorecard.dart';
 import 'summary.dart';
 
 String fmt1(double? v) => v == null ? '—' : v.toStringAsFixed(1);
@@ -18,8 +19,8 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
         const SnackBar(content: Text('Player tracking is off for this match')));
     return;
   }
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (_) => ListenableBuilder(
@@ -35,6 +36,10 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (store.lastChange != null) ...[
+                  _undoBanner(context, store, store.lastChange!),
+                  const SizedBox(height: 10),
+                ],
                 _rowsHeader(preset, 'Batter', const ['R', 'B', '4s', '6s']),
                 if (s.striker != null)
                   _batterRow(context, store, s, s.striker!, isStriker: true),
@@ -72,11 +77,55 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                RectBtn(
+                  primary: false,
+                  onTap: () {
+                    Navigator.pop(context);
+                    showScorecard(context, store);
+                  },
+                  child: const Text('FULL SCORECARD'),
+                ),
               ],
             ),
           ),
         );
       },
+    ),
+  );
+}
+
+/// Undo strip for the last batter change.
+///
+/// The umpire's complaint was that a change they did not like cost a trip to
+/// the keypad's UNDO button. This puts it one tap away, right where the
+/// change happened.
+Widget _undoBanner(BuildContext context, MatchStore store, String what) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: const Color(0xFF131316),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.swap_horiz, size: 18, color: Colors.white),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(what,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13)),
+        ),
+        RectBtn(
+          primary: false,
+          onTap: () => store.undo(),
+          child: const Text('UNDO'),
+        ),
+      ],
     ),
   );
 }
@@ -115,7 +164,10 @@ Widget _batterRow(
     {required bool isStriker}) {
   final p = _playerOf(store, c.playerId);
   return InkWell(
-    onLongPress: () => _retireDialog(context, store, c),
+    // Tap the batter to change or retire him. Long-press used to be the only
+    // way in, and it was undiscoverable: the umpire had to know the gesture.
+    onTap: () =>
+        showBatterOptionsSheet(context, store, c, isStriker: isStriker),
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: const BoxDecoration(
@@ -127,8 +179,18 @@ Widget _batterRow(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${c.name}${isStriker ? ' *' : ''}',
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('${c.name}${isStriker ? ' *' : ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                    const Icon(Icons.chevron_right,
+                        size: 18, color: Color(0xFF94A3B8)),
+                  ],
+                ),
                 Text(
                     'SR ${fmt1(c.strikeRate)}${p == null ? '' : ' | ${battingStyleLabel(p.battingStyle)}'}',
                     style: const TextStyle(fontSize: 11)),
@@ -189,41 +251,129 @@ Player? _playerOf(MatchStore store, String id) {
   return null;
 }
 
-/// Long-press a batter row to retire them. Hurt may return via the next-batter
-/// picker; out never does.
-void _retireDialog(BuildContext context, MatchStore store, BattingCard c) {
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text('RETIRE ${c.name}?'),
-      content: const Text(
-          'Hurt can return later through the next-batter list. Out cannot.'),
-      actions: [
-        RectBtn(
-          primary: false,
-          onTap: () => Navigator.pop(context),
-          child: const Text('Keep'),
-        ),
-        RectBtn(
-          onTap: () {
-            store.retireStriker(DismissalType.retiredHurt);
-            Navigator.pop(context);
-            Navigator.pop(context);
-          },
-          child: const Text('Hurt'),
-        ),
-        RectBtn(
-          danger: true,
-          onTap: () {
-            store.retireStriker(DismissalType.retiredOut);
-            Navigator.pop(context);
-            Navigator.pop(context);
-          },
-          child: const Text('Out'),
-        ),
-      ],
+/// What to do with the batter who is at the crease.
+///
+/// Two steps in one sheet: first WHAT HAPPENED (change the man / he is out),
+/// then WHO COMES IN. The replacement list replaces the question in place
+/// rather than stacking another sheet on top, so there is never a pile of
+/// sheets to back out of.
+void showBatterOptionsSheet(
+    BuildContext context, MatchStore store, BattingCard card,
+    {required bool isStriker}) {
+  showAppSheet(
+    context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetCtx) => _BatterOptions(
+      store: store,
+      card: card,
+      isStriker: isStriker,
     ),
   );
+}
+
+class _BatterOptions extends StatefulWidget {
+  final MatchStore store;
+  final BattingCard card;
+  final bool isStriker;
+  const _BatterOptions(
+      {required this.store, required this.card, required this.isStriker});
+  @override
+  State<_BatterOptions> createState() => _BatterOptionsState();
+}
+
+class _BatterOptionsState extends State<_BatterOptions> {
+  /// Null while the first question is on screen; set once the umpire has said
+  /// what happened, which switches the sheet to the replacement list.
+  DismissalType? _retireAs;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = widget.store;
+    final sheet = store.currentSheet;
+    if (sheet == null) return const SizedBox.shrink();
+    final card = widget.card;
+    final accent =
+        widget.isStriker ? const Color(0xFF1D4ED8) : const Color(0xFF0F766E);
+    final retireAs = _retireAs;
+    if (retireAs == null) {
+      return SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              RowSectionLabel(card.name.toUpperCase(), color: accent),
+              const SizedBox(height: 4),
+              Text(
+                '${widget.isStriker ? "Striker's end" : "Non-striker's end"} • ${card.runs} off ${card.balls}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              RowSectionLabel('WHAT HAPPENED?', color: accent),
+              PlayerRow(
+                name: 'CHANGE BATTER',
+                subtitle: 'He retires, not out — the newcomer takes his end',
+                onTap: () =>
+                    setState(() => _retireAs = DismissalType.retiredHurt),
+              ),
+              PlayerRow(
+                name: 'RETIRE OUT',
+                subtitle: 'He is out — a wicket falls',
+                onTap: () =>
+                    setState(() => _retireAs = DismissalType.retiredOut),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final outId = widget.isStriker ? sheet.strikerId : sheet.nonStrikerId;
+    final otherId = widget.isStriker ? sheet.nonStrikerId : sheet.strikerId;
+    final options = sheet.replacementOptions(outId ?? '', otherId);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            RowSectionLabel('WHO COMES IN?', color: accent),
+            if (options.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Text('No batters left.', style: TextStyle(fontSize: 12)),
+              )
+            else
+              for (final id in options)
+                Builder(builder: (_) {
+                  final returning = (sheet.batting[id]?.position ?? 0) > 0;
+                  return PlayerRow(
+                    name: sheet.nameOf(id),
+                    subtitle: returning
+                        ? 'Retired hurt — coming back in'
+                        : 'Yet to bat • ${sheet.battingTeam}',
+                    onTap: () {
+                      final err = store.substituteBatter(
+                        atStrikerEnd: widget.isStriker,
+                        newcomerId: id,
+                        retireAs: retireAs,
+                      );
+                      if (err != null) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(content: Text(err)));
+                        return;
+                      }
+                      Navigator.pop(context);
+                    },
+                  );
+                }),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// One-tap dismissal: type chips on top, next batter below. Tapping a name
@@ -244,8 +394,8 @@ void showDismissalSheet(
   // the retired-out never appear. Retired-hurt returnees do.
   final outId = sheet.strikerId ?? '';
   final waiting = sheet.nextBatterOptions(outId);
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheetCtx) => StatefulBuilder(
@@ -411,8 +561,8 @@ void showBowlerSheet(BuildContext context, MatchStore store,
           (sheet.bowling[id]!.balls > 0 || sheet.bowling[id]!.wickets > 0))
         id,
   ];
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     builder: (_) => SafeArea(
       child: SingleChildScrollView(
@@ -482,8 +632,8 @@ void showNextBatterSheet(BuildContext context, MatchStore store,
   final outName = sheet.nameOf(outId);
   String? fielder;
 
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheetCtx) => StatefulBuilder(
@@ -713,8 +863,8 @@ class _RunOutFormState extends State<RunOutForm> {
 /// screen, so question 3 and the confirm button could sit past the cap with no
 /// way to scroll to them.
 void showRunOutSheet(BuildContext context, MatchStore store) {
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheetCtx) => SafeArea(
@@ -770,11 +920,16 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
   String? a;
   String? b;
   String? bowl;
+  // Which group shows its full list. A group collapses to its pick once one
+  // is made, and reopens when the umpire taps the chosen row.
+  var aExpanded = false;
+  var bExpanded = false;
+  var bowlExpanded = false;
   // The first two who have not batted are the sensible defaults, but nothing
   // is pre-committed: a wrong auto-picked striker silently corrupts figures,
   // so START stays disabled until all three are chosen on purpose.
-  showModalBottomSheet(
-    context: context,
+  showAppSheet(
+    context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheetCtx) => StatefulBuilder(
@@ -801,11 +956,18 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
                   accent: const Color(0xFF1D4ED8),
                   people: batting,
                   selected: a,
+                  expanded: aExpanded,
                   enabledFor: (p) => true,
                   emptyNote:
                       'No squad for ${sheet.battingTeam} — add players mid-match.',
+                  onExpand: () => setSheet(() => aExpanded = true),
+                  onClear: () => setSheet(() {
+                    a = null;
+                    aExpanded = true;
+                  }),
                   onPick: (p) => setSheet(() {
                     a = p.id;
+                    aExpanded = false;
                     if (b == p.id) b = null; // never both ends the same batter
                   }),
                 ),
@@ -814,19 +976,37 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
                   accent: const Color(0xFF0F766E),
                   people: batting,
                   selected: b,
+                  expanded: bExpanded,
                   enabledFor: (p) => p.id != a,
                   emptyNote: null,
-                  onPick: (p) => setSheet(() => b = p.id),
+                  onExpand: () => setSheet(() => bExpanded = true),
+                  onClear: () => setSheet(() {
+                    b = null;
+                    bExpanded = true;
+                  }),
+                  onPick: (p) => setSheet(() {
+                    b = p.id;
+                    bExpanded = false;
+                  }),
                 ),
                 _pickGroup(
                   label: 'OPENING BOWLER',
                   accent: const Color(0xFFDC143C),
                   people: bowling,
                   selected: bowl,
+                  expanded: bowlExpanded,
                   enabledFor: (p) => true,
                   emptyNote:
                       'No squad for ${sheet.bowlingTeam} — add players mid-match.',
-                  onPick: (p) => setSheet(() => bowl = p.id),
+                  onExpand: () => setSheet(() => bowlExpanded = true),
+                  onClear: () => setSheet(() {
+                    bowl = null;
+                    bowlExpanded = true;
+                  }),
+                  onPick: (p) => setSheet(() {
+                    bowl = p.id;
+                    bowlExpanded = false;
+                  }),
                 ),
                 const SizedBox(height: 14),
                 RectBtn(
@@ -852,26 +1032,34 @@ void showInningsStartSheet(BuildContext context, MatchStore store) {
 
 /// One labelled group of name rows. Names are rows, never pills — a wrapped
 /// row of chips on a phone hides whole squads behind a scroll.
+/// One labelled group of name rows. Names are rows, never pills — a wrapped
+/// row of chips on a phone hides whole squads behind a scroll.
+///
+/// The group collapses to the chosen pick once one is made (this sheet is
+/// three choices, so a full roster of names is noise). Tapping the chosen row
+/// reopens the list — the old code promised "Tap to change" but nothing ever
+/// reopened it, so a mis-pick could only be fixed by backing out of the sheet
+/// — and tapping the highlighted name again UNPICKS it.
 Widget _pickGroup({
   required String label,
   required Color accent,
   required List<Player> people,
   required String? selected,
+  required bool expanded,
   required bool Function(Player) enabledFor,
   required void Function(Player) onPick,
+  required void Function() onClear,
+  required void Function() onExpand,
   String? emptyNote,
-  void Function()? onReopen,
 }) {
-  // Once a pick is made, show only that pick: this sheet is three choices, so
-  // a full roster of names that cannot be selected is just noise. Tapping the
-  // chosen row reopens the list to change it.
   final chosen = selected == null
       ? null
       : [
           for (final p in people)
             if (p.id == selected) p
         ];
-  final shown = chosen ?? people;
+  final collapsed = chosen != null && !expanded;
+  final shown = collapsed ? chosen : people;
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -887,18 +1075,25 @@ Widget _pickGroup({
         for (final p in shown)
           PlayerRow(
             name: p.name,
-            subtitle: chosen != null
+            subtitle: collapsed
                 ? 'Tap to change'
                 : '${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}',
             selected: selected == p.id,
             enabled: enabledFor(p),
             blockedReason: enabledFor(p) ? null : 'already the striker',
-            onTap: chosen != null
-                ? () {
-                    onReopen?.call();
-                    onPick(p);
-                  }
-                : () => onPick(p),
+            onTap: () {
+              if (collapsed) {
+                // Reopen the list. The pick stays until another name is tapped.
+                onExpand();
+                return;
+              }
+              if (selected == p.id) {
+                // Un-pick: the mis-tap is fixed without leaving the sheet.
+                onClear();
+                return;
+              }
+              onPick(p);
+            },
           ),
     ],
   );

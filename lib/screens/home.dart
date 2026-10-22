@@ -116,8 +116,8 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _settingsSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
+    showAppSheet(
+      context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (_) => ListenableBuilder(
