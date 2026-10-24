@@ -25,7 +25,9 @@ class MatchStore extends ChangeNotifier {
   /// without Supabase credentials uses.
   final SyncPort sync;
 
-  MatchStore({SyncPort? sync}) : sync = sync ?? LocalOnlySync();
+  MatchStore({SyncPort? sync}) : sync = sync ?? LocalOnlySync() {
+    engine.store = this;
+  }
 
   /// Live join code while sharing, else null.
   String? roomCode;
@@ -85,51 +87,11 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _bumpAppearances() {
-    final sheet = currentSheet;
-    final m = match;
-    if (sheet == null || m == null) return;
-    final key = '${m.createdAt}_${m.currentInnings}';
-    if (appearanceKeys.contains(key)) return;
-    appearanceKeys.add(key);
-    for (final c in sheet.batting.values) {
-      if (c.position > 0) {
-        playerAppearances[c.playerId] =
-            (playerAppearances[c.playerId] ?? 0) + 1;
-      }
-    }
-    for (final c in sheet.bowling.values) {
-      if ((c.balls > 0 || c.wickets > 0) &&
-          (sheet.batting[c.playerId]?.position ?? 0) == 0) {
-        playerAppearances[c.playerId] =
-            (playerAppearances[c.playerId] ?? 0) + 1;
-      }
-    }
-  }
+  void _bumpAppearances() => engine.bumpAppearances();
 
   /// Withdraws the appearance bump when undo reopens an innings, so the
   /// frequency ordering behind squad pickers cannot drift.
-  void _withdrawAppearances() {
-    final m = match;
-    if (m == null) return;
-    final key = '${m.createdAt}_${m.currentInnings}';
-    if (!appearanceKeys.remove(key)) return;
-    final sheet = currentSheet;
-    if (sheet == null) return;
-    for (final c in sheet.batting.values) {
-      if (c.position > 0) {
-        playerAppearances[c.playerId] =
-            ((playerAppearances[c.playerId] ?? 1) - 1).clamp(0, 1 << 30);
-      }
-    }
-    for (final c in sheet.bowling.values) {
-      if ((c.balls > 0 || c.wickets > 0) &&
-          (sheet.batting[c.playerId]?.position ?? 0) == 0) {
-        playerAppearances[c.playerId] =
-            ((playerAppearances[c.playerId] ?? 1) - 1).clamp(0, 1 << 30);
-      }
-    }
-  }
+  void _withdrawAppearances() => engine.withdrawAppearances();
 
   /// Best-effort viewer count for the share banner.
   int get viewerCount => sync.viewerCount;
@@ -204,9 +166,17 @@ class MatchStore extends ChangeNotifier {
   set breakWait(int v) => engine.breakWait = v;
   String? get breakDest => engine.breakDest;
   set breakDest(String? v) => engine.breakDest = v;
-  Timer? _breakTimer;
   List<String> _undo = [];
   List<String> _redo = [];
+
+  // ignore: unnecessary_getters_setters
+  List<String> get undoLog => _undo;
+  // ignore: unnecessary_getters_setters
+  set undoLog(List<String> v) => _undo = v;
+  // ignore: unnecessary_getters_setters
+  List<String> get redoLog => _redo;
+  // ignore: unnecessary_getters_setters
+  set redoLog(List<String> v) => _redo = v;
   bool loaded = false;
 
   /// False only when [load] actually tried and failed to read the platform
@@ -942,9 +912,7 @@ class MatchStore extends ChangeNotifier {
   }
 
   /// Snapshot only when a match is live (delete works without one).
-  void pushSnapshotSafe() {
-    if (match != null) pushSnapshot();
-  }
+  void pushSnapshotSafe() => engine.pushSnapshotSafe();
 
   /// Renames a club and regenerates its handle, which is derived from the
   /// name. Null when the id is unknown or the name is blank.
@@ -1210,19 +1178,9 @@ class MatchStore extends ChangeNotifier {
 
   void finishOverForSheet() => engine.finishOverForSheet();
 
-  void _buzz(Future<void> Function() fn) {
-    if (!hapticsOn) return;
-    try {
-      fn();
-    } catch (_) {}
-  }
+  void _buzz(Future<void> Function() fn) => engine.buzz(fn);
 
-  void pushSnapshot() {
-    if (match == null) return;
-    _undo.add(UndoEnvelope.encode(match!, sheets));
-    if (_undo.length > 60) _undo.removeAt(0);
-    _redo.clear();
-  }
+  void pushSnapshot() => engine.pushSnapshot();
 
   Future<void> undo() async {
     nbArmed = false;
@@ -1683,44 +1641,9 @@ class MatchStore extends ChangeNotifier {
   void _moveDismissalToNonStriker(InningsSheet sheet, Ball b) =>
       engine.moveDismissalToNonStriker(sheet, b);
 
-  /// Haptics + arcade SFX by impact tier. Decoration only — scoring
-  /// never depends on it.
-  /// Haptics + arcade SFX by impact tier. Decoration only — scoring
-  /// never depends on it.
-  void _feedback(Ball b) {
-    final sfx = SoundService.instance;
-    try {
-      if (b.isWicket) {
-        _buzz(HapticFeedback.heavyImpact);
-        sfx.wicket();
-      } else if (b.badge == '4' || b.badge.startsWith('N4')) {
-        _buzz(HapticFeedback.heavyImpact);
-        sfx.four();
-      } else if (b.badge == '6' || b.badge.startsWith('N6')) {
-        _buzz(HapticFeedback.heavyImpact);
-        sfx.six();
-      } else if (b.extra == 'WD') {
-        _buzz(HapticFeedback.mediumImpact);
-        sfx.wide();
-      } else if (b.extra == 'NB') {
-        _buzz(HapticFeedback.mediumImpact);
-        sfx.noball();
-      } else if (b.extra != 'none') {
-        _buzz(HapticFeedback.selectionClick);
-        sfx.extra();
-      } else {
-        _buzz(HapticFeedback.lightImpact);
-        sfx.run();
-      }
-    } catch (_) {}
-  }
+  void _feedback(Ball b) => engine.feedback(b);
 
-  void toggleNb() {
-    nbArmed = !nbArmed;
-    _buzz(HapticFeedback.selectionClick);
-    SoundService.instance.extra();
-    notifyListeners();
-  }
+  void toggleNb() => engine.toggleNb();
 
   /// Adds a roster player to a mid-match XI. Enforces the same three rules as
   /// setup: the XI cap, cross-exclusion (waived for the shared pick when a
@@ -2013,59 +1936,12 @@ class MatchStore extends ChangeNotifier {
   }
 
   /// 10-second viewing pause before break/result handoffs, with NEXT.
-  void _startBreakCountdown(String dest) {
-    _breakTimer?.cancel();
-    breakDest = dest;
-    breakWait = 10;
-    notifyListeners();
-    _breakTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      breakWait--;
-      if (breakWait <= 0) {
-        t.cancel();
-        _breakTimer = null;
-        breakDest = null;
-        breakWait = 0;
-      }
-      notifyListeners();
-    });
-  }
+  void _startBreakCountdown(String dest) => engine.startBreakCountdown(dest);
 
   /// NEXT button: skip the wait, handoff immediately.
-  void skipBreakWait() {
-    _breakTimer?.cancel();
-    _breakTimer = null;
-    breakDest = null;
-    breakWait = 0;
-    notifyListeners();
-  }
+  void skipBreakWait() => engine.skipBreakWait();
 
-  void _cancelBreak() {
-    _breakTimer?.cancel();
-    _breakTimer = null;
-    breakDest = null;
-    breakWait = 0;
-  }
+  void abandon() => engine.abandon();
 
-  void abandon() {
-    _cancelBreak();
-    match = null;
-    sheets = {};
-    _undo.clear();
-    _redo.clear();
-    // The match is gone, so the room has nothing to show: close it.
-    if (roomCode != null) unawaited(stopSharing());
-    _persist();
-    notifyListeners();
-  }
-
-  void newMatch() {
-    _cancelBreak();
-    match = null;
-    sheets = {};
-    _undo.clear();
-    _redo.clear();
-    if (roomCode != null) unawaited(stopSharing());
-    _persist();
-    notifyListeners();
-  }
+  void newMatch() => engine.newMatch();
 }
