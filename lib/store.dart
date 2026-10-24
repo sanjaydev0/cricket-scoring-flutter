@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'adapters/local_only_sync.dart';
 import 'backup.dart';
+import 'undo_log.dart';
 import 'domain/players.dart';
 import 'domain/room_snapshot.dart';
 import 'math.dart';
@@ -1259,22 +1260,9 @@ class MatchStore extends ChangeNotifier {
 
   void pushSnapshot() {
     if (match == null) return;
-    _undo.add(
-      jsonEncode({
-        'm': match!.toJson(),
-        's': sheets.map((k, v) => MapEntry(k, v.toJson())),
-      }),
-    );
+    _undo.add(UndoEnvelope.encode(match!, sheets));
     if (_undo.length > 60) _undo.removeAt(0);
     _redo.clear();
-  }
-
-  Map<String, dynamic>? _decodeEnvelope(String raw) {
-    try {
-      final d = jsonDecode(raw) as Map;
-      if (d['m'] is Map) return Map<String, dynamic>.from(d);
-    } catch (_) {}
-    return null;
   }
 
   Future<void> undo() async {
@@ -1284,26 +1272,13 @@ class MatchStore extends ChangeNotifier {
     lastChange = null;
     if (_undo.isEmpty) return;
     if (match != null) {
-      _redo.add(
-        jsonEncode({
-          'm': match!.toJson(),
-          's': sheets.map((k, v) => MapEntry(k, v.toJson())),
-        }),
-      );
+      _redo.add(UndoEnvelope.encode(match!, sheets));
     }
     final raw = _undo.removeLast();
-    final env = _decodeEnvelope(raw);
+    final env = UndoEnvelope.decode(raw);
     if (env != null) {
-      match = Match.fromJson(Map<String, dynamic>.from(env['m'] as Map));
-      try {
-        sheets = {};
-        final sj = Map<String, dynamic>.from((env['s'] ?? {}) as Map);
-        for (final e in sj.entries) {
-          sheets[e.key.toString()] = InningsSheet.fromJson(
-            Map<String, dynamic>.from(e.value as Map),
-          );
-        }
-      } catch (_) {}
+      match = env.match;
+      sheets = env.sheets;
     } else {
       // Legacy plain-match entries from before player tracking.
       match = Match.decode(raw);
