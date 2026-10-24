@@ -7,7 +7,7 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
-  audioplayers: 6.7.1
+  audioplayers: ^6.8.1
   flutter:
     sdk: flutter
   intl: ^0.20.3
@@ -19,6 +19,17 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+
+# Flutter 3.47.7 pins these three transitives to exact older patches. The newer
+# patches are additive only: material_color_utilities fixes a Cam16 hue
+# calculation, test_api only adds exports, and cli_util's sole breaking change
+# is a nullable sdkPath that flutter_launcher_icons never calls. Forcing them
+# clears pub's "newer versions incompatible with dependency constraints" line.
+# Remove this block if the next Flutter upgrade already ships these versions.
+dependency_overrides:
+  cli_util: ^0.6.0
+  material_color_utilities: ^0.13.1
+  test_api: ^0.7.15
 
 flutter:
   uses-material-design: true
