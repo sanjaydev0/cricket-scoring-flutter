@@ -13,6 +13,7 @@ import 'domain/room_snapshot.dart';
 import 'math.dart';
 import 'models.dart';
 import 'ports/sync_port.dart';
+import 'scoring_engine.dart';
 import 'sound.dart';
 
 /// Offline store: SharedPreferences is the source of truth and always will be.
@@ -166,9 +167,14 @@ class MatchStore extends ChangeNotifier {
   static const teamAColor = 0xFF2563EB; // blue-600
   static const teamBColor = 0xFFDC2626; // red-600
 
-  Match? match;
-  MatchConfig draft = MatchConfig();
-  bool nbArmed = false;
+  final ScoringEngine engine = ScoringEngine();
+
+  Match? get match => engine.match;
+  set match(Match? v) => engine.match = v;
+  MatchConfig get draft => engine.draft;
+  set draft(MatchConfig v) => engine.draft = v;
+  bool get nbArmed => engine.nbArmed;
+  set nbArmed(bool v) => engine.nbArmed = v;
   String themeId = 'light'; // 'light' | 'dark'
   bool soundOn = true; // master arcade SFX toggle
   bool advancedExtras = true; // master extra-detail buttons toggle
@@ -184,16 +190,20 @@ class MatchStore extends ChangeNotifier {
   String? activeProfileId;
   String? activeClubId;
   // Per-innings attribution sheets for the live match: '1' and '2'.
-  Map<String, InningsSheet> sheets = {};
+  Map<String, InningsSheet> get sheets => engine.sheets;
+  set sheets(Map<String, InningsSheet> v) => engine.sheets = v;
 
   /// Matches played per player id, across all matches on this device. Drives
   /// squad-picker ordering (most frequent first). Bumped when an innings
   /// completes, for everyone who batted or bowled.
   Map<String, int> playerAppearances = {};
   Set<String> appearanceKeys = {};
-  int ballGen = 0; // advances on score() only — strip motion key
-  int breakWait = 0; // countdown seconds before break/result handoff
-  String? breakDest; // '/break' | '/result' while counting down
+  int get ballGen => engine.ballGen;
+  set ballGen(int v) => engine.ballGen = v;
+  int get breakWait => engine.breakWait;
+  set breakWait(int v) => engine.breakWait = v;
+  String? get breakDest => engine.breakDest;
+  set breakDest(String? v) => engine.breakDest = v;
   Timer? _breakTimer;
   List<String> _undo = [];
   List<String> _redo = [];
@@ -1173,7 +1183,8 @@ class MatchStore extends ChangeNotifier {
 
   /// One-line description of the last batter change, for the undo banner.
   /// Cleared by undo and by the next delivery.
-  String? lastChange;
+  String? get lastChange => engine.lastChange;
+  set lastChange(String? v) => engine.lastChange = v;
 
   void swapStrike() {
     final sheet = currentSheet;
