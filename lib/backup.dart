@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// One point-in-time copy of every `cricket_*` preference: club, roster,
 /// profiles, live match, sheets, archives, appearances and settings.
@@ -76,6 +77,43 @@ class BackupSnapshot {
       }
     }
     return false;
+  }
+
+  /// Applies this snapshot to [p], replacing any `cricket_*` keys the snapshot
+  /// predates so a stale live match cannot survive alongside a restored one.
+  /// The store owns the subsequent [load] / notify; this method only touches
+  /// preferences.
+  Future<void> writeTo(SharedPreferences p) async {
+    final stale = p
+        .getKeys()
+        .where((k) => k.startsWith('cricket_') && !values.containsKey(k))
+        .toList();
+    for (final key in stale) {
+      await p.remove(key);
+    }
+    for (final entry in values.entries) {
+      await writeBackupPref(p, entry.key, entry.value);
+    }
+  }
+}
+
+/// Writes a single decoded preference value. Shared by [BackupSnapshot.writeTo]
+/// so the backup module owns the prefs shape, not the store.
+Future<void> writeBackupPref(
+  SharedPreferences p,
+  String key,
+  Object? value,
+) async {
+  if (value is bool) {
+    await p.setBool(key, value);
+  } else if (value is int) {
+    await p.setInt(key, value);
+  } else if (value is double) {
+    await p.setDouble(key, value);
+  } else if (value is String) {
+    await p.setString(key, value);
+  } else if (value is List) {
+    await p.setStringList(key, value.map((e) => e.toString()).toList());
   }
 }
 

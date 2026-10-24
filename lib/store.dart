@@ -394,9 +394,7 @@ class MatchStore extends ChangeNotifier {
         needsRestorePrompt = true;
         return;
       }
-      for (final entry in snap.values.entries) {
-        await _writePref(p, entry.key, entry.value);
-      }
+      await snap.writeTo(p);
       restoredFromBackup = true;
       needsRestorePrompt = false;
       lastBackupAt = snap.savedAt;
@@ -406,24 +404,6 @@ class MatchStore extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('STORE: backup restore skipped: $e');
-    }
-  }
-
-  Future<void> _writePref(
-    SharedPreferences p,
-    String key,
-    Object? value,
-  ) async {
-    if (value is bool) {
-      await p.setBool(key, value);
-    } else if (value is int) {
-      await p.setInt(key, value);
-    } else if (value is double) {
-      await p.setDouble(key, value);
-    } else if (value is String) {
-      await p.setString(key, value);
-    } else if (value is List) {
-      await p.setStringList(key, value.map((e) => e.toString()).toList());
     }
   }
 
@@ -553,17 +533,9 @@ class MatchStore extends ChangeNotifier {
     try {
       final p = await SharedPreferences.getInstance();
       // Replacement, not merge: drop keys the backup predates so an old live
-      // match cannot survive alongside the restored one.
-      final stale = p
-          .getKeys()
-          .where((k) => k.startsWith('cricket_') && !snap.values.containsKey(k))
-          .toList();
-      for (final key in stale) {
-        await p.remove(key);
-      }
-      for (final entry in snap.values.entries) {
-        await _writePref(p, entry.key, entry.value);
-      }
+      // match cannot survive alongside the restored one. The backup module owns
+      // the preference shape; the store only orchestrates load/notify.
+      await snap.writeTo(p);
       await load();
       lastBackupAt = snap.savedAt;
       notifyListeners();
