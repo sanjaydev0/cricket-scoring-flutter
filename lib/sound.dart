@@ -1,18 +1,19 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 
 /// Zero-latency arcade SFX (bundled, offline) — fire-and-forget, never blocks
 /// scoring. 100% offline: all clips ship in assets/audio/.
 ///
-/// One [AudioPool] per clip. The pool is the deep module here: it preloads
-/// players, recycles each one on completion (stop() rewinds it) and allocates
-/// a fresh player when every one is still busy — so rapid `4-4-6-W-6` can
-/// never silently drop a hit, which hand-rolled seek/resume did on Android.
+/// SoLoud is a real mixer: every clip is preloaded once and `play()` starts a
+/// new voice that the engine mixes with the others. That removes the old
+/// per-clip pool bookkeeping (and its "all players busy" drop) while keeping
+/// the same guarantee: rapid `4-4-6-W-6` never silently loses a hit.
 ///
 /// Per-clip volumes level-match the assets (four/six/wicket are synthesised
-/// with more body, so they run hotter than the UI blips), and every clip gets
-/// its own debounce so a boundary followed by a wicket both sound.
+/// with more body, so they run hotter than the UI blips). Gains above 1.0 are
+/// safe: every asset is normalised to ~-13 dBFS, so 2.75x (+8.8 dB) still
+/// peaks below full scale. Each clip gets its own debounce so a boundary
+/// followed by a wicket both sound.
 class SoundService extends ChangeNotifier {
   static final SoundService instance = SoundService._();
   SoundService._();
@@ -33,24 +34,18 @@ class SoundService extends ChangeNotifier {
     'fanfare': 1.0,
   };
 
-  /// Players kept warm per clip; extras are created only under overlap.
-  static const _minPlayers = 2;
-  static const _maxPlayers = 6;
-
   /// Same-clip taps inside this window are dropped (no machine-gun stacking).
   static const _debounceMs = 150;
 
-  /// System default output (speaker or a connected headset), but SFX take
-  /// audio focus so nothing ducks them, and the ringer/silent switch is
-  /// ignored: an umpire must hear a wicket even on silent.
-  static final AudioContext _ctx = AudioContextConfig(
-    focus: AudioContextConfigFocus.gain,
-  ).build();
+  /// Small mix buffer: ~23ms at 44.1kHz, low enough that a wicket lands with
+  /// the visual, large enough to avoid underruns on a busy scoring screen.
+  static const _bufferSize = 1024;
 
-  final Map<String, AudioPool> _pools = {};
+  final Map<String, AudioSource> _sources = {};
   final Map<String, int> _lastMs = {};
   bool enabled = true;
   bool _ready = false;
+  Future<void>? _initializing;
 
   /// True once every clip is preloaded — scoring screens can rely on SFX.
   bool get ready => _ready;
@@ -59,53 +54,63 @@ class SoundService extends ChangeNotifier {
   /// prove no sound is silently missing from the bundle.
   static List<String> get clipNames => _clips.keys.toList(growable: false);
 
-  Future<void> init({required bool enabled}) async {
+  /// Boots the engine and preloads every clip. Concurrent calls (boot plus a
+  /// user toggling sound back on) share one initialisation.
+  Future<void> init({required bool enabled}) {
     this.enabled = enabled;
-    if (_ready) return;
+    if (_ready) return Future.value();
+    return _initializing ??= _init().whenComplete(() => _initializing = null);
+  }
+
+  Future<void> _init() async {
     try {
-      for (final name in _clips.keys) {
-        _pools[name] = await AudioPool.create(
-          source: AssetSource('audio/$name.ogg'),
-          minPlayers: _minPlayers,
-          maxPlayers: _maxPlayers,
-          audioContext: _ctx,
+      final soloud = SoLoud.instance;
+      if (!soloud.isInitialized) {
+        await soloud.init(
+          lowLatency: true,
+          bufferSize: _bufferSize,
+          // Media usage: audible even when the ringer is on silent, which an
+          // umpire needs, on the same stream as the rest of the app's audio.
+          androidAAudioAttributes: AndroidAAudioAttributes.mediaMusic,
         );
+      }
+      for (final name in _clips.keys) {
+        _sources[name] = await soloud.loadAsset('assets/audio/$name.ogg');
       }
       _ready = true;
     } catch (_) {
-      // Audio unavailable (no platform channel, bad asset): the scorer must
-      // still work, just silently.
-      _pools.clear();
+      // Audio unavailable (no platform channel, bad asset, no output device):
+      // the scorer must still work, just silently.
+      _sources.clear();
       _ready = false;
     }
   }
 
-  Future<void> _play(String name) async {
+  void _play(String name) {
     if (!enabled) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - (_lastMs[name] ?? 0) < _debounceMs) return;
     _lastMs[name] = now;
-    // Never construct an AudioPool/player here: outside init() that throws
-    // uncatchable async errors on channels-less platforms (e.g. unit tests),
-    // so a missing pool simply means silence.
-    final pool = _pools[name];
-    if (pool == null) return;
+    // No source outside init() means audio never came up (unit tests, no
+    // output device): stay silent instead of touching the engine.
+    final source = _sources[name];
+    if (source == null) return;
     try {
-      await pool.start(volume: _clips[name] ?? 1.0);
+      SoLoud.instance.play(source, volume: _clips[name] ?? 1.0);
     } catch (_) {}
   }
 
-  Future<void> run() => _play('tap');
-  Future<void> four() => _play('four');
-  Future<void> six() => _play('six');
-  Future<void> wicket() => _play('wicket');
-  Future<void> wide() => _play('wide');
-  Future<void> noball() => _play('nb');
-  Future<void> extra() => _play('extra');
-  Future<void> undo() => _play('undo');
-  Future<void> confirm() => _play('confirm');
-  Future<void> error() => _play('error');
-  Future<void> fanfare() => _play('fanfare');
+  Future<void> run() async => _play('tap');
+  Future<void> four() async => _play('four');
+  Future<void> six() async => _play('six');
+  Future<void> wicket() async => _play('wicket');
+  Future<void> wide() async => _play('wide');
+  Future<void> noball() async => _play('nb');
+  Future<void> extra() async => _play('extra');
+  Future<void> undo() async => _play('undo');
+  Future<void> confirm() async => _play('confirm');
+  Future<void> error() async => _play('error');
+  Future<void> fanfare() async => _play('fanfare');
 
   void setEnabled(bool v) {
     enabled = v;
