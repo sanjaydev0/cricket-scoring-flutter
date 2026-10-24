@@ -241,9 +241,7 @@ class MatchStore extends ChangeNotifier {
 
   bool get _persistBlocked => _prefsLoadAttempted && !_prefsReadable;
 
-  Innings? get innings => match == null
-      ? null
-      : (match!.currentInnings == 1 ? match!.innings1 : match!.innings2);
+  Innings? get innings => engine.innings;
 
   /// Warms the SFX pools without ever blocking the first frame: a hung
   /// platform channel leaves the pools empty, not the app on a splash screen.
@@ -1207,60 +1205,10 @@ class MatchStore extends ChangeNotifier {
   ///
   /// The strip keeps the finished over visible (deferred rollover); the new one
   /// appears when the first ball of it is recorded.
-  void _closeCompletedOvers(Innings inn, InningsSheet sheet) {
-    final done = sheet.completedOverCount(inn);
-    if (done <= sheet.closedOvers) return;
+  void _closeCompletedOvers(Innings inn, InningsSheet sheet) =>
+      engine.closeCompletedOvers(inn, sheet);
 
-    // Law 41.6: the ends change at the end of EVERY over, unconditionally.
-    //
-    // This used to carry a parity guard that skipped the swap when the over
-    // contained an odd run, on the theory that the batters had "already"
-    // changed ends. That conflated two different things: odd runs swap the
-    // ends because the batters physically crossed, while the over ending
-    // swaps them because a new over starts from the other end. Both happen.
-    //
-    // So a single on the last ball sends the batter to the non-striker's end
-    // AND the over ending brings him straight back on strike. Six dots have no
-    // odd run, and the single boundary swap gives the partner the strike.
-    for (var i = sheet.closedOvers; i < done; i++) {
-      sheet.swapEnds();
-      finishOverForSheet();
-    }
-    sheet.closedOvers = done;
-
-    // Only ask for a change when play actually continues. `inn.completed` is
-    // read defensively as well as relied on, because the ordering fix in
-    // score() is what makes it trustworthy and this must not silently regress
-    // into prompting for a bowler who will never bowl again.
-    final m = match;
-    final maxBalls = m == null
-        ? 0
-        : CricketMath.totalBalls(m.config.totalOvers);
-    final maxW = m == null
-        ? 0
-        : CricketMath.getMaxWickets(
-            m.config.playersPerSide,
-            m.config.rules.lastManStanding,
-          );
-    final over = inn.legalDeliveries >= maxBalls || inn.wickets >= maxW;
-    sheet.needsNewBowler = !inn.completed && !over;
-  }
-
-  void finishOverForSheet() {
-    final sheet = currentSheet;
-    final inn = innings;
-    if (sheet == null || inn == null) return;
-    // Legal balls in the over that just ended.
-    final overs = inn.overs;
-    final last = overs.isEmpty ? null : overs.last;
-    var legal = 0;
-    if (last != null) {
-      for (final b in last.balls) {
-        if (b.isLegal) legal++;
-      }
-    }
-    sheet.closeOver(legalBalls: legal);
-  }
+  void finishOverForSheet() => engine.finishOverForSheet();
 
   void _buzz(Future<void> Function() fn) {
     if (!hapticsOn) return;
@@ -1328,12 +1276,10 @@ class MatchStore extends ChangeNotifier {
   }
 
   /// Sheet for an innings, or null when player tracking is off.
-  InningsSheet? sheetFor(int inningsNo) => sheets[inningsNo.toString()];
-
-  InningsSheet? get currentSheet =>
-      match == null ? null : sheetFor(match!.currentInnings);
-
+  InningsSheet? get currentSheet => engine.currentSheet;
   bool get tracking => match?.config.trackPlayers ?? false;
+
+  InningsSheet? sheetFor(int inningsNo) => engine.sheetFor(inningsNo);
 
   InningsSheet _ensureSheet(int inningsNo) {
     final m = match!;
@@ -1422,27 +1368,7 @@ class MatchStore extends ChangeNotifier {
     return null;
   }
 
-  void _addBall(Innings inn, Ball b) {
-    if (inn.overs.isEmpty) inn.overs.add(Over(overNumber: 1));
-    // Deferred over rollover: only start a fresh over when a new delivery
-    // arrives after a completed one. The completed strip stays visible.
-    if (inn.overs.last.balls.where((x) => x.isLegal).length >= 6) {
-      inn.overs.add(Over(overNumber: inn.overs.length + 1));
-      inn.currentOverNumber = inn.overs.length;
-    }
-    // Immutable append: the strip's old/new widgets must hold different
-    // list objects, otherwise length comparison sees no change and the
-    // glide animation never fires.
-    final last = inn.overs.last;
-    last.balls = [...last.balls, b];
-    inn.runs += b.totalRuns;
-    if (b.isLegal) inn.legalDeliveries++;
-    if (b.isWicket) inn.wickets++;
-    if (b.extra == 'WD') inn.wides += b.extraRuns;
-    if (b.extra == 'NB') inn.noBalls += b.extraRuns;
-    if (b.extra == 'B') inn.byes += b.extraRuns;
-    if (b.extra == 'LB') inn.legByes += b.extraRuns;
-  }
+  void _addBall(Innings inn, Ball b) => engine.addBall(inn, b);
 
   /// Scoring refuses while set: pick the new bowler first. Compared by _tap
   /// to reopen the picker instead of only showing a snackbar.
@@ -1754,25 +1680,8 @@ class MatchStore extends ChangeNotifier {
   /// Moves a run-out recorded against the striker onto the non-striker.
   /// `applyDelivery` credits the wicket to whoever is on strike; a run-out at
   /// the non-striker's end must credit the non-striker instead.
-  void _moveDismissalToNonStriker(InningsSheet sheet, Ball b) {
-    final outId = sheet.nonStrikerId;
-    if (outId == null) return;
-    final bat = sheet.striker;
-    final nst = sheet.batting[outId];
-    if (bat == null || nst == null) return;
-    // Hand the dismissal across: number, dismissed flag and credit.
-    nst.dismissal = bat.dismissal;
-    nst.isNotOut = false;
-    nst.wicketNumber = bat.wicketNumber;
-    nst.bowlerName = bat.bowlerName;
-    nst.dismissedByName = bat.dismissedByName;
-    bat.dismissal = null;
-    bat.isNotOut = true;
-    bat.wicketNumber = 0;
-    bat.bowlerName = null;
-    bat.dismissedByName = null;
-    b.strikerId = outId;
-  }
+  void _moveDismissalToNonStriker(InningsSheet sheet, Ball b) =>
+      engine.moveDismissalToNonStriker(sheet, b);
 
   /// Haptics + arcade SFX by impact tier. Decoration only — scoring
   /// never depends on it.
