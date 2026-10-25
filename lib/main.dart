@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'adapters/local_only_sync.dart';
 import 'adapters/supabase_sync.dart';
 import 'app_config.dart';
+import 'core/debug/android_frame_wrapper.dart';
 import 'store.dart';
 import 'theme.dart';
 import 'screens/home.dart';
@@ -45,7 +46,7 @@ void main() async {
   // reads the orientation when the activity is created, and calling this
   // after runApp raced the first frame. The AndroidManifest
   // `screenOrientation="portrait"` is the authoritative lock (see the note
-  // there); this call covers web/desktop and keeps the two platforms agreed.
+  // there); this call covers the Linux desktop preview and keeps it agreed.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   debugPrint('MAIN: orientations set');
   // Signing in is deliberately not awaited: a slow or unreachable backend
@@ -76,6 +77,9 @@ class CricketApp extends StatelessWidget {
         theme: UmpireTheme.light(),
         darkTheme: UmpireTheme.dark(),
         themeMode: store.themeId == 'dark' ? ThemeMode.dark : ThemeMode.light,
+        // Debug-only phone frame on desktop; bypassed on device/release.
+        builder: (context, child) =>
+            AndroidFrameWrapper(child: child ?? const SizedBox.shrink()),
         initialRoute: '/',
         routes: {
           '/': (_) => HomeScreen(store),
