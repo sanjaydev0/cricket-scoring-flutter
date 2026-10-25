@@ -1,40 +1,47 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "space-bunny",
   "default_agent": "build",
-  "formatter": {
-    "command": "dart format ."
+
+  "formatter": true,
+
+  "tool_output": {
+    "max_lines": 600,
+    "max_bytes": 32768
   },
-  "linter": {
-    "command": "flutter analyze"
-  },
+
   "watcher": {
     "ignore": [
       ".dart_tool/**",
       "build/**",
+      ".git/**",
       "android/**",
       "ios/**",
       "linux/**",
       "macos/**",
       "windows/**",
-      ".git/**"
+      ".agents/**",
+      "design-system/**",
+      "assets/**",
+      "supabase/.temp/**",
+      "coverage/**",
+      "**/*.apk",
+      "**/*.aab"
     ]
   },
+
   "permissions": [
-    {
-      "action": "shell",
-      "resource": "flutter pub get",
-      "effect": "allow"
-    },
-    {
-      "action": "shell",
-      "resource": "dart run build_runner build*",
-      "effect": "allow"
-    },
-    {
-      "action": "shell",
-      "resource": "rm -rf *",
-      "effect": "deny"
-    }
+    { "action": "shell", "resource": "flutter pub get", "effect": "allow" },
+    { "action": "shell", "resource": "dart run build_runner build*", "effect": "allow" },
+    { "action": "shell", "resource": "rm -rf *", "effect": "deny" },
+
+    { "action": "read", "resource": "build/**", "effect": "deny" },
+    { "action": "read", "resource": ".dart_tool/**", "effect": "deny" },
+    { "action": "read", "resource": "pubspec.lock", "effect": "deny" },
+
+    { "action": "edit", "resource": "build/**", "effect": "deny" },
+    { "action": "edit", "resource": ".dart_tool/**", "effect": "deny" },
+    { "action": "edit", "resource": "pubspec.lock", "effect": "deny" },
+    { "action": "edit", "resource": "*.g.dart", "effect": "deny" },
+    { "action": "edit", "resource": "*.freezed.dart", "effect": "deny" }
   ]
 }

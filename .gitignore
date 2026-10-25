@@ -7,6 +7,19 @@ build/
 .DS_Store
 .zed/
 
+# Agent/editor assets: not app source
+.agents/
+.opencode/
+.idea/
+*.iml
+
+# Local Android/Gradle state
+android/.gradle/
+android/local.properties
+
+# Test artifacts
+coverage/
+
 # Local Supabase keys. Live rooms are configured with --dart-define, so no key
 # belongs in the repo. Supabase writes a .temp/ dir when a CLI project is linked.
 supabase/.temp/
