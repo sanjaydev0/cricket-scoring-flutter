@@ -274,10 +274,10 @@ class _MatchDetailState extends State<MatchDetail> {
               ),
             )
           else ...[
-            _battingTable(sheet),
+            _battingTable(store, sheet),
             _extrasRow(inn),
             const SizedBox(height: 14),
-            _bowlingTable(sheet),
+            _bowlingTable(store, sheet),
           ],
           if (widget.showBallsLink && _hasBalls(inn))
             Padding(
@@ -407,10 +407,20 @@ class _MatchDetailState extends State<MatchDetail> {
     color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.6),
   );
 
-  Widget _battingTable(InningsSheet sheet) {
+  Widget _battingTable(MatchStore store, InningsSheet sheet) {
     final cs = Theme.of(context).colorScheme;
-    final bat = sheet.battingCards;
-    if (bat.isEmpty) {
+    final m = store.match!;
+    final squad = sheet.battingTeam == m.config.teamA
+        ? m.config.squadA
+        : m.config.squadB;
+    final played = sheet.battingCards;
+    final playedIds = played.map((c) => c.playerId).toSet();
+    final unplayed = squad
+        .where((id) => !playedIds.contains(id))
+        .map((id) => BattingCard(playerId: id, name: sheet.nameOf(id)))
+        .toList();
+    final bat = [...played, ...unplayed];
+    if (bat.isEmpty && squad.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
         child: Text('Nobody batted.', style: TextStyle(fontSize: 12)),
@@ -441,50 +451,57 @@ class _MatchDetailState extends State<MatchDetail> {
         const SizedBox(height: 4),
         _hairline(),
         for (final c in bat) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        c.playerId == sheet.strikerId ? '${c.name} *' : c.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color:
-                              (c.playerId == sheet.strikerId ||
-                                  c.playerId == sheet.nonStrikerId)
-                              ? const Color(0xFF1D4ED8)
-                              : null,
+          Opacity(
+            opacity: c.position == 0 ? 0.55 : 1.0,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          c.playerId == sheet.strikerId
+                              ? '${c.name} *'
+                              : c.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color:
+                                (c.playerId == sheet.strikerId ||
+                                    c.playerId == sheet.nonStrikerId)
+                                ? const Color(0xFF1D4ED8)
+                                : null,
+                          ),
                         ),
-                      ),
-                      Text(
-                        _dismissalLine(sheet, c),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: cs.onSurface.withValues(alpha: 0.65),
+                        Text(
+                          _dismissalLine(sheet, c),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: cs.onSurface.withValues(alpha: 0.65),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                _num('${c.runs}', 30, strong: true),
-                _num('${c.balls}', 30),
-                _num('${c.fours}', 26),
-                _num('${c.sixes}', 26),
-                _num(
-                  c.strikeRate == null ? '—' : c.strikeRate!.toStringAsFixed(1),
-                  46,
-                ),
-              ],
+                  _num('${c.runs}', 30, strong: c.position > 0),
+                  _num('${c.balls}', 30),
+                  _num('${c.fours}', 26),
+                  _num('${c.sixes}', 26),
+                  _num(
+                    c.strikeRate == null
+                        ? '—'
+                        : c.strikeRate!.toStringAsFixed(1),
+                    46,
+                  ),
+                ],
+              ),
             ),
           ),
           _hairline(),
@@ -494,7 +511,7 @@ class _MatchDetailState extends State<MatchDetail> {
   }
 
   String _dismissalLine(InningsSheet sheet, BattingCard c) {
-    if (c.position == 0) return '';
+    if (c.position == 0) return 'did not bat';
     if (c.playerId == sheet.strikerId) return 'on strike';
     if (c.playerId == sheet.nonStrikerId) return 'at the other end';
     if (c.isNotOut) return 'not out';
@@ -536,10 +553,20 @@ class _MatchDetailState extends State<MatchDetail> {
     );
   }
 
-  Widget _bowlingTable(InningsSheet sheet) {
+  Widget _bowlingTable(MatchStore store, InningsSheet sheet) {
     final cs = Theme.of(context).colorScheme;
-    final bowl = sheet.bowlingCards;
-    if (bowl.isEmpty) {
+    final m = store.match!;
+    final squad = sheet.battingTeam == m.config.teamA
+        ? m.config.squadB
+        : m.config.squadA;
+    final played = sheet.bowlingCards;
+    final playedIds = played.map((c) => c.playerId).toSet();
+    final unplayed = squad
+        .where((id) => !playedIds.contains(id))
+        .map((id) => BowlingCard(playerId: id, name: sheet.nameOf(id)))
+        .toList();
+    final bowl = [...played, ...unplayed];
+    if (bowl.isEmpty && squad.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
         child: Text('Nobody bowled.', style: TextStyle(fontSize: 12)),
@@ -559,44 +586,55 @@ class _MatchDetailState extends State<MatchDetail> {
         const SizedBox(height: 6),
         _hairline(),
         for (final c in bowl) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        c.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                      if (c.penaltyRuns > 0)
+          Opacity(
+            opacity: (c.balls == 0 && c.wickets == 0) ? 0.55 : 1.0,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          'incl ${c.penaltyRuns} penalty',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: cs.onSurface.withValues(alpha: 0.65),
+                          c.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
                           ),
                         ),
-                    ],
+                        if (c.penaltyRuns > 0)
+                          Text(
+                            'incl ${c.penaltyRuns} penalty',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: cs.onSurface.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        if (c.balls == 0 && c.wickets == 0)
+                          Text(
+                            'did not bowl',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: cs.onSurface.withValues(alpha: 0.65),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                _num(c.oversDisplay, 32),
-                _num('${c.maidens}', 28),
-                _num('${c.runsConceded}', 32),
-                _num('${c.wickets}', 28, strong: true),
-                _num(
-                  c.economy == null ? '—' : c.economy!.toStringAsFixed(2),
-                  46,
-                ),
-              ],
+                  _num(c.oversDisplay, 32),
+                  _num('${c.maidens}', 28),
+                  _num('${c.runsConceded}', 32),
+                  _num('${c.wickets}', 28, strong: true),
+                  _num(
+                    c.economy == null ? '—' : c.economy!.toStringAsFixed(2),
+                    46,
+                  ),
+                ],
+              ),
             ),
           ),
           _hairline(),
