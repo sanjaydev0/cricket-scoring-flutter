@@ -1,6 +1,7 @@
 # Gully Cricket Scorer — Flutter (100% offline)
 
-Flutter port of the AI Studio web app. Optimized for speed + zero-network use.
+Offline gully-cricket umpire scorer for Android, with a Linux desktop preview for
+fast iteration. There is no web target.
 
 ## Features (1:1)
 - Setup: teams, overs, players/side, wide/no-ball penalty, free-hit, last-man-standing
@@ -10,17 +11,20 @@ Flutter port of the AI Studio web app. Optimized for speed + zero-network use.
 - 3 themes: Sunlight high-contrast, Pavilion night, Solar high-vis
 - Offline: SharedPreferences only. No http, no Firebase, no Google Fonts (system fonts).
 
-## Run (web preview for quick changes)
+## Preview (Linux desktop, fast iteration)
 ```bash
 export PATH="$HOME/flutter/bin:$PATH"
 flutter pub get
-flutter run -d chrome
-flutter build web --release
+./tool/flutter-live.sh linux   # watchexec auto hot reload
 ```
+The desktop preview mirrors Android layout and scoring logic. Sound and haptics
+must be verified on the phone.
 
 ## APK
 Needs JDK17 + Android SDK (one-time):
 ```bash
+./tool/release.sh 2.25.0 "notes"   # analyze, test, gate, gh release, install
+# or a plain build
 flutter build apk --release
 # -> build/app/outputs/flutter-apk/app-release.apk
 ```

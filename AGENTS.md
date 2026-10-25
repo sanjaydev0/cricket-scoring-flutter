@@ -2,9 +2,9 @@
 
 **Project:** CricScore — offline gully-cricket umpire scorer
 **Repo:** https://github.com/sanjaydev0/cricket-scoring-flutter (branch `main`)
-**Stack:** Flutter 3.35 / Dart 3.9 · Material 3 · `audioplayers` · `shared_preferences` · `intl`
-**Config:** `opencode.jsonc` (formatter `dart format .`, linter `flutter analyze`, default agent `build`)
-**Status:** v2.0.0 released · 16 tests green · `flutter analyze` clean
+**Stack:** Flutter 3.47.7 / Dart 3.13.5 · Material 3 · `flutter_soloud` · `shared_preferences` · `intl` · `supabase_flutter`
+**Config:** `opencode.jsonc` (default agent `build`, formatter `dart`, no linter)
+**Verification:** run `flutter analyze --no-pub` and `flutter test`; do not record counts here.
 
 ---
 
@@ -23,17 +23,16 @@ Android apps using Material Design 3 and retro arcade UI patterns.
    **Exception — live rooms (opt-in):** sharing a read-only score view with another
    phone is the one network feature. It is additive and strictly optional: no Supabase
    keys at build time means the app is exactly the offline app it was. Scoring never
-   awaits, and never fails because of, the network — see rule 7.
+   awaits, and never fails because of, the network — see rule 8.
 3. **Sound Architecture:** Arcade UI sounds (tap, boundary, wicket, extra, undo, confirm)
-   play as short one-shot clips through one preloaded `audioplayers` `AudioPool` per clip
-   (`AudioPool.create` at startup, `pool.start()` to fire). The pool is the module that
-   hides replay/overlap: it recycles a player on completion and allocates a fresh one when
-   all are busy, so rapid `4-4-6-W-6` never drops a hit. Never `stop()` + `resume()` by
-   hand — `resume()` after `stop()` is a no-op and was the silence bug. Preload must be
-   awaited before the first frame (`main.dart`), per-sound 150ms debounce, per-clip
-   playback gains in `sound.dart` level-match the assets.
-   (`soundpool` 2.4.1 was evaluated and rejected: it targets Android's removed v1
-   embedding and fails Gradle compilation.)
+   play as short one-shot clips through `SoundService`, backed by `flutter_soloud` 5.2.1.
+   - Initialize SoLoud once with low latency and `bufferSize: 1024`.
+   - Preload every `.ogg` asset once at startup (`main.dart`).
+   - Fire with `play(source, volume: perClipGain)`; the mixer handles overlap.
+   - Use a 150 ms per-clip debounce so rapid `4-4-6-W-6` does not drop hits.
+   - Per-clip playback gains live in `sound.dart` and level-match the assets.
+   - Audio failure is silent; scoring must work with no sound device.
+   - Do not use `audioplayers`, `AudioPool`, or `resume()` after `stop()`.
 4. **Cricket Domain Rules:**
    - Score is derived from the sequence of ball deliveries; never mutate score fields directly.
    - Deliveries record: runs, extras (wide, no-ball, bye, leg-bye), wicket type (bowled, caught,
@@ -57,9 +56,11 @@ Android apps using Material Design 3 and retro arcade UI patterns.
 lib/
   main.dart         MaterialApp, light/dark, routes; picks the SyncPort from AppConfig
   models.dart       Rules, MatchConfig (+battingFirst), Ball, Over, Innings, Match
-  store.dart        MatchStore (ChangeNotifier) — scoring engine, undo, persistence, publish
+  store.dart        MatchStore (ChangeNotifier) — persistence, settings, sync adapter, delegates scoring
+  scoring_engine.dart ScoringEngine — live match/sheets/counters, break timer, side effects
+  undo_log.dart     UndoEnvelope — on-disk undo snapshot shape
   math.dart         CricketMath — overs, CRR/RRR, max wickets
-  sound.dart        SoundService — AudioPool per clip, per-clip gain + debounce
+  sound.dart        SoundService — SoLoud mixer, preload + per-clip gain/debounce
   theme.dart        UmpireTheme, StylePreset (12), ScoreFonts (10)
   app_config.dart   AppConfig — --dart-define values (Supabase URL/key), never committed
   domain/           room_code.dart (32^5 codes), room_snapshot.dart (versioned payload)
@@ -74,7 +75,7 @@ lib/
     player_sheets.dart dismissal (one-tap), bowler picker, stats sheet, openers
     club.dart       profiles (local PIN), clubs, roster + search + career stats
     summary.dart    scorecard tables, awards, player-of-match, WhatsApp share
-    scoreboard.dart Scoreboard (hero tile + over strip) + OverStrip — SHARED with viewer
+    scoreboard.dart Scoreboard (hero tile + over strip) — SHARED with viewer
     viewer.dart     ViewerScreen (read-only live view), JoinRoomScreen (enter a code)
     sheets.dart     wicket/run-out dialogs, overs, extras, match settings, look sheet
     break_result.dart (undo-safe route guards), history.dart (dated archives + detail)
@@ -96,17 +97,16 @@ Current feature inventory (keep compatible unless asked):
   cross-XI exclusion waived only for the shared pick when a common player is
   allowed, duplicates warn and are never created, mid-match removal only when
   uncapped.
-- One method owns the Laws: `InningsSheet.applyDelivery` for balls,
-  `closeOver` for over ends. Bowler changes go through `MatchStore.setBowler`,
-  which enforces the consecutive-over law. Retired-out falls a team wicket;
-  retired-hurt does not. Free-hit and armed no-ball route wicket flows to
-  run-out only.
+- Laws: `InningsSheet.applyDelivery` for balls, `closeOver` for over ends.
+  Bowler changes go through `MatchStore.setBowler`, which enforces the consecutive-over law.
+  Retired-out falls a team wicket; retired-hurt does not. Free-hit and armed no-ball
+  route wicket flows to run-out only.
 - Live rooms (Phase 1): share icon in the scoring app bar opens a room and shows its code;
   every ball publishes a full versioned snapshot; undo retracts; `Stop sharing` deletes the row.
-  Viewer app and web viewer page are Phase 2+.
+  Viewer app is Phase 2+.
 
 Layering rule: **UI never mutates state directly** — screens call `MatchStore` methods only.
-Store never imports Flutter widgets (except `services.dart` for haptics).
+Store never imports Flutter widgets (except `package:flutter/services.dart` for haptics).
 
 Live rooms add three more layers, so online code never leaks into scoring:
 
@@ -142,60 +142,103 @@ supabase/       migrations/*.sql + README.md (the setup steps a human must do)
    returns 204 with zero rows affected). A leaked 5-character code grants read and nothing
    else.
 
-## Workflow: web first, APK last
+## Context policy (model-agnostic)
 
-Iterate on the **web** build; only cut an APK once features and UI have settled.
-An APK build costs 10-20 minutes on this machine, a web build ~60 seconds.
+Classify every path before opening it:
+
+- BINARY → metadata only
+- GENERATED → never
+- LOCK → grep only
+- SOURCE → task scope
+- REFERENCE → on demand
+- NOISE → never
+
+Rules:
+
+- grep/glob only with `path:` = `lib`, `test`, `tool`, or one feature dir.
+- Never pass `build`, `.dart_tool`, `.agents`, `.git`, `design-system`, or `assets` as `path:`.
+- `pubspec.lock` and `.flutter-plugins-dependencies`: grep only, never read wholesale.
+- `assets/` is binary: use `ls`, `file`, or `du`; one screenshot only for a visual bug.
+- Read ±60 lines around a symbol, not a whole file.
+- Never rewrite a whole file to change part of it; use `edit`.
+- Never edit `*.g.dart` or `*.freezed.dart`.
+- If blocked by an excluded path, name it, use the narrowest lookup, then ask.
+
+## Change router
+
+| Change | Read first | Test |
+|---|---|---|
+| Scoring law | `domain/players.dart` (`applyDelivery`, `closeOver`), `scoring_engine.dart`, `store.dart` (`setBowler`), `models.dart` | `store_test`, `match_sim_test`, `players_test` |
+| UI / screen | `screens/<target>.dart`, `theme.dart`, `widgets.dart`, route in `main.dart` | `design_test`, `screens_layout_test` |
+| Persistence / undo | save/load in `store.dart`, `undo_log.dart`, `backup.dart` | `backup_test`, `store_test` |
+| Live room | `ports/sync_port.dart`, `adapters/supabase_sync.dart`, `domain/room_*`, `supabase/migrations/` | `room_test`, `viewer_test` |
+| Sound | `sound.dart`, preload in `main.dart`, `assets/audio/` | `sound_test` |
+| Release / APK | `tool/release.sh`, manifest, `gradle.properties`, `pubspec.yaml` | full analyze + test |
+
+## Verification ladder
 
 ```bash
-# 1. sub-second nudges (hot reload: r, hot restart: R)
-flutter run -d web-server --web-port 8000 --web-hostname 0.0.0.0
-#    desktop http://localhost:8000   phone http://<LAN-IP>:8000
+export PATH="$HOME/flutter/bin:$PATH"
+dart analyze lib
+flutter analyze --no-pub
+flutter test --no-pub --reporter compact test/<target>_test.dart
+git diff --stat && git diff -- <file>
+```
 
-# 2. checkpoint: release-fidelity web build, served on the LAN
-./tool/web.sh
+No `flutter run`, build, APK, or full test suite unless the task is the daily Linux loop, release/deploy, or explicitly requested.
 
-# 3. release: only when the feature/UI work is done
+## Workflow: Linux first, APK last
+
+Iterate on the **Linux desktop** build; cut an APK only once features and UI have settled.
+Linux preview is the lowest-RAM loop; APK builds are 10-20 minutes.
+
+```bash
+# Daily UI loop: Linux desktop + watchexec auto hot reload
+./tool/flutter-live.sh linux
+
+# Release: only when feature/UI work is done
 ./tool/release.sh 2.9.0 "notes"
 ```
 
-**What web cannot check** — these are part of "done" at step 3, not optional:
-sounds (audioplayers differs on web), haptics (absent in a browser), and
-anything release-only (see the INTERNET-permission rule below). Step 3 ends by
-printing that checklist.
+**What the Linux loop cannot check** — these are part of "done" at release, not optional:
+sounds (verify on Linux/Android), haptics (absent on desktop), and anything release-only
+(see the INTERNET-permission rule above).
 
-**Never run a web build and an APK build concurrently.** `dart2js` aborts with
-`Could not start thread: Resource temporarily unavailable` when the box is out
-of memory; a Gradle daemon held 2.4 GB and killed a web build once.
-`tool/web.sh` stops the daemon first. `tool/release.sh` refuses to run while a
-`flutter run` dev server is alive.
+**Only one compile at a time.** A Gradle daemon can hold 2.4 GB, so a parallel
+build on this 7.6 GB box can die with `Could not start thread: Resource
+temporarily unavailable`. `tool/release.sh` refuses to run while a `flutter run`
+dev server is alive.
 
 ## Commands
 
 ```bash
 flutter pub get          # deps
-dart format .            # formatting (enforced by opencode.jsonc)
-flutter analyze          # lint — must be clean before commit
-flutter test             # unit/widget tests
-./tool/web.sh            # release web build + serve on LAN (prints URL)
+dart format .            # formatting
+flutter analyze --no-pub # lint — must be clean before commit
+flutter test --no-pub    # unit/widget tests
+./tool/flutter-live.sh linux
 ./tool/release.sh VER NOTE  # analyze, test, pre-flight, apk, install, gh release
 flutter build apk --release
-flutter build web --release
-adb devices -l           # confirm device (USB or wireless)
+$HOME/Android/Sdk/platform-tools/adb devices -l
 ```
 
 ## Machine notes
 
-- Flutter SDK: `~/flutter/bin` (export PATH); Android SDK `~/Android/Sdk` (v34), JDK 17.
+- Flutter SDK: `~/flutter/bin` (export PATH); Android SDK `~/Android/Sdk`, JDK 17.
+- Flutter is on a 3.47 candidate branch. Do not upgrade or switch channels mid-task.
+- Zed binary is `zeditor`; watchexec 2.8 drives hot reload.
+- Web is not a target: the repo has no `web/` directory. Android APK + Linux desktop only.
 - Wireless deploy: `adb connect <ip>:<port>` — the phone's port changes each session;
   rediscover with `avahi-browse -r _adb-tls-connect._tcp`.
-- Waydroid is installed for quick Android preview but its IP is unreachable from the host;
-  use `flutter build web` + `localhost:8000` for rapid UI iteration.
+- Use `$HOME/Android/Sdk/platform-tools/adb`, not `/usr/bin/adb`.
+- Waydroid is installed but its IP is unreachable from the host; Linux desktop is the preview path.
 - Release flow: `./tool/release.sh <version> "<notes>"` — analyze, test, pre-flight gate, APK,
   tag/release, install. It refuses a duplicate tag and a live dev server.
 - The pre-flight gate is not optional ceremony: it asserts `INTERNET` +
   `ACCESS_NETWORK_STATE` in the **merged release manifest** and that the
-  Supabase keys are baked into `libapp.so`. Both faults are invisible on web.
+  Supabase keys are baked into `libapp.so`. Both faults are invisible in debug.
+- Low-RAM Gradle settings: 2 GB heap, daemon off, parallel off, VFS watch off, 2 workers.
+  Close memory-heavy apps before an APK build and run `free -h` first.
 
 ## Data preservation (critical)
 
@@ -249,10 +292,6 @@ adb devices -l           # confirm device (USB or wireless)
 ## Known gaps (open work)
 
 - Innings scorecard with per-player and per-bowler figures.
-- Live-room web viewer page at `/r/CODE` (the in-app read-only screen ships in v2.7).
-- Club roster and career stats (needs the `DeliveryEvent` model first, plus a Postgres
-  schema for `clubs` / `players` / `matches` / batting+bowling figures).
-- Live-room web viewer page at `/r/CODE` (the in-app read-only screen ships in v2.7).
 - Club roster and career stats (needs the `DeliveryEvent` model first, plus a Postgres
   schema for `clubs` / `players` / `matches` / batting+bowling figures).
 
