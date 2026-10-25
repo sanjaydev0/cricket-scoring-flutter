@@ -80,9 +80,9 @@ class MatchConfig {
     'squadB': squadB,
   };
 
-  /// e.g. "6 + 6 + 1" or "8 v 8"
+  /// e.g. "5 + 1 vs 5 + 1" or "8 v 8"
   String get sidesLabel => commonPlayers > 0
-      ? '$playersPerSide + $playersPerSide + $commonPlayers'
+      ? '${playersPerSide - commonPlayers} + $commonPlayers vs ${playersPerSide - commonPlayers} + $commonPlayers'
       : '$playersPerSide v $playersPerSide';
 }
 

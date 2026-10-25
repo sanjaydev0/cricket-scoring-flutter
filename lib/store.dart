@@ -27,6 +27,10 @@ class MatchStore extends ChangeNotifier {
 
   MatchStore({SyncPort? sync}) : sync = sync ?? LocalOnlySync() {
     engine.store = this;
+    // Engine owns break countdown / timer state and notifies on its own
+    // listeners; bridge those to the store so the UI rebuilds (and the
+    // post-innings NEXT -> handoff actually fires).
+    engine.addListener(notifyListeners);
   }
 
   /// Live join code while sharing, else null.
@@ -1661,6 +1665,12 @@ class MatchStore extends ChangeNotifier {
     if (other.contains(playerId) && m.config.commonPlayers == 0) {
       return 'Already in the other XI';
     }
+    if (other.contains(playerId) && m.config.commonPlayers > 0) {
+      final overlap = mine.where((id) => other.contains(id)).length;
+      if (overlap >= m.config.commonPlayers) {
+        return 'Only ${m.config.commonPlayers} common player allowed';
+      }
+    }
     pushSnapshot();
     mine.add(playerId);
     // Register on the live sheet AND every other innings sheet, so a player
@@ -1711,6 +1721,72 @@ class MatchStore extends ChangeNotifier {
     }
     pushSnapshot();
     mine.remove(playerId);
+    _persist();
+    notifyListeners();
+    return null;
+  }
+
+  /// Adds one player to BOTH squads as the double-side (common) player.
+  /// Mid-match only; enforces cap and the common-player limit.
+  String? addCommonPlayer(String playerId) {
+    final m = match;
+    final sheet = currentSheet;
+    if (m == null || sheet == null) return 'Player tracking is off';
+    if (m.config.commonPlayers < 1) return 'Double-side player is off';
+    final squadA = m.config.squadA;
+    final squadB = m.config.squadB;
+    final alreadyCommon =
+        squadA.contains(playerId) && squadB.contains(playerId);
+    if (!alreadyCommon) {
+      final overlap = squadA.where((id) => squadB.contains(id)).length;
+      if (overlap >= m.config.commonPlayers) {
+        return 'Only ${m.config.commonPlayers} common player allowed';
+      }
+    }
+    if (!squadA.contains(playerId) &&
+        squadA.length >= m.config.playersPerSide) {
+      return 'XI full (Team A)';
+    }
+    if (!squadB.contains(playerId) &&
+        squadB.length >= m.config.playersPerSide) {
+      return 'XI full (Team B)';
+    }
+    pushSnapshot();
+    if (!squadA.contains(playerId)) squadA.add(playerId);
+    if (!squadB.contains(playerId)) squadB.add(playerId);
+    final p = playerById(playerId);
+    if (p != null) {
+      for (final sh in sheets.values) {
+        sh.register(p);
+        sh.addToBattingXI(playerId);
+      }
+    }
+    _persist();
+    notifyListeners();
+    return null;
+  }
+
+  /// Removes the common player from both squads (only if uncapped).
+  String? removeCommonPlayer(String playerId) {
+    final m = match;
+    final sheet = currentSheet;
+    if (m == null || sheet == null) return 'Player tracking is off';
+    final squadA = m.config.squadA;
+    final squadB = m.config.squadB;
+    if (!squadA.contains(playerId) || !squadB.contains(playerId)) {
+      return 'Not a common player';
+    }
+    for (final sh in sheets.values) {
+      final b = sh.batting[playerId];
+      final w = sh.bowling[playerId];
+      if ((b != null && b.position > 0) ||
+          (w != null && (w.balls > 0 || w.wickets > 0))) {
+        return 'Already played — cannot remove';
+      }
+    }
+    pushSnapshot();
+    squadA.remove(playerId);
+    squadB.remove(playerId);
     _persist();
     notifyListeners();
     return null;

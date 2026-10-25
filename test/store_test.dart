@@ -351,7 +351,7 @@ void main() {
   test('common players persist in config', () {
     final s = freshStore();
     s.match!.config.commonPlayers = 1;
-    expect(s.match!.config.sidesLabel, '5 + 5 + 1');
+    expect(s.match!.config.sidesLabel, '4 + 1 vs 4 + 1');
   });
 
   test('batting-first picker orders innings', () {

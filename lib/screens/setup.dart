@@ -199,9 +199,35 @@ class _SetupScreenState extends State<SetupScreen> {
                           ButtonSegment(value: 1, label: Text('+1 common')),
                         ],
                         selected: {cfg.commonPlayers},
-                        onSelectionChanged: (s) =>
-                            setState(() => cfg.commonPlayers = s.first),
+                        onSelectionChanged: (s) {
+                          setState(() {
+                            final next = s.first;
+                            if (next != cfg.commonPlayers) {
+                              if (next == 1 &&
+                                  cfg.commonPlayers == 0 &&
+                                  cfg.playersPerSide < 15) {
+                                cfg.playersPerSide += 1;
+                              } else if (next == 0 &&
+                                  cfg.commonPlayers == 1 &&
+                                  cfg.playersPerSide > 2) {
+                                cfg.playersPerSide -= 1;
+                                final commonIds = _squadA
+                                    .where((id) => _squadB.contains(id))
+                                    .toList();
+                                for (final id in commonIds) {
+                                  _squadA.remove(id);
+                                  _squadB.remove(id);
+                                }
+                              }
+                            }
+                            cfg.commonPlayers = next;
+                          });
+                        },
                       ),
+                      if (_track && cfg.commonPlayers > 0) ...[
+                        const SizedBox(height: 6),
+                        _commonPlayerPicker(),
+                      ],
                     ],
                   ),
                 ),
@@ -456,10 +482,15 @@ class _SetupScreenState extends State<SetupScreen> {
     final sharedOk = cfg.commonPlayers > 0;
     final pool = store.clubRoster.where((p) {
       if (!p.active) return false;
-      // Cross-exclusion: picked for the other side stays visible only when a
-      // common player is allowed; otherwise it is hidden, not disabled, so a
-      // shared pick can never be made by accident.
-      if (otherSel.contains(p.id) && !sharedOk) return false;
+      // Cross-exclusion: a player picked for the other side is hidden, EXCEPT
+      // when a common (double-side) player is still needed — then the team-1
+      // players stay visible so the SAME player can be picked in team B (and
+      // vice versa). Once the common-player slot is filled, the rest are hidden.
+      if (otherSel.contains(p.id)) {
+        if (!sharedOk) return false;
+        final overlap = sel.where((id) => otherSel.contains(id)).length;
+        if (!sel.contains(p.id) && overlap >= cfg.commonPlayers) return false;
+      }
       return q.isEmpty || p.searchKey.contains(q);
     }).toList();
     // Most frequent first; the picked stay pinned on top so a tap never makes
@@ -544,6 +575,37 @@ class _SetupScreenState extends State<SetupScreen> {
                     title: 'ADD TO ${team.trim().isEmpty ? side : team.trim()}',
                   );
                   if (p == null || !mounted) return;
+                  if (sel.length >= cap) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'XI full at $cap — raise players per side first.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  if (otherSel.contains(p.id) && cfg.commonPlayers == 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Already in the other XI.')),
+                    );
+                    return;
+                  }
+                  if (otherSel.contains(p.id) && cfg.commonPlayers > 0) {
+                    final overlap = sel
+                        .where((id) => otherSel.contains(id))
+                        .length;
+                    if (overlap >= cfg.commonPlayers) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Only ${cfg.commonPlayers} common player allowed.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                  }
                   setState(() => sel.add(p.id));
                 },
                 borderRadius: BorderRadius.circular(12),
@@ -605,6 +667,94 @@ class _SetupScreenState extends State<SetupScreen> {
             onPressed: () => setState(() => _expanded.add(side)),
             child: Text(expanded ? 'Show less' : 'More ($hidden)'),
           ),
+      ],
+    );
+  }
+
+  Widget _commonPlayerPicker() {
+    final store = widget.store;
+    final commonIds = _squadA.where((id) => _squadB.contains(id)).toList();
+    final eligible = store.clubRoster
+        .where(
+          (p) => p.active && !_squadA.contains(p.id) && !_squadB.contains(p.id),
+        )
+        .toList();
+    final cap = cfg.playersPerSide;
+    final full = _squadA.length >= cap || _squadB.length >= cap;
+    if (commonIds.isNotEmpty) {
+      return Row(
+        children: [
+          const Text(
+            'DOUBLE-SIDE:',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              commonIds.map(store.playerName).join(', '),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            tooltip: 'Remove common player',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () => setState(() {
+              for (final id in commonIds) {
+                _squadA.remove(id);
+                _squadB.remove(id);
+              }
+            }),
+          ),
+        ],
+      );
+    }
+    if (full) {
+      return const Text(
+        'DOUBLE-SIDE: XI full — raise players per side first.',
+        style: TextStyle(fontSize: 11),
+      );
+    }
+    if (eligible.isEmpty) {
+      return const Text(
+        'DOUBLE-SIDE: no eligible players — add to a squad first.',
+        style: TextStyle(fontSize: 11),
+      );
+    }
+    return Row(
+      children: [
+        const Text(
+          'DOUBLE-SIDE:',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: DropdownButton<String>(
+            hint: const Text(
+              'Pick common player',
+              style: TextStyle(fontSize: 12),
+            ),
+            isDense: true,
+            isExpanded: true,
+            items: eligible
+                .map(
+                  (p) => DropdownMenuItem<String>(
+                    value: p.id,
+                    child: Text(p.name, style: const TextStyle(fontSize: 12)),
+                  ),
+                )
+                .toList(),
+            onChanged: (id) {
+              if (id == null) return;
+              setState(() {
+                _squadA.add(id);
+                _squadB.add(id);
+              });
+            },
+          ),
+        ),
       ],
     );
   }

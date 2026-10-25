@@ -315,9 +315,39 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                     ButtonSegment(value: 1, label: Text('One')),
                   ],
                   selected: {common},
-                  onSelectionChanged: (s) => setSheet(() => common = s.first),
+                  onSelectionChanged: (s) {
+                    final next = s.first;
+                    if (next == common) return;
+                    if (next == 1 && common == 0) {
+                      if (players < 15) players += 1;
+                      setSheet(() => common = 1);
+                    } else if (next == 0 && common == 1) {
+                      final commonIds = cfg.squadA
+                          .where((id) => cfg.squadB.contains(id))
+                          .toList();
+                      for (final id in commonIds) {
+                        final rerr = store.removeCommonPlayer(id);
+                        if (rerr != null) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(rerr)));
+                          setSheet(() => common = 1);
+                          return;
+                        }
+                      }
+                      if (players > 2) players -= 1;
+                      setSheet(() => common = 0);
+                    }
+                  },
                 ),
               ),
+              if (store.tracking && common > 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
+                  child: _commonPlayerPicker(context, store, setSheet, players),
+                ),
               _flatRow(
                 'WIDE',
                 SegmentedButton<int>(
@@ -363,7 +393,14 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                 ),
               ),
               if (store.tracking)
-                _squadSection(context, store, setSheet, squadField),
+                _squadSection(
+                  context,
+                  store,
+                  setSheet,
+                  squadField,
+                  players,
+                  common,
+                ),
               if (store.tracking) const Divider(height: 24),
               const Divider(height: 24),
               Row(
@@ -618,6 +655,8 @@ Widget _squadSection(
   MatchStore store,
   StateSetter setSheet,
   TextEditingController squadField,
+  int cap,
+  int common,
 ) {
   final m = store.match!;
   return Column(
@@ -629,7 +668,107 @@ Widget _squadSection(
       ),
       const SizedBox(height: 8),
       for (final team in [m.config.teamA, m.config.teamB])
-        _sideBlock(context, store, setSheet, team, squadField),
+        _sideBlock(context, store, setSheet, team, squadField, cap),
+    ],
+  );
+}
+
+Widget _commonPlayerPicker(
+  BuildContext context,
+  MatchStore store,
+  StateSetter setSheet,
+  int cap,
+) {
+  final m = store.match!;
+  final squadA = m.config.squadA;
+  final squadB = m.config.squadB;
+  final commonIds = squadA.where((id) => squadB.contains(id)).toList();
+  final eligible = store.clubRoster
+      .where(
+        (p) => p.active && !squadA.contains(p.id) && !squadB.contains(p.id),
+      )
+      .toList();
+  final full = squadA.length >= cap || squadB.length >= cap;
+  if (commonIds.isNotEmpty) {
+    return Row(
+      children: [
+        const Text(
+          'DOUBLE-SIDE:',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            commonIds.map(store.playerName).join(', '),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close, size: 16),
+          tooltip: 'Remove common player',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: () {
+            for (final id in commonIds) {
+              final err = store.removeCommonPlayer(id);
+              if (err != null) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(err)));
+              }
+            }
+            setSheet(() {});
+          },
+        ),
+      ],
+    );
+  }
+  if (full) {
+    return const Text(
+      'DOUBLE-SIDE: XI full — raise players per side first.',
+      style: TextStyle(fontSize: 11),
+    );
+  }
+  if (eligible.isEmpty) {
+    return const Text(
+      'DOUBLE-SIDE: no eligible players — add to a squad first.',
+      style: TextStyle(fontSize: 11),
+    );
+  }
+  return Row(
+    children: [
+      const Text(
+        'DOUBLE-SIDE:',
+        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: DropdownButton<String>(
+          hint: const Text(
+            'Pick common player',
+            style: TextStyle(fontSize: 12),
+          ),
+          isDense: true,
+          isExpanded: true,
+          items: eligible
+              .map(
+                (p) => DropdownMenuItem<String>(
+                  value: p.id,
+                  child: Text(p.name, style: const TextStyle(fontSize: 12)),
+                ),
+              )
+              .toList(),
+          onChanged: (id) {
+            if (id == null) return;
+            final err = store.addCommonPlayer(id);
+            setSheet(() {});
+            if (err != null) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(err)));
+            }
+          },
+        ),
+      ),
     ],
   );
 }
@@ -640,17 +779,20 @@ Widget _sideBlock(
   StateSetter setSheet,
   String team,
   TextEditingController squadField,
+  int cap,
 ) {
   final m = store.match!;
   final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
   final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
-  final cap = m.config.playersPerSide;
+  // cap is the pending players-per-side value from the sheet.
   // Quick adds: most frequent eligible first. Typed names go through the
   // field below (roster hit or created in-club, duplicates warned).
   final cands =
       store.clubRoster.where((p) {
         if (!p.active || mine.contains(p.id)) return false;
-        if (other.contains(p.id) && m.config.commonPlayers == 0) return false;
+        // Strict cross-exclusion; common player is added via the dedicated
+        // picker / ADD field, not from the candidate list.
+        if (other.contains(p.id)) return false;
         return true;
       }).toList()..sort(
         (a, b) => (store.playerAppearances[b.id] ?? 0).compareTo(
@@ -665,27 +807,52 @@ Widget _sideBlock(
         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
       ),
       for (final id in mine.toList())
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                store.playerName(id),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: other.contains(id)
+              ? BoxDecoration(
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                )
+              : null,
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Text(
+                      store.playerName(id),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    if (other.contains(id)) ...[
+                      const SizedBox(width: 6),
+                      const Text(
+                        'COMMON',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF16A34A),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Remove (only if uncapped)',
-              onPressed: () {
-                final err = store.removeFromSquad(team, id);
-                setSheet(() {});
-                if (err != null) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text(err)));
-                }
-              },
-            ),
-          ],
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Remove (only if uncapped)',
+                onPressed: () {
+                  final err = store.removeFromSquad(team, id);
+                  setSheet(() {});
+                  if (err != null) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(err)));
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       const SizedBox(height: 4),
       // Explicit button, not just onSubmitted: typing a name and tapping away
