@@ -3,7 +3,7 @@
 **Project:** CricScore — offline gully-cricket umpire scorer
 **Repo:** https://github.com/sanjaydev0/cricket-scoring-flutter (branch `main`)
 **Stack:** Flutter 3.47.7 / Dart 3.13.5 · Material 3 · `flutter_soloud` · `shared_preferences` · `intl` · `supabase_flutter`
-**Config:** `opencode.jsonc` (default agent `build`, formatter `dart`, no linter)
+**Config:** `opencode.jsonc` (default agent `build`, formatter enabled, tool_output/watcher/permissions tuned)
 **Verification:** run `flutter analyze --no-pub` and `flutter test`; do not record counts here.
 
 ---
@@ -63,6 +63,7 @@ lib/
   sound.dart        SoundService — SoLoud mixer, preload + per-clip gain/debounce
   theme.dart        UmpireTheme, StylePreset (12), ScoreFonts (10)
   app_config.dart   AppConfig — --dart-define values (Supabase URL/key), never committed
+  core/debug/       android_frame_wrapper.dart (debug-only Android phone preview, desktop targets)
   domain/           room_code.dart (32^5 codes), room_snapshot.dart (versioned payload)
   domain/players.dart Player/Club/ClubProfile, DismissalType, BattingCard,
                       BowlingCard, FieldingCard, InningsSheet, Career aggregates
@@ -72,6 +73,7 @@ lib/
     home.dart       Start / Resume / Archives + settings sections
     setup.dart      Teams (+batting-first pills), format, rules
     scoring.dart    Keypad + undo + extras + PLAYERS button; renders Scoreboard
+    scorecard.dart  live innings scorecard (one innings at a time + summary tab)
     player_sheets.dart dismissal (one-tap), bowler picker, stats sheet, openers
     club.dart       profiles (local PIN), clubs, roster + search + career stats
     summary.dart    scorecard tables, awards, player-of-match, WhatsApp share
@@ -90,9 +92,15 @@ Current feature inventory (keep compatible unless asked):
 - Run-out badges read `W+n`; complex/simple wicket toggle; double-side player None/One;
   advanced-extras master switch; declare-winner + abandon flows
 - Deferred over rollover; 900ms strip glide; fade on forward rollover only, never on undo
+- Full-squad scorecard: batting and bowling tables list every squad member, played
+  rows first (by batting position / bowling impact), unplayed rows dimmed as
+  'did not bat' / 'did not bowl'.
 - Player names are rows, never pills: every name picker renders compact rows
   (name left, radio/check right) via one shared row layout. Chips stay only for
   non-name toggles (dismissal types, styles).
+- Debug phone frame: `lib/core/debug/android_frame_wrapper.dart` wraps the app
+  in a bezelled Android handset on desktop debug builds only; bypassed on
+  physical Android and in release. Linux preview mirrors Android layout.
 - Squad rules live in the store, never just the UI: XI cap = playersPerSide,
   cross-XI exclusion waived only for the shared pick when a common player is
   allowed, duplicates warn and are never created, mid-match removal only when
@@ -228,6 +236,10 @@ $HOME/Android/Sdk/platform-tools/adb devices -l
 - Flutter is on a 3.47 candidate branch. Do not upgrade or switch channels mid-task.
 - Zed binary is `zeditor`; watchexec 2.8 drives hot reload.
 - Web is not a target: the repo has no `web/` directory. Android APK + Linux desktop only.
+- Linux preview requires `cmake` and `ninja` (`sudo pacman -S --needed cmake ninja`);
+  they are not installed by default on a fresh CachyOS box.
+- Data-safe tooling: `tool/safe_update.sh` (pull backup + install), `tool/restore_backup.sh`
+  (fresh install), `tool/release.sh` (analyze, test, pre-flight, APK, tag, install).
 - Wireless deploy: `adb connect <ip>:<port>` — the phone's port changes each session;
   rediscover with `avahi-browse -r _adb-tls-connect._tcp`.
 - Use `$HOME/Android/Sdk/platform-tools/adb`, not `/usr/bin/adb`.
@@ -291,9 +303,7 @@ $HOME/Android/Sdk/platform-tools/adb devices -l
 
 ## Known gaps (open work)
 
-- Innings scorecard with per-player and per-bowler figures.
-- Club roster and career stats (needs the `DeliveryEvent` model first, plus a Postgres
-  schema for `clubs` / `players` / `matches` / batting+bowling figures).
+- None currently tracked; all planned v2.x features have shipped. Next roadmap TBD.
 
 ## Credits
 
