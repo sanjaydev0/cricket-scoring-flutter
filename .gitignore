@@ -17,6 +17,11 @@ build/
 android/.gradle/
 android/local.properties
 
+# Release signing material - never commit
+android/key.properties
+*.jks
+*.keystore
+
 # Test artifacts
 coverage/
 
