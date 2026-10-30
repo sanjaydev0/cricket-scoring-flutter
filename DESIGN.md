@@ -258,7 +258,9 @@ Nothing in this app is distinguished by blur.
 
 Rectangular and decisive. Controls are **8px** rectangles; primary buttons are **14px**;
 cards are **16px**; the style preset carries its own keypad radius (6–14px) so the arcade
-presets can read as CRT or cabinet hardware. Full-round shapes are reserved for two things:
+presets can read as CRT or cabinet hardware. The registry ships seven presets (Umpire Pro,
+Solar Flare, Pure White, Crimson Court, Nothing Mono, Game Boy, Pro Red); `StylePreset.ids`
+is the only list to iterate. Full-round shapes are reserved for two things:
 **36dp circle ball badges** and **circular initials avatars / team dots**. Nothing else is a
 pill — not names, not tabs, not filters. The one sanctioned slab is the innings switcher
 (12px) because it is a segmented control, not a chip.

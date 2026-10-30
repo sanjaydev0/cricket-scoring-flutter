@@ -88,8 +88,8 @@ lib/
 ```
 
 Current feature inventory (keep compatible unless asked):
-- 12 style presets: Umpire Pro, Solar Flare, Pure White, Crimson Court, iOS Frost,
-  Nothing Mono, Vercel Ink, Router Paper, Linear Dusk, CRT Phosphor, Neon Cabinet, Game Boy
+- 7 style presets (the shipped `StylePreset.presets` registry): Umpire Pro, Solar
+  Flare, Pure White, Crimson Court, Nothing Mono, Game Boy, Pro Red
 - 10 score fonts (bundled OFL) + 9 celebrations (Off, Pop, Flash, Glow, Shake, Blink,
   Glitch, CRT, Slow-Mo) — numerals-only, layout-frozen, split runs/wickets
 - Run-out badges read `W+n`; complex/simple wicket toggle; double-side player None/One;
