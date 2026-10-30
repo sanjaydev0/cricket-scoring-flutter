@@ -146,6 +146,7 @@ class StepperRow extends StatelessWidget {
         ),
         IconButton.filledTonal(
           onPressed: value > min ? () => onChanged(value - 1) : null,
+          tooltip: label.isEmpty ? 'Decrease' : 'Decrease $label',
           icon: const Icon(Icons.remove),
         ),
         SizedBox(
@@ -158,6 +159,7 @@ class StepperRow extends StatelessWidget {
         ),
         IconButton.filledTonal(
           onPressed: value < max ? () => onChanged(value + 1) : null,
+          tooltip: label.isEmpty ? 'Increase' : 'Increase $label',
           icon: const Icon(Icons.add),
         ),
       ],
@@ -275,22 +277,32 @@ class KeyBtn extends StatelessWidget {
                     : const Color(0x00000000),
               ),
             ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                height: 1,
+        // Fitted, not clipped: the 72dp key cannot grow (the grid is fixed),
+        // so at a 2x system text size the label scales down instead of
+        // overflowing the button with stripes.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
               ),
-            ),
-            Text(
-              sub,
-              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800),
-            ),
-          ],
+              Text(
+                sub,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -100,114 +100,129 @@ class _ScoreboardState extends State<Scoreboard> {
     return Column(
       children: [
         RepaintBoundary(
-          child: Card(
-            color: preset.heroBg,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _togglePeek,
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 8,
-                    left: 12,
-                    child: _CornerPlus(preset.heroFg),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 12,
-                    child: _CornerPlus(preset.heroFg),
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    left: 12,
-                    child: _CornerPlus(preset.heroFg),
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    right: 12,
-                    child: _CornerPlus(preset.heroFg),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 20,
+          child: Semantics(
+            container: true,
+            // One coherent announcement, not "184 / 3 OVERS 14.2 CRR 8.9":
+            // the numerals, the stat row and the registration crosses are one
+            // scoreboard, so the whole card is a single semantic node.
+            excludeSemantics: true,
+            button: !live,
+            onTap: live ? null : _togglePeek,
+            label: _heroLabel(inn),
+            hint: live
+                ? null
+                : (_peek
+                      ? 'Target details showing'
+                      : 'Double tap for target and required rate'),
+            child: Card(
+              color: preset.heroBg,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _togglePeek,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 8,
+                      left: 12,
+                      child: _CornerPlus(preset.heroFg),
                     ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
+                    Positioned(
+                      top: 8,
+                      right: 12,
+                      child: _CornerPlus(preset.heroFg),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      left: 12,
+                      child: _CornerPlus(preset.heroFg),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      right: 12,
+                      child: _CornerPlus(preset.heroFg),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 20,
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: preset.heroFg.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TeamDot(
+                                  isTeamA
+                                      ? MatchStore.teamAColor
+                                      : MatchStore.teamBColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  inn.battingTeam,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    letterSpacing: 1.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: preset.heroFg,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: preset.heroFg.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TeamDot(
-                                isTeamA
-                                    ? MatchStore.teamAColor
-                                    : MatchStore.teamBColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                inn.battingTeam,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  letterSpacing: 1.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: preset.heroFg,
+                          _numerals(cur, inn),
+                          if (inn.isFreeHitActive)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 4),
+                              child: Badge(
+                                label: Text(
+                                  'FREE HIT',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        _numerals(cur, inn),
-                        if (inn.isFreeHitActive)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4),
-                            child: Badge(
-                              label: Text(
-                                'FREE HIT',
-                                style: TextStyle(fontWeight: FontWeight.w900),
-                              ),
                             ),
+                          const SizedBox(height: 6),
+                          Divider(
+                            height: 1,
+                            color: preset.heroFg.withValues(alpha: 0.25),
                           ),
-                        const SizedBox(height: 6),
-                        Divider(
-                          height: 1,
-                          color: preset.heroFg.withValues(alpha: 0.25),
-                        ),
-                        const SizedBox(height: 6),
-                        if (_peek)
-                          TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0.0, end: 1.0),
-                            duration: const Duration(milliseconds: 160),
-                            curve: Curves.easeOut,
-                            builder: (context, t, child) => Opacity(
-                              opacity: t,
-                              child: Transform.scale(
-                                scale: 0.96 + 0.04 * t,
-                                child: child,
+                          const SizedBox(height: 6),
+                          if (_peek)
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: const Duration(milliseconds: 160),
+                              curve: Curves.easeOut,
+                              builder: (context, t, child) => Opacity(
+                                opacity: t,
+                                child: Transform.scale(
+                                  scale: 0.96 + 0.04 * t,
+                                  child: child,
+                                ),
                               ),
+                              child: _chaseStrip(inn, match, preset),
+                            )
+                          else
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _stat('OVERS', '$oversFmt/$totalOvers'),
+                                _stat('CRR', crr),
+                                _stat('EXTRAS', '${inn.extrasTotal}'),
+                              ],
                             ),
-                            child: _chaseStrip(inn, match, preset),
-                          )
-                        else
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _stat('OVERS', '$oversFmt/$totalOvers'),
-                              _stat('CRR', crr),
-                              _stat('EXTRAS', '${inn.extrasTotal}'),
-                            ],
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -292,38 +307,67 @@ class _ScoreboardState extends State<Scoreboard> {
     // wicket digit. Finished innings stay calm. A live viewer never celebrates:
     // the scorer already did, on their phone.
     final calm = live || inn.completed || match.completed;
-    return Row(
-      key: const ValueKey('hero-numerals'),
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Celebrate(
-          key: const ValueKey('hero-runs'),
-          mode: live ? 'off' : celebId,
-          valueKey: '${inn.runs}',
-          fire: (isFour || isSix) && !calm,
-          tint: isFour ? const Color(0xFF2DC653) : const Color(0xFFEC008C),
-          text: '${inn.runs}',
-          style: numStyle,
-        ),
-        Text(
-          '/',
-          style: numStyle.copyWith(
-            color: preset.heroFg.withValues(alpha: 0.55),
+    // ScaleDown, not clip: at a 1.6x system text size a 68px numeral pair is
+    // wider than a 360dp phone. Celebrations are Transform-based, so they are
+    // unaffected — they never change layout size either way.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        key: const ValueKey('hero-numerals'),
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Celebrate(
+            key: const ValueKey('hero-runs'),
+            mode: live ? 'off' : celebId,
+            valueKey: '${inn.runs}',
+            fire: (isFour || isSix) && !calm,
+            tint: isFour ? const Color(0xFF2DC653) : const Color(0xFFEC008C),
+            text: '${inn.runs}',
+            style: numStyle,
           ),
-        ),
-        Celebrate(
-          key: const ValueKey('hero-wickets'),
-          mode: live ? 'off' : celebId,
-          valueKey: '${inn.wickets}',
-          fire: isW && !calm,
-          tint: const Color(0xFFDC143C),
-          text: '${inn.wickets}',
-          style: numStyle,
-        ),
-      ],
+          Text(
+            '/',
+            style: numStyle.copyWith(
+              color: preset.heroFg.withValues(alpha: 0.55),
+            ),
+          ),
+          Celebrate(
+            key: const ValueKey('hero-wickets'),
+            mode: live ? 'off' : celebId,
+            valueKey: '${inn.wickets}',
+            fire: isW && !calm,
+            tint: const Color(0xFFDC143C),
+            text: '${inn.wickets}',
+            style: numStyle,
+          ),
+        ],
+      ),
     );
+  }
+
+  /// The whole scoreboard as one sentence: who is batting, the score, the
+  /// overs, the rate, and — once there is a target — what the chase needs.
+  /// A screen-reader user should never have to reassemble three numbers and
+  /// a slash to learn the state of the match.
+  String _heroLabel(Innings inn) {
+    final m = widget.match;
+    final overs = CricketMath.ballsToOvers(inn.legalDeliveries);
+    final crr = CricketMath.calcCRR(inn.runs, inn.legalDeliveries);
+    final bits = <String>[
+      '${inn.battingTeam} ${inn.runs} for ${inn.wickets}',
+      '$overs overs of ${m.config.totalOvers}',
+      'run rate $crr',
+      if (inn.isFreeHitActive) 'free hit',
+    ];
+    final target = m.currentInnings == 2 ? m.target : null;
+    if (target != null) {
+      final need = target - inn.runs;
+      bits.add(need <= 0 ? 'target $target reached' : 'need $need to win');
+    }
+    return bits.join(', ');
   }
 
   Widget _stat(String label, String value) {
@@ -524,25 +568,38 @@ class _OverStripState extends State<OverStrip> {
         _ctrl.jumpTo(_ctrl.position.maxScrollExtent);
       });
     }
-    final row = SingleChildScrollView(
-      controller: _ctrl,
-      scrollDirection: Axis.horizontal,
-      // Soft edges: the strip resists progressively past the last ball instead
-      // of stopping dead like a clamped Android scroller.
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      child: Row(
-        children: [
-          // Gaps between badges only — exactly 6 full balls per window.
-          for (int i = 0; i < balls.length; i++)
-            Padding(
-              padding: EdgeInsets.only(right: i == balls.length - 1 ? 0 : 6),
-              child: BallBadge(balls[i]),
-            ),
-          if (balls.isEmpty)
-            const Text('Over 1 • tap to bowl', style: TextStyle(fontSize: 12)),
-        ],
+    // One spoken line for the over. Without it a screen reader reads "4",
+    // "1", "W plus 2", "0" as four unlabelled numbers with no over context.
+    final spoken = balls.isEmpty
+        ? 'Over ${widget.overNumber}, no balls bowled yet'
+        : 'Over ${widget.overNumber}: ${balls.map((b) => b.badge).join(', ')}';
+    final row = Semantics(
+      container: true,
+      excludeSemantics: true,
+      label: spoken,
+      child: SingleChildScrollView(
+        controller: _ctrl,
+        scrollDirection: Axis.horizontal,
+        // Soft edges: the strip resists progressively past the last ball instead
+        // of stopping dead like a clamped Android scroller.
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        child: Row(
+          children: [
+            // Gaps between badges only — exactly 6 full balls per window.
+            for (int i = 0; i < balls.length; i++)
+              Padding(
+                padding: EdgeInsets.only(right: i == balls.length - 1 ? 0 : 6),
+                child: BallBadge(balls[i]),
+              ),
+            if (balls.isEmpty)
+              const Text(
+                'Over 1 • tap to bowl',
+                style: TextStyle(fontSize: 12),
+              ),
+          ],
+        ),
       ),
     );
     if (_swapGen == 0) return row;

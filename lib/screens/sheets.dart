@@ -282,6 +282,7 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
+                    tooltip: 'Close',
                     onPressed: () => Navigator.pop(sheetCtx),
                   ),
                 ],
@@ -708,7 +709,9 @@ Widget _commonPlayerPicker(
           icon: const Icon(Icons.close, size: 16),
           tooltip: 'Remove common player',
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
+          // A 16px glyph with zero constraints was a ~20dp target; 48dp is the
+          // floor for anything that deletes a squad entry.
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           onPressed: () {
             for (final id in commonIds) {
               final err = store.removeCommonPlayer(id);

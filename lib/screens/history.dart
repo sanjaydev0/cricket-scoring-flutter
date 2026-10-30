@@ -24,6 +24,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
     fut = widget.store.historyRecords();
   }
 
+  /// Archives are the only copy of a finished match on this phone, so every
+  /// destructive control asks first. One mis-tap on a list row used to delete
+  /// a match permanently with no way back.
+  Future<bool> _confirm({required String title, required String body}) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dctx, false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dctx, true),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+    return yes == true;
+  }
+
   String _dateLine(Match m) {
     final raw = (m.toJson()['savedAt'] ?? m.createdAt).toString();
     try {
@@ -42,7 +66,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
+            tooltip: 'Delete all archives',
             onPressed: () async {
+              final yes = await _confirm(
+                title: 'Delete all archives?',
+                body: 'Every saved match on this phone is removed. Clubs, players and any live match stay as they are. This cannot be undone.',
+              );
+              if (!yes || !mounted) return;
               await widget.store.clearHistory();
               setState(() => fut = widget.store.historyRecords());
             },
@@ -60,7 +90,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               }
               final h = snap.data!;
               if (h.isEmpty) {
-                return const Center(child: Text('No saved matches.'));
+                return const _EmptyArchives();
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
@@ -111,7 +141,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Delete this match',
                         onPressed: () async {
+                          final yes = await _confirm(
+                            title:
+                                'Delete ${m.config.teamA} vs ${m.config.teamB}?',
+                            body: 'The full scorecard for this match is removed from the archives. This cannot be undone.',
+                          );
+                          if (!yes || !mounted) return;
                           await widget.store.deleteHistoryAt(i);
                           setState(() => fut = widget.store.historyRecords());
                         },
@@ -122,6 +159,43 @@ class _HistoryScreenState extends State<HistoryScreen> {
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// An empty archive is a normal state, not an error: it says what will appear
+/// here and how matches get there, instead of one grey line in dead centre.
+class _EmptyArchives extends StatelessWidget {
+  const _EmptyArchives();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.history,
+              size: 44,
+              color: cs.onSurface.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'NO SAVED MATCHES',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Every match you finish lands here, with its full scorecard and player figures.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: cs.onSurface.withValues(alpha: 0.7)),
+            ),
+          ],
         ),
       ),
     );
