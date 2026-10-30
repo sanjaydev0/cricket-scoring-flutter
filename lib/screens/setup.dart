@@ -628,9 +628,11 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
         const SizedBox(height: 4),
         if (pool.isEmpty)
-          const Text(
-            'No players yet — add one above.',
-            style: TextStyle(fontSize: 12),
+          const EmptyState(
+            compact: true,
+            icon: Icons.group_add_outlined,
+            title: 'NO PLAYERS YET',
+            message: 'Add one with the + above, or build the roster first in CLUB + PLAYERS.',
           ),
         if (full && pool.isNotEmpty)
           const Text(

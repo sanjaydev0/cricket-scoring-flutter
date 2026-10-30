@@ -151,10 +151,15 @@ class StepperRow extends StatelessWidget {
         ),
         SizedBox(
           width: 40,
-          child: Text(
-            '$value',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          // ScaleDown: the stepper keeps its rhythm at a 2x system text size
+          // instead of letting a two-digit value overflow a 40dp box.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            ),
           ),
         ),
         IconButton.filledTonal(
@@ -702,6 +707,67 @@ class DetailRow extends StatelessWidget {
             if (trailing != null) ...[const SizedBox(width: 8), trailing!],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The one empty state. A screen with nothing in it is a normal state, not an
+/// error: say what belongs here, how it gets here, and never leave the user
+/// looking at a single grey line in dead centre.
+class EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  /// Tighter rhythm for an empty region inside a card (a squad pool), rather
+  /// than a whole empty screen.
+  final bool compact;
+
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 4 : 24,
+        vertical: compact ? 12 : 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: compact ? 28 : 44,
+            color: cs.onSurface.withValues(alpha: 0.4),
+          ),
+          SizedBox(height: compact ? 6 : 12),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+              fontSize: compact ? 11 : 14,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: compact ? 12 : 14,
+              color: cs.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
       ),
     );
   }

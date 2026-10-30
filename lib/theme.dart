@@ -204,6 +204,16 @@ class UmpireTheme {
     side: BorderSide(color: scheme.outline),
   );
 
+  /// M3's icon button is a 40dp container. Every icon action in this app is
+  /// pressed by a thumb in daylight, so the floor is lifted to 48dp here once
+  /// instead of per-widget; a caller may still force a smaller box deliberately.
+  static IconButtonThemeData _iconButtons() => IconButtonThemeData(
+    style: ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+      tapTargetSize: MaterialTapTargetSize.padded,
+    ),
+  );
+
   static SegmentedButtonThemeData _segmented() => SegmentedButtonThemeData(
     style: ButtonStyle(
       shape: WidgetStatePropertyAll(
@@ -255,6 +265,7 @@ class UmpireTheme {
         ),
       ),
       chipTheme: _chips(scheme),
+      iconButtonTheme: _iconButtons(),
       segmentedButtonTheme: _segmented(),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -302,6 +313,7 @@ class UmpireTheme {
         ),
       ),
       chipTheme: _chips(scheme),
+      iconButtonTheme: _iconButtons(),
       segmentedButtonTheme: _segmented(),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(

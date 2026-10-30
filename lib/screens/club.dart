@@ -658,9 +658,10 @@ class _ClubScreenState extends State<ClubScreen> {
       );
     if (list.isEmpty) {
       return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Text('No players yet.', textAlign: TextAlign.center),
+        child: EmptyState(
+          icon: Icons.groups_outlined,
+          title: 'NO PLAYERS YET',
+          message: 'Add a player, or bulk-add your whole roster from a pasted list. Career figures build up as you score.',
         ),
       );
     }

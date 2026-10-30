@@ -90,7 +90,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
               }
               final h = snap.data!;
               if (h.isEmpty) {
-                return const _EmptyArchives();
+                return const Center(
+                  child: EmptyState(
+                    icon: Icons.history,
+                    title: 'NO SAVED MATCHES',
+                    message: 'Every match you finish lands here, with its full scorecard and player figures.',
+                  ),
+                );
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
@@ -159,43 +165,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
               );
             },
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// An empty archive is a normal state, not an error: it says what will appear
-/// here and how matches get there, instead of one grey line in dead centre.
-class _EmptyArchives extends StatelessWidget {
-  const _EmptyArchives();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.history,
-              size: 44,
-              color: cs.onSurface.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'NO SAVED MATCHES',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Every match you finish lands here, with its full scorecard and player figures.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: cs.onSurface.withValues(alpha: 0.7)),
-            ),
-          ],
         ),
       ),
     );
