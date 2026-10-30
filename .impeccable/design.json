@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T00:00:00Z",
+  "title": "Design System: CricScore",
+  "extensions": {
+    "colorMeta": {
+      "umpire-blue": {
+        "role": "primary",
+        "displayName": "Umpire Blue",
+        "canonical": "#1D4ED8"
+      },
+      "carbon-ink": {
+        "role": "primary",
+        "displayName": "Carbon Ink",
+        "canonical": "#131316"
+      },
+      "wicket-crimson": {
+        "role": "secondary",
+        "displayName": "Wicket Crimson",
+        "canonical": "#DC143C"
+      },
+      "six-magenta": {
+        "role": "secondary",
+        "displayName": "Six Magenta",
+        "canonical": "#EC008C"
+      },
+      "four-green": {
+        "role": "secondary",
+        "displayName": "Four Green",
+        "canonical": "#15803D"
+      },
+      "wide-amber": {
+        "role": "tertiary",
+        "displayName": "Wide Amber",
+        "canonical": "#FFBA08"
+      },
+      "no-ball-purple": {
+        "role": "tertiary",
+        "displayName": "No-Ball Purple",
+        "canonical": "#7B2CBF"
+      },
+      "bye-cyan": {
+        "role": "tertiary",
+        "displayName": "Bye Cyan",
+        "canonical": "#00B4D8"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#FAFAFA"
+      },
+      "night": {
+        "role": "neutral",
+        "displayName": "Night",
+        "canonical": "#0B0B0D"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#E2E2E2"
+      }
+    },
+    "typographyMeta": {
+      "display-score": {
+        "displayName": "Display Score",
+        "purpose": "The runs/wickets pair on the hero tile, in the user's chosen bundled face."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase tracked captions, section bands and keypad subtitles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "A person's name in a row, a team name on a pill."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "press",
+        "value": "150ms",
+        "purpose": "Pointer-down feedback; the fill darkens immediately rather than rippling."
+      },
+      {
+        "name": "overlay",
+        "value": "300ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Sheet settle and the new-over fade; 120ms fade under reduced motion."
+      },
+      {
+        "name": "celebrate",
+        "value": "700ms",
+        "purpose": "Numeral-only boundary/wicket celebration. Transform, Opacity, ShaderMask, text shadow only."
+      },
+      {
+        "name": "strip-glide",
+        "value": "200ms + 80ms per ball, max 900ms",
+        "purpose": "Ball strip scroll after a delivery. Never runs on undo."
+      }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "360px" },
+      { "name": "content-cap", "value": "560px" },
+      { "name": "live-cap", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Every confirm/start action. Carbon slab, white bold uppercase label.",
+      "html": "<button class=\"ds-btn-primary\">START NEW MATCH</button>",
+      "css": ".ds-btn-primary { background:#131316; color:#fff; border:none; border-radius:8px; min-width:64px; min-height:52px; padding:12px 16px; font-family:Roboto,system-ui,sans-serif; font-weight:800; font-size:15px; letter-spacing:0.5px; cursor:pointer; } .ds-btn-primary:active { background:#000; } .ds-btn-primary:focus-visible { outline:3px solid #1D4ED8; outline-offset:2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outline alternative for the second action in a pair.",
+      "html": "<button class=\"ds-btn-secondary\">RESUME • BLUE 84/2</button>",
+      "css": ".ds-btn-secondary { background:#fff; color:#0A0A0A; border:1.5px solid #000; border-radius:8px; min-height:52px; padding:12px 16px; font-family:Roboto,system-ui,sans-serif; font-weight:800; font-size:15px; cursor:pointer; } .ds-btn-secondary:active { background:#E2E2E2; } .ds-btn-secondary:focus-visible { outline:3px solid #1D4ED8; outline-offset:2px; }"
+    },
+    {
+      "name": "Keypad Key",
+      "kind": "custom",
+      "refersTo": "keypad-key",
+      "description": "72dp rapid-input key: big numeral, 9px caption, instant darkening press state.",
+      "html": "<button class=\"ds-key\"><span class=\"ds-key-num\">4</span><span class=\"ds-key-sub\">FOUR</span></button>",
+      "css": ".ds-key { background:#15803D; color:#fff; border:1.5px solid rgba(0,0,0,0.24); border-radius:14px; height:72px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; font-family:Roboto,system-ui,sans-serif; cursor:pointer; } .ds-key-num { font-size:24px; font-weight:900; line-height:1; } .ds-key-sub { font-size:9px; font-weight:800; } .ds-key:active { background:#0f5c2b; } .ds-key:focus-visible { outline:3px solid #131316; outline-offset:2px; }"
+    },
+    {
+      "name": "Name Row",
+      "kind": "custom",
+      "refersTo": "name-row",
+      "description": "The only way a person is drawn. 48dp target, name w800, quiet subtitle, solid slab when selected.",
+      "html": "<div class=\"ds-row ds-row--sel\"><div><div class=\"ds-row-name\">Ravi Patel</div><div class=\"ds-row-sub\">Right-hand bat • Off spin</div></div><span class=\"ds-row-dot\"></span></div>",
+      "css": ".ds-row { display:flex; align-items:center; justify-content:space-between; min-height:48px; padding:9px 10px; border-bottom:1px solid rgba(120,120,120,0.35); font-family:Roboto,system-ui,sans-serif; cursor:pointer; } .ds-row-name { font-size:14px; font-weight:800; color:#0A0A0A; } .ds-row-sub { font-size:11px; color:rgba(10,10,10,0.6); } .ds-row--sel { background:#131316; } .ds-row--sel .ds-row-name { color:#fff; } .ds-row--sel .ds-row-sub { color:rgba(255,255,255,0.7); } .ds-row-dot { width:20px; height:20px; border-radius:50%; border:2px solid rgba(10,10,10,0.5); } .ds-row--sel .ds-row-dot { border-color:#22C55E; background:#22C55E; } .ds-row:hover { background:rgba(0,0,0,0.04); } .ds-row--sel:hover { background:#131316; }"
+    },
+    {
+      "name": "Ball Badge",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "36dp solid circle, no border or glow. Colour alone carries the event.",
+      "html": "<div class=\"ds-balls\"><span class=\"ds-ball ds-ball--w\">W+2</span><span class=\"ds-ball ds-ball--six\">6</span><span class=\"ds-ball ds-ball--four\">4</span><span class=\"ds-ball ds-ball--wide\">WD</span><span class=\"ds-ball ds-ball--dot\">0</span></div>",
+      "css": ".ds-balls { display:flex; gap:6px; } .ds-ball { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Roboto,system-ui,sans-serif; font-weight:900; font-size:12px; } .ds-ball--w { background:#DC143C; color:#fff; font-size:10px; } .ds-ball--six { background:#EC008C; color:#fff; } .ds-ball--four { background:#15803D; color:#fff; } .ds-ball--wide { background:#FFBA08; color:#000; } .ds-ball--dot { background:#131316; color:#fff; }"
+    },
+    {
+      "name": "Scoreboard Hero",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Umpire Pro preset hero: team chip, 68px tabular numerals, hairline, three-up stat row.",
+      "html": "<div class=\"ds-hero\"><div class=\"ds-hero-team\"><span class=\"ds-dot\"></span>GULLY KINGS</div><div class=\"ds-hero-score\">184<span class=\"ds-hero-slash\">/</span>3</div><div class=\"ds-hero-rule\"></div><div class=\"ds-hero-stats\"><div><span class=\"ds-stat-label\">OVERS</span><span class=\"ds-stat-value\">16.4/20</span></div><div><span class=\"ds-stat-label\">CRR</span><span class=\"ds-stat-value\">11.04</span></div><div><span class=\"ds-stat-label\">EXTRAS</span><span class=\"ds-stat-value\">7</span></div></div></div>",
+      "css": ".ds-hero { background:#1D4ED8; border-radius:16px; border:1px solid #E2E2E2; padding:16px 20px; text-align:center; color:#fff; font-family:Roboto,system-ui,sans-serif; } .ds-hero-team { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.14); border-radius:20px; padding:6px 16px; font-size:13px; font-weight:800; letter-spacing:1.5px; } .ds-dot { width:12px; height:12px; border-radius:50%; background:#22D3EE; border:1px solid rgba(0,0,0,0.26); } .ds-hero-score { font-size:68px; font-weight:900; line-height:1.05; font-variant-numeric:tabular-nums; margin:6px 0; } .ds-hero-slash { color:rgba(255,255,255,0.55); } .ds-hero-rule { height:1px; background:rgba(255,255,255,0.25); margin:6px 0; } .ds-hero-stats { display:flex; justify-content:space-evenly; } .ds-hero-stats > div { display:flex; flex-direction:column; gap:2px; } .ds-stat-label { font-size:10px; font-weight:800; letter-spacing:2px; color:rgba(255,255,255,0.7); } .ds-stat-value { font-size:18px; font-weight:900; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Hairline-bordered surface, 16px corner, elevation 2 with no visible shadow.",
+      "html": "<div class=\"ds-card\">Card content</div>",
+      "css": ".ds-card { background:#fff; color:#0A0A0A; border:1px solid #E2E2E2; border-radius:16px; padding:16px; font-family:Roboto,system-ui,sans-serif; box-shadow:0 1px 2px rgba(0,0,0,0.06); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Umpire's Scoreboard, In Sunlight",
+    "overview": "CricScore is an arcade scoreboard that happens to be a phone app. It is used outdoors, standing, at arm's length, by one person who is simultaneously watching a ball and being asked for the score. Every visual decision answers that scene: solid saturated fills instead of tints, near-black or white text instead of greys, and numerals large enough to read from a metre away. The interface is loud where the match is loud (boundaries, wickets, the hero score) and deliberately silent everywhere else — settings, rosters and archives are dense, plain, and free of ornament.",
+    "keyCharacteristics": [
+      "Solid saturated fills, near-black/white text, no pastels, no low-contrast grey body copy.",
+      "Names are rows, never pills; controls are 8px rectangles, never pills; only badges and avatars are circles.",
+      "Motion is layout-frozen: numerals animate with Transform/Opacity/ShaderMask only.",
+      "Every interactive target is at least 48dp; every icon-only control has a tooltip.",
+      "One coherent screen-reader sentence per scoreboard, not a pile of bare numerals."
+    ],
+    "rules": [
+      {
+        "name": "The Sunlight Rule",
+        "body": "Every fill is a solid saturated colour carrying white or near-black text. No pastels, no 20%-alpha tint as the only signal, no grey-on-grey. If a state can only be read by a subtle shade change, it is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Event Colour Rule",
+        "body": "Crimson, magenta, green, amber, purple and cyan mean a cricket event. They are never used for decoration, headings, or generic emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Numeral Rule",
+        "body": "Tabular figures on every number that can change while it is on screen, so a live score, overs count or economy never jitters as digits change.",
+        "section": "typography"
+      },
+      {
+        "name": "The Border-Not-Shadow Rule",
+        "body": "A new surface gets a 1px border before it gets a shadow. Nothing in this app is distinguished by blur.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do give every icon-only control a tooltip (it is also its screen-reader label) and a 48dp minimum target.",
+      "Do express selection as a solid fill with white text, at w800 or heavier.",
+      "Do keep names as rows and controls as 8px rectangles; use circles only for badges, dots and avatars.",
+      "Do add FittedBox(fit: BoxFit.scaleDown) around any fixed-height/fixed-width text block so a 2x system text size shrinks instead of overflowing.",
+      "Do wrap a multi-number readout in a single Semantics(excludeSemantics: true, label:) with a sentence a person would say out loud.",
+      "Do confirm every destructive action in the archives, and name what is not deleted.",
+      "Do keep celebrations inside Transform, Opacity, ShaderMask, text colour/shadow and Positioned overlays; honour MediaQuery.disableAnimationsOf."
+    ],
+    "donts": [
+      "Don't introduce a pastel, a 20%-tint state, or grey-on-grey body text; that is the Sunlight Rule failing.",
+      "Don't use crimson, magenta, green, amber, purple or cyan for anything that is not a cricket event.",
+      "Don't add a page transition, hero animation or layout-size change to anything that moves on a live score.",
+      "Don't put a stub where a bar is: no resume() after stop(), no placeholder assets, no runtime font or CDN fetch.",
+      "Don't use a hint as a label, and don't hide the only explanation of a format inside a placeholder that disappears when typing.",
+      "Don't add a new style preset, celebration or score font without wiring it into StylePreset.presets / MatchStore.celebIds / ScoreFonts.ids and the settings sheet in the same change."
+    ]
+  }
+}

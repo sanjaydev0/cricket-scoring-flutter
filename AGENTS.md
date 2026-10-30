@@ -5,6 +5,9 @@
 **Stack:** Flutter 3.47.7 / Dart 3.13.5 · Material 3 · `flutter_soloud` · `shared_preferences` · `intl` · `supabase_flutter`
 **Config:** `opencode.jsonc` (default agent `build`, formatter enabled, tool_output/watcher/permissions tuned)
 **Verification:** run `flutter analyze --no-pub` and `flutter test`; do not record counts here.
+**Design system:** `DESIGN.md` (root) holds the normative tokens, components and design
+rules — read it before any UI change. `.impeccable/design.json` is its machine-readable
+sidecar (motion, colour roles, component snippets); regenerate it with `DESIGN.md`.
 
 ---
 
