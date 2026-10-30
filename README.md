@@ -8,8 +8,8 @@ fast iteration. There is no web target.
 - Keypad: 0 1 2 3 4 6, WD, NB arm, W + wicket types + run-out runs, undo (60)
 - Extras: B, LB via More sheet; custom WD/NB penalties
 - Auto: overs, CRR/RRR, target, innings break, result (win by wkts/runs, tie), archives (50)
-- 3 themes: Sunlight high-contrast, Pavilion night, Solar high-vis
-- Offline: SharedPreferences only. No http, no Firebase, no Google Fonts (system fonts).
+- 7 themes: Umpire Pro, Solar Flare, Pure White, Crimson Court, Nothing Mono, Game Boy, Pro Red
+- Offline-first: SharedPreferences only. No http, no Firebase, no runtime font or CDN fetch. All fonts and SFX are bundled. Optional live room (opt-in): share a read-only score view by code; scoring never awaits the network.
 
 ## Preview (Linux desktop, fast iteration)
 ```bash
