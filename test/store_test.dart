@@ -154,11 +154,15 @@ void main() {
     expect(Match.decode(jsonEncode(back!.match)).innings1.runs, 6);
   });
 
-  test('players need a club first', () {
+  test('players join a default club automatically', () {
     final s = MatchStore();
     expect(s.activeClubId, isNull);
-    expect(s.addPlayer(name: 'No Club'), isNull);
-    expect(s.addPlayersBulk('A\nB').added, isEmpty);
+    // No manual club step: the first add creates and selects a default club.
+    final auto = s.addPlayer(name: 'No Club');
+    expect(auto, isNotNull);
+    expect(s.activeClubId, isNotNull);
+    expect(s.clubs.length, 1);
+    expect(s.addPlayersBulk('A\nB').added.length, 2);
     final club = s.createClub(name: 'Eagles');
     expect(s.activeClubId, club.id);
     final created = s.addPlayer(
@@ -208,6 +212,49 @@ void main() {
     // Removal of an uncapped pick works; setup tested paths cover the rest.
     expect(s.removeFromSquad('A', ids[0]), isNull);
     expect(s.match!.config.squadA, isNot(contains(ids[0])));
+  });
+
+  test('mid-match squad cap follows the pending settings value', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [
+      for (final n in ['A1', 'A2', 'B1', 'B2', 'A3']) s.addPlayer(name: n)!.id,
+    ];
+    s.draft = MatchConfig(
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 2,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1]],
+      squadB: [ids[2], ids[3]],
+    );
+    s.startMatch(s.draft);
+    // Saved config still says 2; the sheet has already raised it to 3.
+    expect(s.addToSquad('A', ids[4], cap: 3), isNull);
+    expect(s.match!.config.squadA, contains(ids[4]));
+  });
+
+  test('mid-match common pick accepts the pending double-side value', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [
+      for (final n in ['A1', 'A2', 'B1', 'B2', 'C1']) s.addPlayer(name: n)!.id,
+    ];
+    s.draft = MatchConfig(
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 2,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1]],
+      squadB: [ids[2], ids[3]],
+    );
+    s.startMatch(s.draft);
+    // The toggle is still pending at 0; the picker passes "One".
+    expect(s.addCommonPlayer(ids[4], cap: 3, commonPlayers: 1), isNull);
+    expect(s.match!.config.squadA, contains(ids[4]));
+    expect(s.match!.config.squadB, contains(ids[4]));
   });
 
   test('setBowler refuses the just-bowled bowler', () {

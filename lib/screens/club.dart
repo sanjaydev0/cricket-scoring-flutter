@@ -130,10 +130,12 @@ class _ClubScreenState extends State<ClubScreen> {
             for (final c in store.clubs)
               PlayerRow(
                 name: c.name,
-                subtitle: store.activeClubId == c.id ? 'ACTIVE CLUB' : null,
+                subtitle: store.activeClubId == c.id
+                    ? 'DEFAULT CLUB — new players are added here'
+                    : 'Tap to set as default club',
                 selected: store.activeClubId == c.id,
                 enabled: store.activeClubId != c.id,
-                blockedReason: 'ACTIVE CLUB',
+                blockedReason: 'DEFAULT CLUB',
                 onTap: () => store.selectClub(c.id),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -461,7 +463,7 @@ class _ClubScreenState extends State<ClubScreen> {
     );
     if (created == null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Create a club first.')));
+          .showSnackBar(const SnackBar(content: Text('Already in the club.')));
       return;
     }
     _name.clear();
@@ -1007,7 +1009,7 @@ Future<Player?> showAddPlayerSheet(
                       bowlingStyle: bowl,
                     );
                     if (p == null) {
-                      setSheet(() => error = 'Create a club first');
+                      setSheet(() => error = 'Already in the club');
                       return;
                     }
                     created = p;

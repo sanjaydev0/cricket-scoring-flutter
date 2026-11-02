@@ -139,6 +139,10 @@ class MatchStore extends ChangeNotifier {
   set match(Match? v) => engine.match = v;
   MatchConfig get draft => engine.draft;
   set draft(MatchConfig v) => engine.draft = v;
+
+  /// One-shot hand-off from REMATCH to MATCH SETUP: the setup screen
+  /// preselects the squads already sitting in [draft], then clears this.
+  bool presetSquads = false;
   bool get nbArmed => engine.nbArmed;
   set nbArmed(bool v) => engine.nbArmed = v;
   String themeId = 'light'; // 'light' | 'dark'
@@ -308,6 +312,12 @@ class MatchStore extends ChangeNotifier {
         activeClubId = pr.clubId;
         break;
       }
+    }
+    // Default club: never leave the backend with no active club when one
+    // exists. New players are saved here without asking the user to create
+    // or select a club first.
+    if (activeClubId == null && clubs.isNotEmpty) {
+      activeClubId = clubs.first.id;
     }
     try {
       sheets = {};
@@ -793,8 +803,25 @@ class MatchStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Null when no club exists yet: the UI must create a club first instead
-  /// of scattering players under a fake club.
+  /// The club new players join: the selected/default club, the first club
+  /// when nothing is selected, or a freshly created default club when the
+  /// store has none. This is what keeps "add player" from dead-ending on
+  /// "Create a club first" in match setup.
+  String _ensureClubId() {
+    final current = activeClubId;
+    if (current != null && clubs.any((c) => c.id == current)) {
+      return current;
+    }
+    if (clubs.isNotEmpty) {
+      activeClubId = clubs.first.id;
+      for (final pr in profiles) {
+        if (pr.id == activeProfileId) pr.clubId = activeClubId;
+      }
+      return activeClubId!;
+    }
+    return createClub(name: 'My Club').id;
+  }
+
   /// True when [name] already exists in the active club (case-insensitive).
   /// The UI warns "already exists" instead of creating a twin.
   bool duplicateName(String name) {
@@ -810,8 +837,7 @@ class MatchStore extends ChangeNotifier {
     BowlingStyle bowlingStyle = BowlingStyle.none,
     String? phone,
   }) {
-    final cid = activeClubId;
-    if (cid == null) return null;
+    final cid = _ensureClubId();
     if (duplicateName(name)) return null;
     final player = Player.create(
       clubId: cid,
@@ -836,7 +862,7 @@ class MatchStore extends ChangeNotifier {
 
   /// Paste-a-list bulk add: one name per line, optional "Name - role".
   BulkResult addPlayersBulk(String text) {
-    if (activeClubId == null) return const BulkResult([], 0);
+    _ensureClubId();
     final added = <Player>[];
     var skipped = 0;
     for (final line in text.split('\n')) {
@@ -1652,15 +1678,16 @@ class MatchStore extends ChangeNotifier {
   /// Adds a roster player to a mid-match XI. Enforces the same three rules as
   /// setup: the XI cap, cross-exclusion (waived for the shared pick when a
   /// common player is allowed), and tracking must be on.
-  String? addToSquad(String team, String playerId) {
+  String? addToSquad(String team, String playerId, {int? cap}) {
     final m = match;
     final sheet = currentSheet;
     if (m == null || sheet == null) return 'Player tracking is off';
+    final limit = cap ?? m.config.playersPerSide;
     final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
     final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
     if (mine.contains(playerId)) return null;
-    if (mine.length >= m.config.playersPerSide) {
-      return 'XI is full (${m.config.playersPerSide})';
+    if (mine.length >= limit) {
+      return 'XI is full ($limit)';
     }
     if (other.contains(playerId) && m.config.commonPlayers == 0) {
       return 'Already in the other XI';
@@ -1694,15 +1721,14 @@ class MatchStore extends ChangeNotifier {
   /// in the club (name-only; styles later) and joins. Duplicates warn.
   /// Adds a mid-match player by typed name: an existing roster player (inactive
   /// or not) is added as-is; an unknown name is created in the club first.
-  String? addSquadByName(String team, String name) {
+  String? addSquadByName(String team, String name, {int? cap}) {
     final t = name.trim();
     if (t.isEmpty) return 'Type a name';
     final existing = playerByName(t);
-    if (existing != null) return addToSquad(team, existing.id);
-    if (activeClubId == null) return 'Create a club first';
+    if (existing != null) return addToSquad(team, existing.id, cap: cap);
     final created = addPlayer(name: t);
-    if (created == null) return 'Create a club first';
-    return addToSquad(team, created.id);
+    if (created == null) return 'Could not add player';
+    return addToSquad(team, created.id, cap: cap);
   }
 
   /// Removes an uncapped pick mid-match. Anyone who batted or bowled stays:
@@ -1728,27 +1754,30 @@ class MatchStore extends ChangeNotifier {
 
   /// Adds one player to BOTH squads as the double-side (common) player.
   /// Mid-match only; enforces cap and the common-player limit.
-  String? addCommonPlayer(String playerId) {
+  String? addCommonPlayer(String playerId, {int? cap, int? commonPlayers}) {
     final m = match;
     final sheet = currentSheet;
     if (m == null || sheet == null) return 'Player tracking is off';
-    if (m.config.commonPlayers < 1) return 'Double-side player is off';
+    // The settings sheet keeps DOUBLE-SIDE as a pending local value until
+    // SAVE, so the picker must pass it in; reading config here rejected the
+    // pick while the toggle visibly said "One".
+    final commonLimit = commonPlayers ?? m.config.commonPlayers;
+    if (commonLimit < 1) return 'Double-side player is off';
+    final limit = cap ?? m.config.playersPerSide;
     final squadA = m.config.squadA;
     final squadB = m.config.squadB;
     final alreadyCommon =
         squadA.contains(playerId) && squadB.contains(playerId);
     if (!alreadyCommon) {
       final overlap = squadA.where((id) => squadB.contains(id)).length;
-      if (overlap >= m.config.commonPlayers) {
-        return 'Only ${m.config.commonPlayers} common player allowed';
+      if (overlap >= commonLimit) {
+        return 'Only $commonLimit common player allowed';
       }
     }
-    if (!squadA.contains(playerId) &&
-        squadA.length >= m.config.playersPerSide) {
+    if (!squadA.contains(playerId) && squadA.length >= limit) {
       return 'XI full (Team A)';
     }
-    if (!squadB.contains(playerId) &&
-        squadB.length >= m.config.playersPerSide) {
+    if (!squadB.contains(playerId) && squadB.length >= limit) {
       return 'XI full (Team B)';
     }
     pushSnapshot();

@@ -347,7 +347,13 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                     horizontal: 4,
                     vertical: 4,
                   ),
-                  child: _commonPlayerPicker(context, store, setSheet, players),
+                  child: _commonPlayerPicker(
+                    context,
+                    store,
+                    setSheet,
+                    players,
+                    common,
+                  ),
                 ),
               _flatRow(
                 'WIDE',
@@ -679,6 +685,7 @@ Widget _commonPlayerPicker(
   MatchStore store,
   StateSetter setSheet,
   int cap,
+  int common,
 ) {
   final m = store.match!;
   final squadA = m.config.squadA;
@@ -763,7 +770,11 @@ Widget _commonPlayerPicker(
               .toList(),
           onChanged: (id) {
             if (id == null) return;
-            final err = store.addCommonPlayer(id);
+            final err = store.addCommonPlayer(
+              id,
+              cap: cap,
+              commonPlayers: common,
+            );
             setSheet(() {});
             if (err != null) {
               ScaffoldMessenger.of(context)
@@ -875,7 +886,8 @@ Widget _sideBlock(
                 isDense: true,
               ),
               enabled: mine.length < cap,
-              onSubmitted: (_) => _addByName(context, store, team, squadField),
+              onSubmitted: (_) =>
+                  _addByName(context, store, team, squadField, cap),
             ),
           ),
           const SizedBox(width: 8),
@@ -883,7 +895,7 @@ Widget _sideBlock(
             primary: false,
             onTap: mine.length >= cap
                 ? null
-                : () => _addByName(context, store, team, squadField),
+                : () => _addByName(context, store, team, squadField, cap),
             child: const Text('ADD'),
           ),
         ],
@@ -897,7 +909,7 @@ Widget _sideBlock(
           enabled: mine.length < cap,
           blockedReason: mine.length >= cap ? 'XI full ($cap)' : null,
           onTap: () {
-            final err = store.addToSquad(team, p.id);
+            final err = store.addToSquad(team, p.id, cap: cap);
             setSheet(() {});
             if (err != null) {
               ScaffoldMessenger.of(context)
@@ -918,8 +930,9 @@ void _addByName(
   MatchStore store,
   String team,
   TextEditingController squadField,
+  int cap,
 ) {
-  final err = store.addSquadByName(team, squadField.text);
+  final err = store.addSquadByName(team, squadField.text, cap: cap);
   squadField.clear();
   if (err != null) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));

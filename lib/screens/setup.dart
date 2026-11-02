@@ -47,6 +47,15 @@ class _SetupScreenState extends State<SetupScreen> {
     );
     a = TextEditingController(text: cfg.teamA);
     b = TextEditingController(text: cfg.teamB);
+    // Rematch: carry the previous squads (and tracking) into setup so the same
+    // XI is preselected and editable, exactly like a fresh setup. One-shot —
+    // a plain NEW MATCH still starts with empty squads.
+    if (widget.store.presetSquads) {
+      widget.store.presetSquads = false;
+      _track = d.trackPlayers;
+      _squadA.addAll(d.squadA);
+      _squadB.addAll(d.squadB);
+    }
   }
 
   @override
@@ -640,29 +649,34 @@ class _SetupScreenState extends State<SetupScreen> {
             style: TextStyle(fontSize: 12),
           ),
         for (final p in visible)
-          DetailRow(
-            title: p.name,
-            subtitle:
-                '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}${otherSel.contains(p.id) ? ' • also in $otherLabel' : ''}',
-            valueLabel: freq(p.id) > 0 ? 'MATCHES' : null,
-            value: freq(p.id) > 0 ? '${freq(p.id)}' : null,
-            trailing: Icon(
-              sel.contains(p.id)
-                  ? Icons.check_circle
-                  : Icons.radio_button_unchecked,
-              size: 20,
-              color: sel.contains(p.id)
-                  ? const Color(0xFF16A34A)
-                  : Theme.of(context).colorScheme.onSurface
-                        .withValues(alpha: 0.4),
-            ),
-            onTap: () => setState(() {
-              if (sel.contains(p.id)) {
-                sel.remove(p.id);
-              } else {
-                sel.add(p.id);
-              }
-            }),
+          Builder(
+            builder: (_) {
+              final stats = _playerStats(store, p.id);
+              return DetailRow(
+                title: p.name,
+                subtitle:
+                    '${_roleName(p.role)} • ${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}${otherSel.contains(p.id) ? ' • also in $otherLabel' : ''}',
+                valueLabel: stats.$1,
+                value: stats.$2,
+                trailing: Icon(
+                  sel.contains(p.id)
+                      ? Icons.check_circle
+                      : Icons.radio_button_unchecked,
+                  size: 20,
+                  color: sel.contains(p.id)
+                      ? const Color(0xFF16A34A)
+                      : Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: 0.4),
+                ),
+                onTap: () => setState(() {
+                  if (sel.contains(p.id)) {
+                    sel.remove(p.id);
+                  } else {
+                    sel.add(p.id);
+                  }
+                }),
+              );
+            },
           ),
         if (hidden > 0)
           TextButton(
@@ -759,6 +773,25 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
       ],
     );
+  }
+
+  /// Compact career form for the squad picker: strike rate once they have
+  /// faced a ball, economy once they have bowled. No match count — the umpire
+  /// picks on how they play, not how often they turned up.
+  (String?, String?) _playerStats(MatchStore store, String id) {
+    final bat = store.careerBatting(id);
+    final bowl = store.careerBowling(id);
+    final sr = bat.strikeRate;
+    final eco = bowl.economy;
+    if (sr != null && eco != null) {
+      return (
+        'SR · ECO',
+        '${sr.toStringAsFixed(1)} · ${eco.toStringAsFixed(2)}',
+      );
+    }
+    if (sr != null) return ('SR', sr.toStringAsFixed(1));
+    if (eco != null) return ('ECO', eco.toStringAsFixed(2));
+    return (null, null);
   }
 
   String _roleName(PlayerRole r) => switch (r) {
