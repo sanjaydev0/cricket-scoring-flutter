@@ -207,9 +207,18 @@ Linux preview is the lowest-RAM loop; APK builds are 10-20 minutes.
 # Daily UI loop: Linux desktop + watchexec auto hot reload
 ./tool/flutter-live.sh linux
 
-# Release: only when feature/UI work is done
+# Phone install (this repo's own device): arm64-only, backup-first, ~3 min
+./tool/fast-install.sh RZCRC04358J
+
+# Release: universal APK, only when feature/UI work is done
 ./tool/release.sh 2.9.0 "notes"
 ```
+
+**The phone is arm64-v8a (SM-G781B).** `tool/fast-install.sh` builds a single-ABI
+APK (~27 MB, ~3 min) instead of the universal 72 MB one, pulls the on-device backup
+first, installs with `adb install -r`, then prints the version and the `STORE:`
+boot line. It never uninstalls and never tags. `tool/release.sh` stays the universal,
+versioned, tagged path for the GitHub release.
 
 **What the Linux loop cannot check** — these are part of "done" at release, not optional:
 sounds (verify on Linux/Android), haptics (absent on desktop), and anything release-only
@@ -228,6 +237,7 @@ dart format .            # formatting
 flutter analyze --no-pub # lint — must be clean before commit
 flutter test --no-pub    # unit/widget tests
 ./tool/flutter-live.sh linux
+./tool/fast-install.sh [serial]  # phone: arm64-only build + backup-first install
 ./tool/release.sh VER NOTE  # analyze, test, pre-flight, apk, install, gh release
 flutter build apk --release
 $HOME/Android/Sdk/platform-tools/adb devices -l
@@ -241,8 +251,15 @@ $HOME/Android/Sdk/platform-tools/adb devices -l
 - Web is not a target: the repo has no `web/` directory. Android APK + Linux desktop only.
 - Linux preview requires `cmake` and `ninja` (`sudo pacman -S --needed cmake ninja`);
   they are not installed by default on a fresh CachyOS box.
-- Data-safe tooling: `tool/safe_update.sh` (pull backup + install), `tool/restore_backup.sh`
-  (fresh install), `tool/release.sh` (analyze, test, pre-flight, APK, tag, install).
+- Data-safe tooling: `tool/fast-install.sh` (arm64 phone reinstall), `tool/safe_update.sh`
+  (pull backup + install), `tool/restore_backup.sh` (fresh install), `tool/release.sh`
+  (analyze, test, pre-flight, APK, tag, install).
+- Never build the phone APK with `--split-per-abi`. ABI splits rewrite the
+  versionCode to `abiOffset * 1000 + base` (arm64 → 2101 vs universal 101), so the
+  next universal release APK is refused as a downgrade and only an uninstall would
+  clear it — which deletes the data. `tool/fast-install.sh` uses
+  `--target-platform android-arm64` alone and fails if a built APK reports a
+  versionCode ≥ 1000.
 - Wireless deploy: `adb connect <ip>:<port>` — the phone's port changes each session;
   rediscover with `avahi-browse -r _adb-tls-connect._tcp`.
 - Use `$HOME/Android/Sdk/platform-tools/adb`, not `/usr/bin/adb`.
