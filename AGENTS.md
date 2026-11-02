@@ -254,6 +254,14 @@ $HOME/Android/Sdk/platform-tools/adb devices -l
   Supabase keys are baked into `libapp.so`. Both faults are invisible in debug.
 - Low-RAM Gradle settings: 2 GB heap, daemon off, parallel off, VFS watch off, 2 workers.
   Close memory-heavy apps before an APK build and run `free -h` first.
+- **Signing key must not move.** On Linux, AGP 8 defaults the debug keystore to
+  `~/.config/.android/debug.keystore`, while the phone's install was signed with
+  `~/.android/debug.keystore`. Two keys means `adb install -r` fails with
+  `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, and the only "repair" is uninstalling —
+  which destroys the club, roster and archives. `tool/release.sh` exports
+  `ANDROID_USER_HOME=$HOME/.android`; keep that export on any manual
+  `flutter build apk`. Check with `./gradlew -q :app:signingReport` (expect SHA-256
+  `7F:6F:77:B4:…`) or `apksigner verify --print-certs` on the APK.
 
 ## Data preservation (critical)
 

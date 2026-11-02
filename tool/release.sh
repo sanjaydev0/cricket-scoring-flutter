@@ -19,6 +19,14 @@ cd "$ROOT"
 export PATH="$HOME/flutter/bin:$HOME/Android/Sdk/platform-tools:$PATH"
 export ANDROID_HOME="$HOME/Android/Sdk"
 
+# Pin the debug keystore AGP signs with. On Linux, newer AGP defaults to the
+# XDG location (~/.config/.android/debug.keystore) while the phone's installed
+# build was signed with ~/.android/debug.keystore. Two different keys means
+# `adb install -r` fails with INSTALL_FAILED_UPDATE_INCOMPATIBLE, and the only
+# "fix" would be uninstalling — which deletes the club, roster and archives.
+# Keep every build on the same key so updates stay installable.
+export ANDROID_USER_HOME="${ANDROID_USER_HOME:-$HOME/.android}"
+
 VERSION="${1:?usage: ./tool/release.sh <version> [notes]}"
 NOTES="${2:-}"
 LOG="/tmp/opencode/apk-$VERSION.log"
