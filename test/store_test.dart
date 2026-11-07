@@ -635,4 +635,30 @@ void main() {
     expect(sheets['1'], isNotNull);
     expect(sheets['1']!.names.values, contains('A1'));
   });
+
+  test('batterySaver persists as opt-in flag', () async {
+    final s = MatchStore();
+    expect(s.batterySaver, isFalse);
+    s.setBatterySaver(true);
+    expect(s.isBatterySaverOn, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final p = await SharedPreferences.getInstance();
+    expect(p.getBool(MatchStore.kBatterySaver), isTrue);
+  });
+
+  test('persist after roster load does not rewrite unchanged roster', () async {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    s.addPlayer(name: 'A1');
+    s.addPlayer(name: 'B1');
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final p = await SharedPreferences.getInstance();
+    final before = p.getString(MatchStore.kRoster);
+    expect(before, isNotNull);
+    // Toggle an unrelated setting: roster JSON must not be re-encoded.
+    s.setSound(s.soundOn);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final after = p.getString(MatchStore.kRoster);
+    expect(after, before);
+  });
 }

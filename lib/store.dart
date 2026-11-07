@@ -122,6 +122,7 @@ class MatchStore extends ChangeNotifier {
   static const kActiveProfile = 'cricket_active_profile';
   static const kSheets = 'cricket_sheets_v1';
   static const kAskFielder = 'cricket_ask_fielder';
+  static const kBatterySaver = 'cricket_battery_saver';
   static const kAppearances = 'cricket_appearances_v1';
   static const kAppearanceKeys = 'cricket_appearance_keys_v1';
 
@@ -154,9 +155,16 @@ class MatchStore extends ChangeNotifier {
   bool complexWickets = true; // full wicket-type grid vs Wicket/RunOut
   bool hapticsOn = true; // master vibration toggle
   bool askFielder = false; // optional catcher/run-out picker on wickets
+  bool batterySaver = false; // fewer repaints + no celebration; user opt-in
+  bool get isBatterySaverOn => batterySaver;
   List<Player> roster = [];
   List<Club> clubs = [];
   List<ClubProfile> profiles = [];
+  // Dirty flags: persist only re-encodes roster/clubs/profiles when dirty,
+  // so a ball delivery does not rewrite the whole roster JSON.
+  bool _rosterDirty = false;
+  bool _clubsDirty = false;
+  bool _profilesDirty = false;
   String? activeProfileId;
   String? activeClubId;
   // Per-innings attribution sheets for the live match: '1' and '2'.
@@ -221,9 +229,10 @@ class MatchStore extends ChangeNotifier {
 
   Innings? get innings => engine.innings;
 
-  /// Warms the SFX pools without ever blocking the first frame: a hung
-  /// platform channel leaves the pools empty, not the app on a splash screen.
+  /// Boots the SFX engine lazily on first sound: sound-OFF never inits,
+  /// so a muted app never pays for an idle audio track.
   void _warmAudio(bool enabled) {
+    if (!enabled) return;
     unawaited(
       SoundService.instance
           .init(enabled: enabled)
@@ -233,6 +242,14 @@ class MatchStore extends ChangeNotifier {
           }),
     );
   }
+
+  void setBatterySaver(bool v) {
+    batterySaver = v;
+    _persist();
+    notifyListeners();
+  }
+
+  void suspendAudio() => SoundService.instance.suspend();
 
   Future<void> load() async {
     debugPrint('STORE: load() start');
@@ -270,6 +287,8 @@ class MatchStore extends ChangeNotifier {
     complexWickets = p.getBool(kComplexWkts) ?? true;
     hapticsOn = p.getBool(kHaptics) ?? true;
     askFielder = p.getBool(kAskFielder) ?? false;
+    batterySaver = p.getBool(kBatterySaver) ?? false;
+    _rosterDirty = _clubsDirty = _profilesDirty = false;
     try {
       playerAppearances = Map<String, int>.from(
         jsonDecode(p.getString(kAppearances) ?? '{}') as Map,
@@ -464,22 +483,23 @@ class MatchStore extends ChangeNotifier {
     }
   }
 
-  /// Called after every persist. No timers: the 10-second floor is enough to
-  /// keep a ball-by-ball match from hammering storage and cannot leak a
-  /// pending timer into tests.
-  void _maybeBackup() {
+  /// Called after every persist. No timers: the 60-second floor keeps a
+  /// ball-by-ball match from hammering flash/Downloads mid-over. Backup
+  /// still fires for real on pause, over-end, and archive — those call
+  /// [backupNow] directly. With Battery Saver on, the silent floor only
+  /// fires when forced.
+  void _maybeBackup({bool force = false}) {
     if (!_backupEnabled || _persistBlocked) return;
     if (_backingUp) {
-      // A save landed while the snapshot was being written; take one more
-      // snapshot as soon as the current write finishes.
       _backupQueued = true;
       return;
     }
     final now = DateTime.now();
     final last = _lastBackupAttempt;
-    if (last != null && now.difference(last) < const Duration(seconds: 10)) {
+    if (!force && last != null && now.difference(last) < const Duration(seconds: 60)) {
       return;
     }
+    if (!force && isBatterySaverOn) return;
     _lastBackupAttempt = now;
     unawaited(backupNow());
   }
@@ -604,20 +624,30 @@ class MatchStore extends ChangeNotifier {
     await p.setBool(kComplexWkts, complexWickets);
     await p.setBool(kHaptics, hapticsOn);
     await p.setBool(kAskFielder, askFielder);
+    await p.setBool(kBatterySaver, batterySaver);
     await p.setString(kAppearances, jsonEncode(playerAppearances));
     await p.setString(kAppearanceKeys, jsonEncode(appearanceKeys.toList()));
-    await p.setString(
-      kRoster,
-      jsonEncode(roster.map((e) => e.toJson()).toList()),
-    );
-    await p.setString(
-      kClubs,
-      jsonEncode(clubs.map((e) => e.toJson()).toList()),
-    );
-    await p.setString(
-      kProfiles,
-      jsonEncode(profiles.map((e) => e.toJson()).toList()),
-    );
+    if (_rosterDirty) {
+      await p.setString(
+        kRoster,
+        jsonEncode(roster.map((e) => e.toJson()).toList()),
+      );
+      _rosterDirty = false;
+    }
+    if (_clubsDirty) {
+      await p.setString(
+        kClubs,
+        jsonEncode(clubs.map((e) => e.toJson()).toList()),
+      );
+      _clubsDirty = false;
+    }
+    if (_profilesDirty) {
+      await p.setString(
+        kProfiles,
+        jsonEncode(profiles.map((e) => e.toJson()).toList()),
+      );
+      _profilesDirty = false;
+    }
     if (activeProfileId != null) {
       await p.setString(kActiveProfile, activeProfileId!);
     } else {
@@ -753,6 +783,7 @@ class MatchStore extends ChangeNotifier {
     profiles.add(profile);
     activeProfileId = profile.id;
     activeClubId = null;
+    _profilesDirty = true;
     _persist();
     notifyListeners();
     return profile;
@@ -786,9 +817,11 @@ class MatchStore extends ChangeNotifier {
     final club = Club.create(name: name.trim());
     clubs.add(club);
     activeClubId = club.id;
+    _clubsDirty = true;
     for (final pr in profiles) {
       if (pr.id == activeProfileId) pr.clubId = club.id;
     }
+    _profilesDirty = true;
     _persist();
     notifyListeners();
     return club;
@@ -796,6 +829,7 @@ class MatchStore extends ChangeNotifier {
 
   void selectClub(String id) {
     activeClubId = id;
+    _profilesDirty = true;
     for (final pr in profiles) {
       if (pr.id == activeProfileId) pr.clubId = id;
     }
@@ -850,6 +884,7 @@ class MatchStore extends ChangeNotifier {
       player.phone = phone.trim();
     }
     roster.add(player);
+    _rosterDirty = true;
     // A newly added player joins any live tracked sheet immediately, so the
     // umpire never has to restart a match to use them.
     for (final sheet in sheets.values) {
@@ -894,6 +929,7 @@ class MatchStore extends ChangeNotifier {
     for (final p in roster) {
       if (p.id == id) p.name = name.trim();
     }
+    _rosterDirty = true;
     for (final sheet in sheets.values) {
       final n = sheet.names[id];
       if (n != null) {
@@ -911,6 +947,7 @@ class MatchStore extends ChangeNotifier {
     for (final p in roster) {
       if (p.id == id) p.active = active;
     }
+    _rosterDirty = true;
     _persist();
     notifyListeners();
   }
@@ -935,6 +972,7 @@ class MatchStore extends ChangeNotifier {
     }
     pushSnapshotSafe();
     roster.removeWhere((p) => p.id == id);
+    _rosterDirty = true;
     playerAppearances.remove(id);
     _persist();
     notifyListeners();
@@ -957,6 +995,7 @@ class MatchStore extends ChangeNotifier {
     pushSnapshotSafe();
     target.name = t;
     target.handle = Club.create(name: t).handle;
+    _clubsDirty = true;
     _persist();
     notifyListeners();
     return null;
@@ -991,10 +1030,12 @@ class MatchStore extends ChangeNotifier {
     }
     pushSnapshotSafe();
     roster.removeWhere((p) => p.clubId == id);
+    _rosterDirty = true;
     for (final pid in ids) {
       playerAppearances.remove(pid);
     }
     clubs.removeWhere((c) => c.id == id);
+    _clubsDirty = true;
     if (activeClubId == id) {
       activeClubId = clubs.isEmpty ? null : clubs.first.id;
     }
@@ -1007,6 +1048,7 @@ class MatchStore extends ChangeNotifier {
     for (final p in roster) {
       if (p.id == id) p.role = role;
     }
+    _rosterDirty = true;
     _persist();
     notifyListeners();
   }

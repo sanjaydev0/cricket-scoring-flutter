@@ -58,6 +58,7 @@ void main() async {
   // still leaves the prefs safe; this just keeps the backup equally fresh.
   AppLifecycleListener(
     onPause: () {
+      store.suspendAudio();
       unawaited(store.backupNow());
     },
   );

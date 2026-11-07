@@ -88,6 +88,7 @@ class SoundService extends ChangeNotifier {
 
   void _play(String name) {
     if (!enabled) return;
+    if (!_ready) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - (_lastMs[name] ?? 0) < _debounceMs) return;
     _lastMs[name] = now;
@@ -97,6 +98,14 @@ class SoundService extends ChangeNotifier {
     if (source == null) return;
     try {
       SoLoud.instance.play(source, volume: _clips[name] ?? 1.0);
+    } catch (_) {}
+  }
+
+  /// Suspend voices on app pause so the engine does not idle-listen.
+  /// Sources stay loaded; the next play resumes without re-init.
+  void suspend() {
+    try {
+      SoLoud.instance.stopAll();
     } catch (_) {}
   }
 
