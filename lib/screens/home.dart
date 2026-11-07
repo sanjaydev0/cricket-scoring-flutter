@@ -436,6 +436,13 @@ class HomeScreen extends StatelessWidget {
                       value: store.advancedExtras,
                       onChanged: (v) => store.setAdvancedExtras(v),
                     ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Battery saver'),
+                      subtitle: const Text('No celebration; silent backup only on pause/over end'),
+                      value: store.batterySaver,
+                      onChanged: (v) => store.setBatterySaver(v),
+                    ),
                   ],
                 ),
                 SwitchListTile(

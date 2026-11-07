@@ -135,7 +135,7 @@ class _ScoringScreenState extends State<ScoringScreen> {
                     preset: preset,
                     scoreFamily: scoreFamily,
                     animationGen: store.ballGen,
-                    celebId: store.celebId,
+                    celebId: store.isBatterySaverOn ? 'off' : store.celebId,
                     // A compact tap-through, not a TextButton: the button's
                     // own padding pushed the strip row past the card edge
                     // on a 360dp phone.
