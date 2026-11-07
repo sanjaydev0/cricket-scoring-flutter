@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../backup.dart';
+import '../models.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
@@ -154,6 +155,7 @@ class HomeScreen extends StatelessWidget {
                             onTap: () => Navigator.pushNamed(context, '/setup'),
                             child: const Text('START NEW MATCH'),
                           ),
+                          _RematchButton(store: store, hasLive: hasLive),
                           if (hasLive) ...[
                             const SizedBox(height: 10),
                             RectBtn(
@@ -527,6 +529,66 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Home rematch: session-first (finished live match), archive-fallback
+/// (newest archived match). Hidden while a match is mid-play — Resume is
+/// the action then — and when there's nothing to redo.
+class _RematchButton extends StatelessWidget {
+  final MatchStore store;
+  final bool hasLive;
+  const _RematchButton({required this.store, required this.hasLive});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = store.match;
+    final sessionCfg = (m != null && m.completed) ? m.config : null;
+    if (hasLive && sessionCfg == null) return const SizedBox.shrink();
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: sessionCfg != null ? null : store.historyRecords(),
+      builder: (context, snap) {
+        if (sessionCfg == null) {
+          if (!snap.hasData || snap.data!.isEmpty) {
+            return const SizedBox.shrink();
+          }
+        }
+        final cfg = sessionCfg ??
+            Match.fromJson(snap.data!.first).config;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 10),
+            RectBtn(
+              primary: false,
+              onTap: () {
+                store.prepareRematch(cfg);
+                store.newMatch();
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/setup',
+                  (r) => r.isFirst,
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('REMATCH'),
+                  Text(
+                    '${cfg.teamA} vs ${cfg.teamB} • ${cfg.totalOvers} OVERS',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                    softWrap: false,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

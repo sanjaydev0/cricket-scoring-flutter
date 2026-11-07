@@ -531,4 +531,34 @@ void main() {
     final after = p.getString(MatchStore.kRoster);
     expect(after, before);
   });
+test('prepareRematch copies config and drops deleted players', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final a1 = s.addPlayer(name: 'A1')!.id;
+    final b1 = s.addPlayer(name: 'B1')!.id;
+    final cfg = MatchConfig(
+      teamA: 'BLUE',
+      teamB: 'RED',
+      totalOvers: 8,
+      playersPerSide: 5,
+      trackPlayers: true,
+      squadA: [a1, 'ghost-id'],
+      squadB: [b1],
+    );
+    s.prepareRematch(cfg);
+    expect(s.draft.teamA, 'BLUE');
+    expect(s.draft.totalOvers, 8);
+    expect(s.draft.squadA, [a1]);
+    expect(s.draft.squadB, [b1]);
+    expect(s.presetSquads, isTrue);
+  });
+
+  test('prepareRematch without tracking leaves squads filtered', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final cfg = MatchConfig(teamA: 'A', teamB: 'B', trackPlayers: false);
+    s.prepareRematch(cfg);
+    expect(s.draft.trackPlayers, isFalse);
+    expect(s.presetSquads, isTrue);
+  });
 }

@@ -31,11 +31,12 @@ account, no server, and no network permission.
 
 ## Screens (routes in `lib/main.dart`)
 
-- `/` Home: Start / Resume / Archives, settings (sound, haptics, dark mode,
-  ask-fielder, **battery saver**), data backup.
+- `/` Home: Start / **Rematch** (session-first, archive-fallback) / Resume / Archives,
+  settings (sound, haptics, dark mode, ask-fielder, **battery saver**), data backup.
 - `/setup`: teams, batting-first, format, squad XIs (when tracking is on).
 - `/scoring`: keypad, undo, extras, over strip, hero scoreboard.
-- `/break` / `/result`: 10-second handoff with NEXT; awards and share text.
+- `/break` / `/result`: 10-second handoff with NEXT; awards, WhatsApp share,
+  full-width REMATCH primary + HOME / NEW MATCH secondaries, all single-line.
 - `/history`: archives list → `ArchiveDetail` (one innings at a time + SUMMARY).
 - `/club`: profiles (local PIN), clubs, roster, career figures.
 

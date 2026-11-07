@@ -68,6 +68,32 @@ class MatchStore extends ChangeNotifier {
   /// One-shot hand-off from REMATCH to MATCH SETUP: the setup screen
   /// preselects the squads already sitting in [draft], then clears this.
   bool presetSquads = false;
+
+  /// Builds an editable rematch draft from a previous config. Filters squad
+  /// ids to players still in the roster so a deleted name lands as an empty
+  /// pick (setup validation asks) instead of an unknown face.
+  void prepareRematch(MatchConfig cfg) {
+    final valid = roster.map((p) => p.id).toSet();
+    final draft = MatchConfig(
+      teamA: cfg.teamA,
+      teamB: cfg.teamB,
+      battingFirst: cfg.battingFirst,
+      totalOvers: cfg.totalOvers,
+      playersPerSide: cfg.playersPerSide,
+      commonPlayers: cfg.commonPlayers,
+      rules: Rules(
+        widePenalty: cfg.rules.widePenalty,
+        noBallPenalty: cfg.rules.noBallPenalty,
+        lastManStanding: cfg.rules.lastManStanding,
+        freeHit: cfg.rules.freeHit,
+      ),
+      trackPlayers: cfg.trackPlayers,
+      squadA: cfg.squadA.where(valid.contains).toList(),
+      squadB: cfg.squadB.where(valid.contains).toList(),
+    );
+    this.draft = draft;
+    presetSquads = true;
+  }
   bool get nbArmed => engine.nbArmed;
   set nbArmed(bool v) => engine.nbArmed = v;
   String themeId = 'light'; // 'light' | 'dark'

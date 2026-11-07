@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../math.dart';
-import '../models.dart';
 import '../theme.dart';
 import '../store.dart';
 import 'widgets.dart';
@@ -250,6 +249,11 @@ class ResultScreen extends StatelessWidget {
                             ),
                           ],
                           const SizedBox(height: 16),
+                          RectBtn(
+                            onTap: () => _rematch(context, store),
+                            child: const Text('REMATCH'),
+                          ),
+                          const SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
@@ -281,13 +285,6 @@ class ResultScreen extends StatelessWidget {
                                   child: const Text('NEW MATCH'),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: RectBtn(
-                                  onTap: () => _rematch(context, store),
-                                  child: const Text('REMATCH'),
-                                ),
-                              ),
                             ],
                           ),
                         ],
@@ -310,26 +307,7 @@ class ResultScreen extends StatelessWidget {
 /// gets the previous XI preselected but can still change overs, teams or
 /// players first — a rematch is a normal new match with the form pre-filled.
 void _rematch(BuildContext context, MatchStore store) {
-  final cfg = store.match!.config;
-  final draft = MatchConfig(
-    teamA: cfg.teamA,
-    teamB: cfg.teamB,
-    battingFirst: cfg.battingFirst,
-    totalOvers: cfg.totalOvers,
-    playersPerSide: cfg.playersPerSide,
-    commonPlayers: cfg.commonPlayers,
-    rules: Rules(
-      widePenalty: cfg.rules.widePenalty,
-      noBallPenalty: cfg.rules.noBallPenalty,
-      lastManStanding: cfg.rules.lastManStanding,
-      freeHit: cfg.rules.freeHit,
-    ),
-    trackPlayers: cfg.trackPlayers,
-    squadA: List<String>.from(cfg.squadA),
-    squadB: List<String>.from(cfg.squadB),
-  );
+  store.prepareRematch(store.match!.config);
   store.newMatch();
-  store.draft = draft;
-  store.presetSquads = true;
   Navigator.pushNamedAndRemoveUntil(context, '/setup', (r) => r.isFirst);
 }

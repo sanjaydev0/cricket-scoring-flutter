@@ -53,6 +53,19 @@ class RectBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final c = child;
+    final Widget clamped = (c is Text)
+        ? Text(
+            c.data ?? '',
+            textAlign: TextAlign.center,
+            softWrap: false,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: c.style,
+            textDirection: c.textDirection,
+            locale: c.locale,
+          )
+        : c;
     return FilledButton(
       onPressed: onTap,
       style:
@@ -81,7 +94,7 @@ class RectBtn extends StatelessWidget {
                         : const Color(0x1A000000)),
             ),
           ),
-      child: child,
+      child: clamped,
     );
   }
 }
