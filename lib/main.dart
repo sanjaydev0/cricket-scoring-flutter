@@ -3,9 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'adapters/local_only_sync.dart';
-import 'adapters/supabase_sync.dart';
-import 'app_config.dart';
 import 'core/debug/android_frame_wrapper.dart';
 import 'store.dart';
 import 'theme.dart';
@@ -13,19 +10,14 @@ import 'screens/home.dart';
 import 'screens/setup.dart';
 import 'screens/club.dart';
 import 'screens/scoring.dart';
-import 'screens/viewer.dart';
 import 'screens/break_result.dart';
 import 'screens/history.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Online rooms are opt-in at build time. Without credentials the app is
-  // exactly the offline app it has always been.
+  // 100% offline: no network layer, no sign-in, no sockets.
   debugPrint('MAIN: starting');
-  final sync = AppConfig.onlineRoomsEnabled
-      ? SupabaseSync(url: AppConfig.supabaseUrl, publishableKey: AppConfig.key)
-      : LocalOnlySync();
-  final store = MatchStore(sync: sync);
+  final store = MatchStore();
   debugPrint('MAIN: calling store.load()');
   try {
     await store.load().timeout(
@@ -49,9 +41,6 @@ void main() async {
   // there); this call covers the Linux desktop preview and keeps it agreed.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   debugPrint('MAIN: orientations set');
-  // Signing in is deliberately not awaited: a slow or unreachable backend
-  // must not delay the first ball. Sharing enables itself when it arrives.
-  unawaited(sync.init().catchError((Object _) {}));
   debugPrint('MAIN: calling runApp');
   runApp(CricketApp(store: store));
   // Flush a final snapshot when the phone locks or goes home. Force-stop
@@ -89,7 +78,6 @@ class CricketApp extends StatelessWidget {
           '/break': (_) => BreakScreen(store),
           '/result': (_) => ResultScreen(store),
           '/history': (_) => HistoryScreen(store),
-          '/join': (_) => JoinRoomScreen(store: store),
           '/club': (_) => ClubScreen(store),
         },
       ),

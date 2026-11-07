@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/screens/history.dart';
 import 'package:cricket_scoring/screens/scoreboard.dart';
@@ -20,7 +19,7 @@ void main() {
   });
 
   MatchStore fixture() {
-    final s = MatchStore(sync: FakeSync());
+    final s = MatchStore();
     s.hapticsOn = false;
     s.createClub(name: 'Gully Kings');
     final a = [for (var i = 1; i <= 3; i++) s.addPlayer(name: 'Player $i')!.id];
@@ -108,7 +107,7 @@ void main() {
   });
 
   testWidgets('an empty archive explains itself', (tester) async {
-    final s = MatchStore(sync: FakeSync());
+    final s = MatchStore();
     await tester.pumpWidget(MaterialApp(home: HistoryScreen(s)));
     await tester.pumpAndSettle();
 

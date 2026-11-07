@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/domain/players.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/store.dart';
@@ -14,7 +13,7 @@ MatchStore trackedFixture({
   int cap = 5,
   int overs = 2,
 }) {
-  final s = MatchStore(sync: FakeSync());
+  final s = MatchStore();
   // Scoring fires haptics through a platform channel; these are pure logic
   // tests with no widget binding, so keep the master toggle off.
   s.hapticsOn = false;
@@ -594,7 +593,7 @@ void main() {
     });
 
     test('8 players, 7 wickets: all out with no batter prompt', () {
-      final s = MatchStore(sync: FakeSync());
+      final s = MatchStore();
       s.hapticsOn = false;
       s.createClub(name: 'Gully Kings');
       final a = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'A$i')!.id];
@@ -645,7 +644,7 @@ void main() {
     });
 
     test('last-man-standing makes 8 wickets available', () {
-      final s = MatchStore(sync: FakeSync());
+      final s = MatchStore();
       s.hapticsOn = false;
       s.createClub(name: 'Gully Kings');
       final a = [for (var i = 1; i <= 8; i++) s.addPlayer(name: 'A$i')!.id];
@@ -873,7 +872,7 @@ void main() {
 
     test('an untracked match accepts the same two answers', () {
       // Tracking must not change how a run-out is scored.
-      final s = MatchStore(sync: FakeSync());
+      final s = MatchStore();
       s.hapticsOn = false;
       s.draft = MatchConfig(
         teamA: 'A',

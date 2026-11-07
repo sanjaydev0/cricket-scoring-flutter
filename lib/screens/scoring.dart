@@ -81,31 +81,6 @@ class _ScoringScreenState extends State<ScoringScreen> {
               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
             ),
             actions: [
-              if (store.roomCode != null) ...[
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  alignment: Alignment.center,
-                  child: Text(
-                    store.roomCode!,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.stop_circle_outlined),
-                  tooltip: 'Stop sharing',
-                  onPressed: () => store.stopSharing(),
-                ),
-              ] else
-                IconButton(
-                  icon: const Icon(Icons.ios_share),
-                  tooltip: 'Share live score',
-                  onPressed: () => _shareSheet(context),
-                ),
               IconButton(
                 icon: Icon(store.soundOn ? Icons.volume_up : Icons.volume_off),
                 tooltip: store.soundOn ? 'Mute sounds' : 'Unmute',
@@ -624,24 +599,4 @@ class _ScoringScreenState extends State<ScoringScreen> {
   void _moreSheet(BuildContext context) => showExtrasSheet(context, store);
   void _settingsSheet(BuildContext context) =>
       showSettingsSheet(context, store);
-
-  /// Opens a live room. Sharing is strictly additive: if no backend is
-  /// configured, or the sign-in failed, this says so plainly instead of
-  /// pretending, and the match is untouched either way.
-  Future<void> _shareSheet(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final result = await store.startSharing();
-    if (!context.mounted) return;
-    // Names the actual cause. The first version reported every failure as
-    // "no backend configured in this build", which sent the diagnosis after
-    // the build flags instead of the real error.
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          result.ok ? '${result.message} (read-only)' : result.message,
-        ),
-        duration: const Duration(seconds: 6),
-      ),
-    );
-  }
 }

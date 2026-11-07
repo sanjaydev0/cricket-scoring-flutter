@@ -27,18 +27,13 @@ class Scoreboard extends StatefulWidget {
   /// face, which is legal — Flutter then falls back to the default.
   final String? scoreFamily;
 
-  /// Advances the hero numerals. Viewers pass the snapshot sequence, so a new
-  /// remote ball animates exactly once.
+  /// Advances the hero numerals on each new ball.
   final int animationGen;
 
-  /// Read-only mode: no celebrations, no input affordances.
-  final bool live;
-
-  /// Optional control shown at the end of the over strip. The scorer passes a
-  /// button into the over-list sheet; a viewer passes null.
+  /// Optional control shown at the end of the over strip.
   final Widget? stripTrailing;
 
-  /// Celebration id; ignored when [live].
+  /// Celebration id.
   final String celebId;
 
   const Scoreboard({
@@ -47,7 +42,6 @@ class Scoreboard extends StatefulWidget {
     required this.preset,
     required this.scoreFamily,
     this.animationGen = 0,
-    this.live = false,
     this.stripTrailing,
     this.celebId = 'pop',
     super.key,
@@ -87,7 +81,6 @@ class _ScoreboardState extends State<Scoreboard> {
     final innings = widget.innings;
     final preset = widget.preset;
     final animationGen = widget.animationGen;
-    final live = widget.live;
     final stripTrailing = widget.stripTrailing;
     final inn = innings;
     final totalOvers = match.config.totalOvers;
@@ -106,14 +99,12 @@ class _ScoreboardState extends State<Scoreboard> {
             // the numerals, the stat row and the registration crosses are one
             // scoreboard, so the whole card is a single semantic node.
             excludeSemantics: true,
-            button: !live,
-            onTap: live ? null : _togglePeek,
+            button: true,
+            onTap: _togglePeek,
             label: _heroLabel(inn),
-            hint: live
-                ? null
-                : (_peek
-                      ? 'Target details showing'
-                      : 'Double tap for target and required rate'),
+            hint: (_peek
+                ? 'Target details showing'
+                : 'Double tap for target and required rate'),
             child: Card(
               color: preset.heroBg,
               child: GestureDetector(
@@ -242,8 +233,7 @@ class _ScoreboardState extends State<Scoreboard> {
                       balls: cur,
                       overNumber: inn.currentOverNumber,
                       gen: animationGen,
-                      // A remote innings is never mid-animation on this phone.
-                      frozen: live,
+                      frozen: false,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -289,7 +279,6 @@ class _ScoreboardState extends State<Scoreboard> {
     final match = widget.match;
     final preset = widget.preset;
     final scoreFamily = widget.scoreFamily;
-    final live = widget.live;
     final celebId = widget.celebId;
     final lastBadge = cur.isNotEmpty ? cur.last.badge : '';
     final isW = lastBadge == 'W' || lastBadge.startsWith('W+');
@@ -304,9 +293,8 @@ class _ScoreboardState extends State<Scoreboard> {
       fontFeatures: const [FontFeature.tabularFigures()],
     );
     // Runs and wickets celebrate independently — a boundary never shakes the
-    // wicket digit. Finished innings stay calm. A live viewer never celebrates:
-    // the scorer already did, on their phone.
-    final calm = live || inn.completed || match.completed;
+    // wicket digit. Finished innings stay calm.
+    final calm = inn.completed || match.completed;
     // ScaleDown, not clip: at a 1.6x system text size a 68px numeral pair is
     // wider than a 360dp phone. Celebrations are Transform-based, so they are
     // unaffected — they never change layout size either way.
@@ -321,7 +309,7 @@ class _ScoreboardState extends State<Scoreboard> {
         children: [
           Celebrate(
             key: const ValueKey('hero-runs'),
-            mode: live ? 'off' : celebId,
+            mode: celebId,
             valueKey: '${inn.runs}',
             fire: (isFour || isSix) && !calm,
             tint: isFour ? const Color(0xFF2DC653) : const Color(0xFFEC008C),
@@ -336,7 +324,7 @@ class _ScoreboardState extends State<Scoreboard> {
           ),
           Celebrate(
             key: const ValueKey('hero-wickets'),
-            mode: live ? 'off' : celebId,
+            mode: celebId,
             valueKey: '${inn.wickets}',
             fire: isW && !calm,
             tint: const Color(0xFFDC143C),

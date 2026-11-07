@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/screens/scoreboard.dart';
 import 'package:cricket_scoring/screens/scorecard.dart';
@@ -20,7 +19,7 @@ void main() {
 
   /// A tracked match, `overs` overs long, both squads in.
   MatchStore fixture({int overs = 2}) {
-    final s = MatchStore(sync: FakeSync());
+    final s = MatchStore();
     s.hapticsOn = false;
     s.createClub(name: 'Gully Kings');
     final a = [for (var i = 1; i <= 5; i++) s.addPlayer(name: 'A$i')!.id];

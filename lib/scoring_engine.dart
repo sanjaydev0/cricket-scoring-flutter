@@ -261,9 +261,6 @@ class ScoringEngine extends ChangeNotifier {
     sheets = {};
     store?.undoLog.clear();
     store?.redoLog.clear();
-    if (store?.roomCode != null) {
-      unawaited(store!.stopSharing());
-    }
     store?.persistOnly();
   }
 
@@ -273,9 +270,6 @@ class ScoringEngine extends ChangeNotifier {
     sheets = {};
     store?.undoLog.clear();
     store?.redoLog.clear();
-    if (store?.roomCode != null) {
-      unawaited(store!.stopSharing());
-    }
     store?.persistOnly();
   }
 }

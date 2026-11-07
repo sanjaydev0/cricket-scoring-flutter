@@ -32,8 +32,6 @@ NOTES="${2:-}"
 LOG="/tmp/opencode/apk-$VERSION.log"
 mkdir -p /tmp/opencode
 
-SUPA_URL="${SUPABASE_URL:-https://uhoghzqrsfxvvhwbrfbo.supabase.co}"
-SUPA_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 # A running dev server and a Gradle build together can exhaust this box's
@@ -80,24 +78,20 @@ echo "==> push"
 git push -q origin HEAD:main ||
   fail "could not push to origin/main — the GitHub tag would point at the wrong tree"
 
-echo "==> build apk"
-flutter build apk --release \
-  --dart-define=SUPABASE_URL="$SUPA_URL" \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPA_KEY" \
-  >"$LOG" 2>&1 || { tail -n 20 "$LOG"; fail "apk build failed (see $LOG)"; }
+echo "==> build apk (offline, no dart-defines)"
+flutter build apk --release >"$LOG" 2>&1 || { tail -n 20 "$LOG"; fail "apk build failed (see $LOG)"; }
 grep -q "Built build/app/outputs" "$LOG" || fail "apk build did not report success"
 APK=build/app/outputs/flutter-apk/app-release.apk
 cp "$APK" "$HOME/Downloads/cricket-scoring.apk"
 
-echo "==> pre-flight gate"
+echo "==> pre-flight gate (offline proof)"
 AAPT="$(ls "$HOME/Android/Sdk/build-tools/"*/aapt2 2>/dev/null | head -n 1)"
 [ -n "$AAPT" ] || fail "aapt2 not found, cannot verify manifest"
-PERMS="$("$AAPT" dump permissions "$APK" 2>/dev/null)"
-grep -q "android.permission.INTERNET" <<<"$PERMS" ||
-  fail "release apk has no INTERNET permission — every online feature will fail"
-grep -q "android.permission.ACCESS_NETWORK_STATE" <<<"$PERMS" ||
-  fail "release apk has no ACCESS_NETWORK_STATE (realtime push)"
-echo "    permissions ok"
+# The app is offline: no network permissions should be present.
+if grep -R "supabase_flutter\|SupabaseSync" lib pubspec.yaml >/dev/null 2>&1; then
+  fail "supabase references remain after excision"
+fi
+echo "    offline ok"
 
 # Portrait lock, asserted in the PACKAGED manifest. Release-only: in
 # `flutter run` the Dart setPreferredOrientations call is enough, so a missing
@@ -122,17 +116,7 @@ APK_VERSION="$("$AAPT" dump badging "$APK" 2>/dev/null |
   fail "apk versionName is '${APK_VERSION:-none}' but this release is v$VERSION — pubspec.yaml and the tag have drifted"
 echo "    version $APK_VERSION ok"
 
-if [ -n "$SUPA_KEY" ]; then
-  # NOTE: do not pipe unzip straight into `grep -q` here. grep -q exits at the
-  # first match while unzip is still streaming 52 MB, so unzip dies of SIGPIPE
-  # and `pipefail` turns a successful match into a failure. Capture first.
-  SO_STRINGS="$(unzip -p "$APK" lib/arm64-v8a/libapp.so 2>/dev/null | strings)"
-  grep -qF "$SUPA_KEY" <<<"$SO_STRINGS" || fail "Supabase key is not baked into libapp.so"
-  grep -qF "$SUPA_URL" <<<"$SO_STRINGS" || fail "Supabase URL is not baked into libapp.so"
-  echo "    backend keys baked in"
-else
-  echo "    WARNING: no SUPABASE_PUBLISHABLE_KEY — live rooms will be off"
-fi
+echo "    offline app — no backend keys expected"
 
 echo "==> tag + release"
 git rev-parse --short HEAD | sed 's/^/    commit /'

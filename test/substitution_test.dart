@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/domain/players.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/screens/player_sheets.dart';
@@ -16,7 +15,7 @@ import 'package:cricket_scoring/store.dart';
 /// a change that could not be undone in one tap.
 
 MatchStore _fixture({int players = 5}) {
-  final s = MatchStore(sync: FakeSync());
+  final s = MatchStore();
   s.hapticsOn = false;
   s.createClub(name: 'Gully Kings');
   final a = [for (var i = 1; i <= players; i++) s.addPlayer(name: 'A$i')!.id];

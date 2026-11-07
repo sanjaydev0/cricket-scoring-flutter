@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../backup.dart';
-import '../ports/sync_port.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
@@ -205,19 +204,6 @@ class HomeScreen extends StatelessWidget {
         );
       },
     );
-  }
-
-  /// One line that names the state and, when there is one, the real error.
-  String _syncStatus() {
-    final err = store.onlineError;
-    final label = switch (store.onlineState) {
-      SyncState.unconfigured => 'Not configured in this build',
-      SyncState.offline => 'Offline',
-      SyncState.connecting => 'Connecting…',
-      SyncState.ready => 'Connected',
-      SyncState.error => 'Error',
-    };
-    return err == null || err.isEmpty ? label : '$label — $err';
   }
 
   Future<bool> _confirmRestore(
@@ -459,22 +445,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                   value: store.askFielder,
                   onChanged: (v) => store.setAskFielder(v),
-                ),
-                // Live-backend status, verbatim. A sharing failure on a gully
-                // ground must be diagnosable without a laptop, and the first
-                // cut of this feature reported every error as "no backend
-                // configured", which pointed at the wrong thing entirely.
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Live sharing (backend)'),
-                  subtitle: Text(
-                    _syncStatus(),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  value: store.onlineState == SyncState.ready,
-                  onChanged: store.onlineState == SyncState.unconfigured
-                      ? null
-                      : (_) => store.sync.init(),
                 ),
                 ExpansionTile(
                   tilePadding: EdgeInsets.zero,

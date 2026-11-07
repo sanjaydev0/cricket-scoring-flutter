@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cricket_scoring/adapters/local_only_sync.dart';
 import 'package:cricket_scoring/domain/players.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/screens/player_sheets.dart';
@@ -18,7 +17,7 @@ import 'package:cricket_scoring/store.dart';
 /// sat below the bottom edge with no way to scroll to them.
 
 MatchStore _fixture({bool tracked = true, bool askFielder = false}) {
-  final s = MatchStore(sync: FakeSync());
+  final s = MatchStore();
   s.hapticsOn = false;
   s.createClub(name: 'Gully Kings');
   final a = [for (var i = 1; i <= 5; i++) s.addPlayer(name: 'A$i')!.id];

@@ -12,7 +12,6 @@ dependencies:
   flutter_soloud: ^5.2.1
   intl: ^0.20.3
   shared_preferences: ^2.5.6
-  supabase_flutter: ^2.18.3
 
 dev_dependencies:
   flutter_test:
