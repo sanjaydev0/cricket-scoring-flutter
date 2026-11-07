@@ -42,6 +42,9 @@ if pgrep -f "flutter run" >/dev/null 2>&1; then
 fi
 
 
+echo "==> anchor check"
+bash tool/check-master.sh
+
 echo "==> analyze"
 dart format . >/dev/null
 flutter analyze 2>&1 | tail -n 2

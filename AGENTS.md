@@ -2,7 +2,8 @@
 
 **Project:** CricScore — offline gully-cricket umpire scorer
 **Repo:** https://github.com/sanjaydev0/cricket-scoring-flutter (branch `main`)
-**Stack:** Flutter 3.47.7 / Dart 3.13.5 · Material 3 · `flutter_soloud` · `shared_preferences` · `intl` · `supabase_flutter`
+**Stack:** Flutter 3.47.7 / Dart 3.13.5 · Material 3 · `flutter_soloud` · `shared_preferences` · `intl` (100% offline — no network layer)
+**Anchor:** `APP.md` (root) is the memory of what the app is. Read it before touching scoring/persistence/sound/screens. Feature change requires updating the relevant `APP.md` section + bumping `pubspec.yaml` in the same commit; `tool/check-master.sh` guards word count + version match and runs in `tool/release.sh`.
 **Config:** `opencode.jsonc` (default agent `build`, formatter enabled, tool_output/watcher/permissions tuned)
 **Verification:** run `flutter analyze --no-pub` and `flutter test`; do not record counts here.
 **Design system:** `DESIGN.md` (root) holds the normative tokens, components and design
@@ -21,12 +22,10 @@ Android apps using Material Design 3 and retro arcade UI patterns.
 1. **Zero Placeholders:** Provide complete, runnable code files. Include all imports, models and
    error handling. Never output `// TODO`, `...`, or truncated logic.
 2. **Offline-First:** All assets (fonts, audio, state) must work without network connectivity.
-   No runtime font/CDN fetches, no Firebase. Fonts and SFX are bundled in
+   No runtime font/CDN fetches, no Firebase, no network permission. Fonts and SFX are bundled in
    `assets/fonts/` and `assets/audio/`.
-   **Exception — live rooms (opt-in):** sharing a read-only score view with another
-   phone is the one network feature. It is additive and strictly optional: no Supabase
-   keys at build time means the app is exactly the offline app it was. Scoring never
-   awaits, and never fails because of, the network — see rule 8.
+   **No live rooms.** The sync/viewer/Supabase layer was removed in 2.27.0. Do not re-add
+   network code without a new design review.
 3. **Sound Architecture:** Arcade UI sounds (tap, boundary, wicket, extra, undo, confirm)
    play as short one-shot clips through `SoundService`, backed by `flutter_soloud` 5.2.1.
    - Initialize SoLoud once with low latency and `bufferSize: 1024`.
@@ -57,21 +56,17 @@ Android apps using Material Design 3 and retro arcade UI patterns.
 
 ```
 lib/
-  main.dart         MaterialApp, light/dark, routes; picks the SyncPort from AppConfig
+  main.dart         MaterialApp, light/dark, routes; offline only (no network layer)
   models.dart       Rules, MatchConfig (+battingFirst), Ball, Over, Innings, Match
-  store.dart        MatchStore (ChangeNotifier) — persistence, settings, sync adapter, delegates scoring
+  store.dart        MatchStore (ChangeNotifier) — persistence, settings, delegates scoring
   scoring_engine.dart ScoringEngine — live match/sheets/counters, break timer, side effects
   undo_log.dart     UndoEnvelope — on-disk undo snapshot shape
   math.dart         CricketMath — overs, CRR/RRR, max wickets
   sound.dart        SoundService — SoLoud mixer, preload + per-clip gain/debounce
   theme.dart        UmpireTheme, StylePreset (12), ScoreFonts (10)
-  app_config.dart   AppConfig — --dart-define values (Supabase URL/key), never committed
   core/debug/       android_frame_wrapper.dart (debug-only Android phone preview, desktop targets)
-  domain/           room_code.dart (32^5 codes), room_snapshot.dart (versioned payload)
   domain/players.dart Player/Club/ClubProfile, DismissalType, BattingCard,
                       BowlingCard, FieldingCard, InningsSheet, Career aggregates
-  ports/            sync_port.dart — SyncPort + SyncState
-  adapters/         supabase_sync.dart (real), local_only_sync.dart (default + FakeSync)
   screens/
     home.dart       Start / Resume / Archives + settings sections
     setup.dart      Teams (+batting-first pills), format, rules
@@ -80,8 +75,7 @@ lib/
     player_sheets.dart dismissal (one-tap), bowler picker, stats sheet, openers
     club.dart       profiles (local PIN), clubs, roster + search + career stats
     summary.dart    scorecard tables, awards, player-of-match, WhatsApp share
-    scoreboard.dart Scoreboard (hero tile + over strip) — SHARED with viewer
-    viewer.dart     ViewerScreen (read-only live view), JoinRoomScreen (enter a code)
+    scoreboard.dart Scoreboard (hero tile + over strip)
     sheets.dart     wicket/run-out dialogs, overs, extras, match settings, look sheet
     break_result.dart (undo-safe route guards), history.dart (dated archives + detail)
     widgets.dart    RectBtn, TeamDot, StepperRow, BallBadge, KeyBtn, Celebrate
@@ -112,46 +106,17 @@ Current feature inventory (keep compatible unless asked):
   Bowler changes go through `MatchStore.setBowler`, which enforces the consecutive-over law.
   Retired-out falls a team wicket; retired-hurt does not. Free-hit and armed no-ball
   route wicket flows to run-out only.
-- Live rooms (Phase 1): share icon in the scoring app bar opens a room and shows its code;
-  every ball publishes a full versioned snapshot; undo retracts; `Stop sharing` deletes the row.
-  Viewer app is Phase 2+.
+- 100% offline: no live rooms, no viewer, no Supabase. Do not re-add network code
+  without a new design review (see rule 2).
+
 
 Layering rule: **UI never mutates state directly** — screens call `MatchStore` methods only.
 Store never imports Flutter widgets (except `package:flutter/services.dart` for haptics).
 
-Live rooms add three more layers, so online code never leaks into scoring:
-
-```
-lib/domain/     pure Dart, no Flutter — room_code, room_snapshot
-lib/ports/      interfaces only — sync_port.dart (SyncPort)
-lib/adapters/   the only files importing supabase_flutter — supabase_sync, local_only_sync
-supabase/       migrations/*.sql + README.md (the setup steps a human must do)
-```
-
-7. **Live rooms use a secret capability, not Supabase Auth.** Anonymous
-   sign-ins are disabled by default on a fresh project, and a scoring app should
-   not carry a token refresh cycle to save a snapshot. The room code grants
-   reads; a 160-bit secret in `room_secrets` (RLS on, no policies, revoked from
-   anon/authenticated) grants writes via the `room_publish` / `room_end`
-   `security definer` functions. `room_secrets` must stay unreachable from any
-   client role — verified: 401.
-8. **Sync is fire-and-forget:** `MatchStore._publishRoom()` calls `sync.publish` without
-   awaiting and swallows the rejection on the *future* (a `try` around the call cannot
-   see an async throw). A dead backend may cost the live room and nothing else — never a
-   ball, never an undo, never persistence. Test that with `FakeSync.publishError`.
-9. **Release builds need INTERNET declared in `android/app/src/main/AndroidManifest.xml`.**
-   Flutter only adds it to the debug and profile manifests, so a release APK is
-   network-dead while `flutter run` works — which hid the live-rooms failure for
-   several releases. If a network feature ever stops working only in release,
-   dump the merged manifest (`aapt2 dump permissions`) before anything else.
-10. **Never pre-encode a jsonb payload.** `p_payload` takes the Dart Map
-   directly; sending `jsonEncode(...)` makes PostgREST store a jsonb *string*
-   scalar, and readers must then guess whether a payload is a map or a string.
-   `RoomSnapshot.fromPayload` tolerates both because that bug shipped once.
-11. **Write access is the database's job, not the app's:** there are no INSERT/UPDATE/
-   DELETE policies on `rooms`, so RLS rejects direct writes outright (verified: anon PATCH
-   returns 204 with zero rows affected). A leaked 5-character code grants read and nothing
-   else.
+7. **Battery discipline:** `_persist()` writes match + sheets immediately; roster/clubs/
+   profiles only when dirty. Silent backup floor is 60 s (pause/over-end/archive back up for
+   real); SoLoud lazy-boots on first sound and suspends on pause. Battery Saver (opt-in)
+   forces celebrations `off` and silences the backup floor — never dims glare-first visuals.
 
 ## Context policy (model-agnostic)
 
@@ -182,7 +147,7 @@ Rules:
 | Scoring law | `domain/players.dart` (`applyDelivery`, `closeOver`), `scoring_engine.dart`, `store.dart` (`setBowler`), `models.dart` | `store_test`, `match_sim_test`, `players_test` |
 | UI / screen | `screens/<target>.dart`, `theme.dart`, `widgets.dart`, route in `main.dart` | `design_test`, `screens_layout_test` |
 | Persistence / undo | save/load in `store.dart`, `undo_log.dart`, `backup.dart` | `backup_test`, `store_test` |
-| Live room | `ports/sync_port.dart`, `adapters/supabase_sync.dart`, `domain/room_*`, `supabase/migrations/` | `room_test`, `viewer_test` |
+| Battery | `store.dart` (`_persist`, `_maybeBackup`), `sound.dart`, `screens/scoring.dart` | `store_test`, `screens_layout_test` |
 | Sound | `sound.dart`, preload in `main.dart`, `assets/audio/` | `sound_test` |
 | Release / APK | `tool/release.sh`, manifest, `gradle.properties`, `pubspec.yaml` | full analyze + test |
 
@@ -222,7 +187,7 @@ versioned, tagged path for the GitHub release.
 
 **What the Linux loop cannot check** — these are part of "done" at release, not optional:
 sounds (verify on Linux/Android), haptics (absent on desktop), and anything release-only
-(see the INTERNET-permission rule above).
+(see the offline pre-flight gate below).
 
 **Only one compile at a time.** A Gradle daemon can hold 2.4 GB, so a parallel
 build on this 7.6 GB box can die with `Could not start thread: Resource
@@ -266,9 +231,9 @@ $HOME/Android/Sdk/platform-tools/adb devices -l
 - Waydroid is installed but its IP is unreachable from the host; Linux desktop is the preview path.
 - Release flow: `./tool/release.sh <version> "<notes>"` — analyze, test, pre-flight gate, APK,
   tag/release, install. It refuses a duplicate tag and a live dev server.
-- The pre-flight gate is not optional ceremony: it asserts `INTERNET` +
-  `ACCESS_NETWORK_STATE` in the **merged release manifest** and that the
-  Supabase keys are baked into `libapp.so`. Both faults are invisible in debug.
+- The pre-flight gate is not optional ceremony: it asserts no Supabase
+  references survive in the build (offline proof). Both faults are invisible
+  in debug.
 - Low-RAM Gradle settings: 2 GB heap, daemon off, parallel off, VFS watch off, 2 workers.
   Close memory-heavy apps before an APK build and run `free -h` first.
 - **Signing key must not move.** On Linux, AGP 8 defaults the debug keystore to
