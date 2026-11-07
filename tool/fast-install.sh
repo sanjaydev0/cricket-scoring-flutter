@@ -26,10 +26,7 @@ export ANDROID_HOME="$HOME/Android/Sdk"
 # be uninstalling, which deletes the club, roster and archives.
 export ANDROID_USER_HOME="${ANDROID_USER_HOME:-$HOME/.android}"
 
-# Publishable key: already documented in supabase/README.md, safe to ship.
-# Live rooms are the only network feature; absent keys just disable them.
-SUPA_URL="${SUPABASE_URL:-https://uhoghzqrsfxvvhwbrfbo.supabase.co}"
-SUPA_KEY="${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_stWZgYcHnv9TtZkb-Yu3vA_knLLpVZz}"
+# 100% offline: no backend defines, no network permission.
 DEST="${BACKUP_DIR:-$HOME/backups/cricscore}"
 SERIAL="${1:-}"
 
@@ -76,9 +73,7 @@ fi
 # ./tool/release.sh always rebuilds the universal APK before releasing.
 echo "==> build (arm64-v8a, no pub)"
 flutter build apk --release --no-pub \
-  --target-platform android-arm64 \
-  --dart-define=SUPABASE_URL="$SUPA_URL" \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPA_KEY" >/tmp/opencode/apk-arm64.log 2>&1 ||
+  --target-platform android-arm64 >/tmp/opencode/apk-arm64.log 2>&1 ||
   { tail -n 20 /tmp/opencode/apk-arm64.log; echo "build failed" >&2; exit 1; }
 
 APK="build/app/outputs/flutter-apk/app-release.apk"
@@ -91,8 +86,11 @@ if [[ -n "$AAPT" ]]; then
   # `set -o pipefail` turns that into exit 141 — which aborted this script
   # silently after the build, before the install.
   PERMS="$("$AAPT" dump permissions "$APK" 2>/dev/null || true)"
-  grep -q "android.permission.INTERNET" <<<"$PERMS" ||
-    { echo "apk has no INTERNET permission — live rooms would fail" >&2; exit 1; }
+  if grep -q "android.permission.INTERNET" <<<"$PERMS"; then
+    echo "apk has INTERNET permission — the app is offline, network code returned" >&2
+    exit 1
+  fi
+  echo "    offline ok (no INTERNET)"
   BADGING="$("$AAPT" dump badging "$APK" 2>/dev/null || true)"
   VER="$(grep -m1 -o "versionName='[^']*'" <<<"$BADGING" | cut -d"'" -f2 || true)"
   VC="$(grep -m1 -o "versionCode='[0-9]*'" <<<"$BADGING" | cut -d"'" -f2 || true)"
