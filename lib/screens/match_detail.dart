@@ -269,7 +269,7 @@ class _MatchDetailState extends State<MatchDetail> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'Player tracking was off for this innings — no card to show.',
+                'No player card saved for this innings (scored without tracking).',
                 style: TextStyle(fontSize: 12),
               ),
             )

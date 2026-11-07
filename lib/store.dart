@@ -127,7 +127,7 @@ class MatchStore extends ChangeNotifier {
 
   /// The part of the preference store a scorer would actually miss. Settings
   /// alone never justify restoring a snapshot over a newer store.
-  static const userDataKeys = [kActive, kHistory, kRoster, kClubs, kProfiles];
+  static const userDataKeys = [kActive, kHistory, kSheets, kRoster, kClubs, kProfiles];
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -2021,13 +2021,12 @@ class MatchStore extends ChangeNotifier {
     } catch (_) {
       return;
     }
-    final h = await history();
-    if (idx >= 0 && idx < h.length) {
-      h.removeAt(idx);
-      await p.setString(
-        kHistory,
-        jsonEncode(h.map((e) => e.toJson()).toList()),
-      );
+    // Splice the raw record list, not decoded Matches: Match.toJson() would
+    // drop the archived sheets from every survivor.
+    final raw = await historyRecords();
+    if (idx >= 0 && idx < raw.length) {
+      raw.removeAt(idx);
+      await p.setString(kHistory, jsonEncode(raw));
       notifyListeners();
     }
   }

@@ -576,4 +576,63 @@ void main() {
     s.undo();
     expect(s.innings!.runs, 40);
   });
+
+  test('archive round-trip keeps tracked sheets', () async {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id];
+    s.draft = MatchConfig(
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 2,
+      playersPerSide: 4,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1]],
+      squadB: [ids[2], ids[3]],
+    );
+    s.startMatch(s.draft);
+    s.setOpeners(ids[0], ids[1]);
+    s.setBowler(ids[2]);
+    s.score(action: 'RUNS', runs: 4);
+    s.declareWinner('A', 'Declared');
+    // _archive is fire-and-forget; wait for the prefs write to land.
+    await Future<void>.delayed(Duration.zero);
+    final recs = await s.historyRecords();
+    expect(recs.length, 1);
+    expect(recs.first['sheets'], isNotNull);
+    final sheets = MatchStore.sheetsFromRecord(recs.first);
+    expect(sheets['1'], isNotNull);
+    expect(sheets['1']!.names.values, contains('A1'));
+  });
+
+  test('deleting one archive keeps survivor sheets intact', () async {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [for (final n in ['A1', 'A2', 'B1', 'B2']) s.addPlayer(name: n)!.id];
+    MatchConfig cfg() => MatchConfig(
+          teamA: 'A',
+          teamB: 'B',
+          totalOvers: 2,
+          playersPerSide: 4,
+          trackPlayers: true,
+          squadA: [ids[0], ids[1]],
+          squadB: [ids[2], ids[3]],
+        );
+    for (var m = 0; m < 2; m++) {
+      s.draft = cfg();
+      s.startMatch(s.draft);
+      s.setOpeners(ids[0], ids[1]);
+      s.setBowler(ids[2]);
+      s.score(action: 'RUNS', runs: 2);
+      s.declareWinner('A', 'Declared');
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect((await s.historyRecords()).length, 2);
+    await s.deleteHistoryAt(0);
+    final survivor = (await s.historyRecords()).single;
+    expect(survivor['sheets'], isNotNull);
+    final sheets = MatchStore.sheetsFromRecord(survivor);
+    expect(sheets['1'], isNotNull);
+    expect(sheets['1']!.names.values, contains('A1'));
+  });
 }
