@@ -4,6 +4,7 @@
 **Repo:** https://github.com/sanjaydev0/cricket-scoring-flutter (branch `main`)
 **Stack:** Flutter 3.47.7 / Dart 3.13.5 · Material 3 · `flutter_soloud` · `shared_preferences` · `intl` (100% offline — no network layer)
 **Anchor:** `APP.md` (root) is the memory of what the app is. Read it before touching scoring/persistence/sound/screens. Feature change requires updating the relevant `APP.md` section + bumping `pubspec.yaml` in the same commit; `tool/check-master.sh` guards word count + version match and runs in `tool/release.sh`.
+**UI contract:** `.agents/skills/flutter-clean-ui/SKILL.md` (softer rule) — new UI uses `context.spacing`/`context.colors`/`context.textStyles` and saturated preset data via `context.tokens`; raw `Color(0x` stays in `theme.dart`/`app_tokens.dart` only. Glare-first visuals win over flat M3 subtlety. Dart MCP (`opencode.jsonc`) + official flutter/dart skills are dev-loop only.
 **Config:** `opencode.jsonc` (default agent `build`, formatter enabled, tool_output/watcher/permissions tuned)
 **Verification:** run `flutter analyze --no-pub` and `flutter test`; do not record counts here.
 **Design system:** `DESIGN.md` (root) holds the normative tokens, components and design

@@ -40,7 +40,7 @@ class HomeScreen extends StatelessWidget {
           body: SafeArea(
             child: ResponsiveCenter(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(context.spacing.md),
                 children: [
                   if (store.needsRestorePrompt &&
                       store.roster.isEmpty &&
@@ -157,7 +157,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                           _RematchButton(store: store, hasLive: hasLive),
                           if (hasLive) ...[
-                            const SizedBox(height: 10),
+                            SizedBox(height: context.spacing.sm),
                             RectBtn(
                               primary: false,
                               onTap: () {
@@ -176,13 +176,13 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 10),
+                          SizedBox(height: context.spacing.sm),
                           RectBtn(
                             primary: false,
                             onTap: () => Navigator.pushNamed(context, '/club'),
                             child: const Text('CLUB + PLAYERS'),
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: context.spacing.sm),
                           RectBtn(
                             primary: false,
                             onTap: () =>
@@ -462,7 +462,7 @@ class HomeScreen extends StatelessWidget {
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.spacing.sm),
                     Row(
                       children: [
                         Expanded(
@@ -559,7 +559,7 @@ class _RematchButton extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 10),
+            SizedBox(height: context.spacing.sm),
             RectBtn(
               primary: false,
               onTap: () {

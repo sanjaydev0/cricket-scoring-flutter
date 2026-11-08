@@ -71,18 +71,25 @@ class RectBtn extends StatelessWidget {
       style:
           FilledButton.styleFrom(
             minimumSize: const Size(64, 52),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.md,
+              vertical: context.spacing.sm + context.spacing.xs,
+            ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(context.spacing.radiusSm),
             ),
             backgroundColor: danger
                 ? cs.error
-                : (primary ? const Color(0xFF131316) : cs.surface),
-            foregroundColor: (primary || danger) ? Colors.white : cs.onSurface,
+                : (primary ? context.tokens.primaryFill : cs.surface),
+            foregroundColor: (primary || danger)
+                ? context.tokens.onPrimaryFill
+                : cs.onSurface,
             side: (primary || danger)
                 ? null
                 : const BorderSide(color: Colors.black, width: 1.5),
-            textStyle: const TextStyle(fontWeight: FontWeight.w800),
+            textStyle: context.textStyles.labelLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ).copyWith(
             // Design spec: feedback lands on pointer-down and is strong enough for
             // sunlight. Overlay darkens the fill instantly; nothing animates layout.

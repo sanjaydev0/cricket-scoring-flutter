@@ -39,7 +39,7 @@ class BreakScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(context.spacing.md),
                       children: [
                         Card(
                           color: preset.heroBg,
@@ -86,7 +86,7 @@ class BreakScreen extends StatelessWidget {
                             store.sheetFor(1)!.bowlingCards.isNotEmpty) ...[
                           Card(
                             child: Padding(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(context.spacing.radiusMd),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -212,7 +212,7 @@ class ResultScreen extends StatelessWidget {
           body: SafeArea(
             child: ResponsiveCenter(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(context.spacing.md),
                 children: [
                   Card(
                     child: Padding(
@@ -253,7 +253,7 @@ class ResultScreen extends StatelessWidget {
                             onTap: () => _rematch(context, store),
                             child: const Text('REMATCH'),
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: context.spacing.sm),
                           Row(
                             children: [
                               Expanded(
