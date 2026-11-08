@@ -258,15 +258,78 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
   int noball = cfg.rules.noBallPenalty;
   bool freeHit = cfg.rules.freeHit;
   bool lms = cfg.rules.lastManStanding;
-  // Owned by the sheet so the mid-match "add a player" field survives
-  // rebuilds and can be cleared after each add.
-  final squadField = TextEditingController();
+  // Per-team squad editor state (Setup-parity accordion).
+  var openTeam = cfg.teamA;
+  final searchCtrls = <String, TextEditingController>{
+    cfg.teamA: TextEditingController(),
+    cfg.teamB: TextEditingController(),
+  };
+  bool isDirty() =>
+      overs != cfg.totalOvers ||
+      players != cfg.playersPerSide ||
+      common != cfg.commonPlayers ||
+      wide != cfg.rules.widePenalty ||
+      noball != cfg.rules.noBallPenalty ||
+      freeHit != cfg.rules.freeHit ||
+      lms != cfg.rules.lastManStanding;
+  String? savePending() => store.applyMidMatch(
+        totalOvers: overs,
+        playersPerSide: players,
+        commonPlayers: common,
+        widePenalty: wide,
+        noBallPenalty: noball,
+        freeHit: freeHit,
+        lastManStanding: lms,
+      );
+  void confirmClose(BuildContext c, BuildContext sheetCtx) {
+    if (!isDirty()) {
+      Navigator.pop(sheetCtx);
+      return;
+    }
+    showDialog(
+      context: c,
+      builder: (_) => AlertDialog(
+        title: const Text('Save changes?'),
+        content: const Text('You changed overs or rules. Save before leaving?'),
+        actions: [
+          RectBtn(
+            primary: false,
+            onTap: () {
+              Navigator.pop(c);
+              Navigator.pop(sheetCtx);
+            },
+            child: const Text('DISCARD'),
+          ),
+          RectBtn(
+            onTap: () {
+              final err = savePending();
+              if (err != null) {
+                ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(err)));
+                return;
+              }
+              Navigator.pop(c);
+              Navigator.pop(sheetCtx);
+              ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Saved')));
+            },
+            child: const Text('SAVE'),
+          ),
+        ],
+      ),
+    );
+  }
   showAppSheet(
     context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheetCtx) => StatefulBuilder(
-      builder: (ctx, setSheet) => SafeArea(
+      builder: (ctx, setSheet) =>
+          PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              confirmClose(context, sheetCtx);
+            },
+            child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -403,23 +466,24 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   onSelectionChanged: (s) => setSheet(() => lms = s.first),
                 ),
               ),
+              const Divider(height: 24),
               if (store.tracking)
-                _squadSection(
-                  context,
-                  store,
-                  setSheet,
-                  squadField,
-                  players,
-                  common,
+                _SquadAccordion(
+                  store: store,
+                  setSheet: setSheet,
+                  openTeam: openTeam,
+                  onOpenTeam: (t) => setSheet(() => openTeam = t),
+                  searchCtrls: searchCtrls,
+                  cap: players,
+                  common: common,
                 ),
               if (store.tracking) const Divider(height: 24),
-              const Divider(height: 24),
               Row(
                 children: [
                   Expanded(
                     child: RectBtn(
                       primary: false,
-                      onTap: () => Navigator.pop(sheetCtx),
+                      onTap: () => confirmClose(context, sheetCtx),
                       child: const Text('CANCEL'),
                     ),
                   ),
@@ -427,19 +491,15 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                   Expanded(
                     child: RectBtn(
                       onTap: () {
-                        final err = store.applyMidMatch(
-                          totalOvers: overs,
-                          playersPerSide: players,
-                          commonPlayers: common,
-                          widePenalty: wide,
-                          noBallPenalty: noball,
-                          freeHit: freeHit,
-                          lastManStanding: lms,
-                        );
+                        final err = savePending();
+                        if (err != null) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(err)));
+                          return;
+                        }
                         Navigator.pop(sheetCtx);
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(err ?? 'Saved')));
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(content: Text('Saved')));
                       },
                       child: const Text('✓ SAVE'),
                     ),
@@ -447,6 +507,11 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
                 ],
               ),
               const SizedBox(height: 16),
+              const Text(
+                'MATCH ENDS',
+                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -502,7 +567,8 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
               const SizedBox(height: 8),
             ],
           ),
-        ),
+          ),
+          ),
       ),
     ),
   );
@@ -659,31 +725,6 @@ void showLookSheet(BuildContext context, MatchStore store) {
   );
 }
 
-/// Mid-match XI management: rows per side, search-to-add from the roster,
-/// type-a-name to create + add. Same cap and cross-exclusion as setup.
-Widget _squadSection(
-  BuildContext context,
-  MatchStore store,
-  StateSetter setSheet,
-  TextEditingController squadField,
-  int cap,
-  int common,
-) {
-  final m = store.match!;
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'SQUADS',
-        style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
-      ),
-      const SizedBox(height: 8),
-      for (final team in [m.config.teamA, m.config.teamB])
-        _sideBlock(context, store, setSheet, team, squadField, cap),
-    ],
-  );
-}
-
 Widget _commonPlayerPicker(
   BuildContext context,
   MatchStore store,
@@ -791,154 +832,307 @@ Widget _commonPlayerPicker(
   );
 }
 
-Widget _sideBlock(
-  BuildContext context,
-  MatchStore store,
-  StateSetter setSheet,
-  String team,
-  TextEditingController squadField,
-  int cap,
-) {
-  final m = store.match!;
-  final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
-  final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
-  // cap is the pending players-per-side value from the sheet.
-  // Quick adds: most frequent eligible first. Typed names go through the
-  // field below (roster hit or created in-club, duplicates warned).
-  final cands =
-      store.clubRoster.where((p) {
-        if (!p.active || mine.contains(p.id)) return false;
-        // Strict cross-exclusion; common player is added via the dedicated
-        // picker / ADD field, not from the candidate list.
-        if (other.contains(p.id)) return false;
-        return true;
-      }).toList()..sort(
-        (a, b) => (store.playerAppearances[b.id] ?? 0).compareTo(
-          store.playerAppearances[a.id] ?? 0,
+/// Mid-match XI editor: Setup-parity accordion, one team open at a time.
+/// Search + tap-to-add/remove, played rows grey, ADD NEW PLAYER creates
+/// in-club + lands in the XI in one commit. Same cap/cross rules as setup.
+class _SquadAccordion extends StatelessWidget {
+  final MatchStore store;
+  final StateSetter setSheet;
+  final String openTeam;
+  final ValueChanged<String> onOpenTeam;
+  final Map<String, TextEditingController> searchCtrls;
+  final int cap;
+  final int common;
+  const _SquadAccordion({
+    required this.store,
+    required this.setSheet,
+    required this.openTeam,
+    required this.onOpenTeam,
+    required this.searchCtrls,
+    required this.cap,
+    required this.common,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final m = store.match!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'SQUADS',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
         ),
-      );
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        '$team (${mine.length}/$cap)',
-        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-      ),
-      for (final id in mine.toList())
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: other.contains(id)
-              ? BoxDecoration(
-                  color: const Color(0xFF16A34A).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                )
-              : null,
-          child: Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      store.playerName(id),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    if (other.contains(id)) ...[
-                      const SizedBox(width: 6),
-                      const Text(
-                        'COMMON',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF16A34A),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                tooltip: 'Remove (only if uncapped)',
-                onPressed: () {
-                  final err = store.removeFromSquad(team, id);
-                  setSheet(() {});
-                  if (err != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(err)));
-                  }
-                },
-              ),
-            ],
+        const SizedBox(height: 8),
+        for (final team in [m.config.teamA, m.config.teamB])
+          _TeamPanel(
+            store: store,
+            setSheet: setSheet,
+            team: team,
+            open: openTeam == team,
+            onTapHeader: () => onOpenTeam(team),
+            ctrl: searchCtrls[team]!,
+            cap: cap,
           ),
-        ),
-      const SizedBox(height: 4),
-      // Explicit button, not just onSubmitted: typing a name and tapping away
-      // used to do nothing at all, which read as "adding mid-match is broken".
-      Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: squadField,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: mine.length >= cap
-                    ? 'XI full ($cap)'
-                    : 'Roster name, or type a new one',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-              enabled: mine.length < cap,
-              onSubmitted: (_) =>
-                  _addByName(context, store, team, squadField, cap),
+      ],
+    );
+  }
+}
+
+class _TeamPanel extends StatelessWidget {
+  final MatchStore store;
+  final StateSetter setSheet;
+  final String team;
+  final bool open;
+  final VoidCallback onTapHeader;
+  final TextEditingController ctrl;
+  final int cap;
+  const _TeamPanel({
+    required this.store,
+    required this.setSheet,
+    required this.team,
+    required this.open,
+    required this.onTapHeader,
+    required this.ctrl,
+    required this.cap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final m = store.match!;
+    final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
+    final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
+    final colorValue = team == m.config.teamA
+        ? MatchStore.teamAColor
+        : MatchStore.teamBColor;
+    final query = ctrl.text.trim().toLowerCase();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: onTapHeader,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: open
+                  ? Color(colorValue).withValues(alpha: 0.10)
+                  : Colors.transparent,
+              border: Border.all(color: Color(colorValue), width: 1.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                TeamDot(colorValue),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    team,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '${mine.length}/$cap',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
+                Icon(open ? Icons.expand_less : Icons.expand_more, size: 20),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
+        ),
+        if (open) ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: ctrl,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Search roster',
+              prefixIcon: Icon(Icons.search, size: 20),
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            onChanged: (_) => setSheet(() {}),
+          ),
+          const SizedBox(height: 6),
+          for (final id in mine.toList())
+            _PlayedAwareRow(
+              store: store,
+              setSheet: setSheet,
+              team: team,
+              id: id,
+              common: other.contains(id),
+            ),
+          // Eligible roster (not in either XI), filtered by search.
+          for (final p in store.clubRoster.where((p) {
+            if (!p.active && !mine.contains(p.id)) return false;
+            if (mine.contains(p.id) || other.contains(p.id)) return false;
+            if (query.isEmpty) return true;
+            return p.name.toLowerCase().contains(query);
+          }).toList())
+            PlayerRow(
+              name: p.name,
+              subtitle: '${store.playerAppearances[p.id] ?? 0} appearances',
+              selected: false,
+              enabled: mine.length < cap,
+              blockedReason: mine.length >= cap ? 'XI full ($cap)' : null,
+              onTap: () {
+                final err = store.addToSquad(team, p.id, cap: cap);
+                setSheet(() {});
+                if (err != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+                }
+              },
+              trailing: const Icon(Icons.add_circle_outline, size: 20),
+            ),
+          const SizedBox(height: 6),
           RectBtn(
             primary: false,
             onTap: mine.length >= cap
                 ? null
-                : () => _addByName(context, store, team, squadField, cap),
-            child: const Text('ADD'),
+                : () => _showCreatePlayer(context, store, setSheet, team, cap),
+            child: const Text('＋ ADD NEW PLAYER'),
           ),
+          const SizedBox(height: 10),
         ],
-      ),
-      const SizedBox(height: 4),
-      for (final p in cands.take(4))
-        PlayerRow(
-          name: p.name,
-          subtitle: '${store.playerAppearances[p.id] ?? 0} appearances',
-          selected: false,
-          enabled: mine.length < cap,
-          blockedReason: mine.length >= cap ? 'XI full ($cap)' : null,
-          onTap: () {
-            final err = store.addToSquad(team, p.id, cap: cap);
-            setSheet(() {});
-            if (err != null) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(err)));
-            }
-          },
-          trailing: const Icon(Icons.add_circle_outline, size: 20),
-        ),
-      const SizedBox(height: 10),
-    ],
-  );
+      ],
+    );
+  }
 }
 
-/// Adds by typed name and clears the field either way, so the next player can
-/// be typed straight away.
-void _addByName(
+class _PlayedAwareRow extends StatelessWidget {
+  final MatchStore store;
+  final StateSetter setSheet;
+  final String team;
+  final String id;
+  final bool common;
+  const _PlayedAwareRow({
+    required this.store,
+    required this.setSheet,
+    required this.team,
+    required this.id,
+    required this.common,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sheet = store.currentSheet;
+    final b = sheet?.batting[id];
+    final w = sheet?.bowling[id];
+    final played = (b != null && b.position > 0) ||
+        (w != null && (w.balls > 0 || w.wickets > 0));
+    return PlayerRow(
+      name: store.playerName(id) + (common ? ' • COMMON' : ''),
+      subtitle: played ? 'Already played' : 'In XI — tap to remove',
+      selected: true,
+      enabled: !played,
+      blockedReason: played ? 'Played — locked' : null,
+      onTap: () {
+        final err = store.removeFromSquad(team, id);
+        setSheet(() {});
+        if (err != null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+        }
+      },
+      trailing: played ? null : const Icon(Icons.check_circle, size: 20),
+    );
+  }
+}
+
+void _showCreatePlayer(
   BuildContext context,
   MatchStore store,
+  StateSetter setSheet,
   String team,
-  TextEditingController squadField,
   int cap,
 ) {
-  final err = store.addSquadByName(team, squadField.text, cap: cap);
-  squadField.clear();
-  if (err != null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+  final nameCtrl = TextEditingController();
+  var role = PlayerRole.allRounder;
+  var bat = BattingStyle.rightHand;
+  var bowl = BowlingStyle.none;
+  void commit() {
+    final err = store.createAndAddToSquad(
+      team,
+      name: nameCtrl.text.trim(),
+      role: role,
+      battingStyle: bat,
+      bowlingStyle: bowl,
+      cap: cap,
+    );
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    Navigator.pop(context);
+    setSheet(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${nameCtrl.text.trim()} added to $team')),
+    );
   }
+
+  showDialog(
+    context: context,
+    builder: (_) => StatefulBuilder(
+      builder: (c, setD) => AlertDialog(
+        title: Text('NEW PLAYER — $team'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                textCapitalization: TextCapitalization.words,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Player name',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onSubmitted: (_) => commit(),
+              ),
+              const SizedBox(height: 10),
+              const Text('ROLE', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              Wrap(spacing: 8, children: [
+                for (final r in PlayerRole.values)
+                  ChoiceChip(
+                    label: Text(r.name),
+                    selected: role == r,
+                    onSelected: (_) => setD(() => role = r),
+                  ),
+              ]),
+              const SizedBox(height: 8),
+              const Text('BATTING', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              Wrap(spacing: 8, children: [
+                for (final s in BattingStyle.values)
+                  ChoiceChip(
+                    label: Text(s == BattingStyle.rightHand ? 'RHB' : 'LHB'),
+                    selected: bat == s,
+                    onSelected: (_) => setD(() => bat = s),
+                  ),
+              ]),
+              const SizedBox(height: 8),
+              const Text('BOWLING', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              Wrap(spacing: 8, children: [
+                for (final s in BowlingStyle.values)
+                  ChoiceChip(
+                    label: Text(bowlingStyleLabel(s)),
+                    selected: bowl == s,
+                    onSelected: (_) => setD(() => bowl = s),
+                  ),
+              ]),
+            ],
+          ),
+        ),
+        actions: [
+          RectBtn(
+            primary: false,
+            onTap: () => Navigator.pop(c),
+            child: const Text('Cancel'),
+          ),
+          RectBtn(onTap: commit, child: const Text('Add + pick')),
+        ],
+      ),
+    ),
+  );
 }

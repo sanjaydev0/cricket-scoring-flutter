@@ -592,4 +592,28 @@ test('run-out honors chosen new batter at dismissal end', () {
     expect(s.currentSheet!.nonStrikerId, ids[1]);
     expect(s.currentSheet!.batting[ids[0]]!.runs, 1);
   });
+test('createAndAddToSquad births in club and lands in XI', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final a1 = s.addPlayer(name: 'A1')!.id;
+    final b1 = s.addPlayer(name: 'B1')!.id;
+    s.draft = MatchConfig(
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 5,
+      playersPerSide: 5,
+      trackPlayers: true,
+      squadA: [a1],
+      squadB: [b1],
+    );
+    s.startMatch(s.draft);
+    final a2 = s.addPlayer(name: 'A2')!.id;
+    s.setOpeners(a1, a2);
+    expect(
+      s.createAndAddToSquad('A', name: 'New Guy'),
+      isNull,
+    );
+    expect(s.match!.config.squadA.map(s.playerName), contains('New Guy'));
+    expect(s.clubRoster.map((p) => p.name), contains('New Guy'));
+  });
 }
