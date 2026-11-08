@@ -36,7 +36,21 @@ description: Use whenever creating, modifying, or redesigning Flutter UI screens
   `maxLines: 1, overflow: TextOverflow.ellipsis` (already the `RectBtn` clamp).
 - Buttons never wrap mid-word: clamp, don't stack.
 
-## 5. MCP + skills
+## 5. Critical-path checklist (functional utility, Option C)
+- **Critical path (mandatory):** Scoring, Setup, Result, Home. One primary
+  per decision card (Hick's), thumb-reach bottom half (Fitts), 48dp+ targets,
+  all labels single-line ellipsis, async surfaces show empty + loading.
+- Run-out is sequential (facts → next batter), not THREE primaries: it is
+  one decision per sheet by construction.
+- **Light rules elsewhere:** Scorecard full-squad tables and player pickers
+  stay complete — weight hierarchy + ellipsis, never forced 3-item chunks
+  (Miller exception: tallies and XIs are the job, rows are not clutter).
+- Machine gate: `tool/check-ux.sh` (wired into `release.sh`) fails on the
+  four critical screens' non-negotiables. Other screens warn only.
+- Hierarchy: vary font weight (w400/w600/w800) and lightness first;
+  borders/shadows are separators, not the message. Glare-first fills stay.
+
+## 6. MCP + skills
 - Dart MCP (`dart mcp-server` in `opencode.jsonc`) is dev-only; the APK
   stays 100% offline with no network permission.
 - Prefer official flutter-*/dart-* skills for responsive layout,

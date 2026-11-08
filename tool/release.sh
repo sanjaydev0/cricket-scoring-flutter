@@ -44,6 +44,7 @@ fi
 
 echo "==> anchor check"
 bash tool/check-master.sh
+bash tool/check-ux.sh
 
 echo "==> analyze"
 dart format . >/dev/null
