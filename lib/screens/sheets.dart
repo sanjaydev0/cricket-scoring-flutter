@@ -1021,12 +1021,16 @@ class _PlayedAwareRow extends StatelessWidget {
     final w = sheet?.bowling[id];
     final played = (b != null && b.position > 0) ||
         (w != null && (w.balls > 0 || w.wickets > 0));
+    // Membership is the green check, not a black slab: a list of black
+    // slabs with dimmed text on locked rows read as unreadable. Surface
+    // rows + team-accent check stays sunlight-legible without the fill.
     return PlayerRow(
       name: store.playerName(id) + (common ? ' • COMMON' : ''),
-      subtitle: played ? 'Already played' : 'In XI — tap to remove',
-      selected: true,
+      subtitle: played
+          ? 'Already played — locked'
+          : 'In XI — tap to remove',
+      selected: false,
       enabled: !played,
-      blockedReason: played ? 'Played — locked' : null,
       onTap: () {
         final err = store.removeFromSquad(team, id);
         setSheet(() {});
@@ -1034,7 +1038,15 @@ class _PlayedAwareRow extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
         }
       },
-      trailing: played ? null : const Icon(Icons.check_circle, size: 20),
+      trailing: Icon(
+        played
+            ? Icons.lock_outline
+            : Icons.check_circle,
+        size: 20,
+        color: played
+            ? context.colors.onSurfaceVariant
+            : const Color(0xFF16A34A),
+      ),
     );
   }
 }
