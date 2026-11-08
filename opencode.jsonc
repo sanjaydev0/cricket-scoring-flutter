@@ -4,6 +4,13 @@
 
   "formatter": true,
 
+  "mcpServers": {
+    "dart": {
+      "command": "dart",
+      "args": ["mcp-server"]
+    }
+  },
+
   "tool_output": {
     "max_lines": 600,
     "max_bytes": 32768

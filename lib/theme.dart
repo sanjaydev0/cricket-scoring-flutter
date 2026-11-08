@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'core/theme/app_tokens.dart';
+
+export 'core/theme/app_tokens.dart';
+
 /// Shared motion tokens: one timing language app-wide.
 /// Press 150ms, overlays 300ms ease-out, celebrations 700ms,
 /// strip glide scales with distance (200 + 80/ball, max 900ms).
@@ -245,6 +249,7 @@ class UmpireTheme {
         );
     return ThemeData(
       useMaterial3: true,
+      extensions: const [AppSpacing()],
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: _NoTransition(),
@@ -293,6 +298,7 @@ class UmpireTheme {
         );
     return ThemeData(
       useMaterial3: true,
+      extensions: const [AppSpacing()],
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: _NoTransition(),
