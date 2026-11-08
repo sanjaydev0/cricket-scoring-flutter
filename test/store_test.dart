@@ -561,4 +561,35 @@ test('prepareRematch copies config and drops deleted players', () {
     expect(s.draft.trackPlayers, isFalse);
     expect(s.presetSquads, isTrue);
   });
+test('run-out honors chosen new batter at dismissal end', () {
+    final s = MatchStore();
+    s.createClub(name: 'Eagles');
+    final ids = [for (final n in ['A1', 'A2', 'A3', 'B1', 'B2']) s.addPlayer(name: n)!.id];
+    s.draft = MatchConfig(
+      teamA: 'A',
+      teamB: 'B',
+      totalOvers: 5,
+      playersPerSide: 5,
+      trackPlayers: true,
+      squadA: [ids[0], ids[1], ids[2]],
+      squadB: [ids[3], ids[4]],
+    );
+    s.startMatch(s.draft);
+    s.setOpeners(ids[0], ids[1]);
+    s.setBowler(ids[3]);
+    // Striker out at striker's end: newcomer takes striker's end.
+    final err = s.score(
+      action: 'WICKET',
+      runs: 1,
+      wicketType: DismissalType.runOut.label,
+      dismissal: DismissalType.runOut.name,
+      outAtStrikerEnd: true,
+      newBatterId: ids[2],
+    );
+    expect(err, isNull);
+    expect(s.innings!.runs, 1);
+    expect(s.currentSheet!.strikerId, ids[2]);
+    expect(s.currentSheet!.nonStrikerId, ids[1]);
+    expect(s.currentSheet!.batting[ids[0]]!.runs, 1);
+  });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../domain/players.dart';
+import '../math.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
@@ -872,13 +873,7 @@ class _RunOutFormState extends State<RunOutForm> {
     final nonStrikerName = sheet == null || sheet.nonStrikerId == null
         ? 'Non-striker — the other end'
         : sheet.nameOf(sheet.nonStrikerId!);
-    final outName = nonStrikerOut ? nonStrikerName : strikerName;
     final safeName = nonStrikerOut ? strikerName : nonStrikerName;
-    // The confirm button names him the short way; the rows above carry the
-    // explanation.
-    final buttonOut = sheet == null
-        ? (nonStrikerOut ? 'Non-striker' : 'Striker')
-        : outName;
     final badge = wicketBadge(runs);
 
     return Column(
@@ -969,14 +964,16 @@ class _RunOutFormState extends State<RunOutForm> {
                   : sheet.nameOf(fielder!),
             ),
           ),
-          child: Text('$badge · $buttonOut OUT'),
+          child: Text('$badge · WHO COMES NEXT ›'),
         ),
       ],
     );
   }
 }
 
-/// Shows the run-out questions and records the ball on confirm.
+/// Shows the run-out questions. Nothing is scored here — confirming
+/// advances to the next-batter sheet. The ball exists only once a batter
+/// is picked (or the innings is over and nobody is owed).
 ///
 /// The scroll view and isScrollControlled are load-bearing: the untracked
 /// version used to be a plain Column inside a sheet capped at 9/16 of the
@@ -994,24 +991,125 @@ void showRunOutSheet(BuildContext context, MatchStore store) {
           store: store,
           onConfirm: (c) {
             Navigator.pop(sheetCtx);
-            final err = store.score(
-              action: 'WICKET',
-              runs: c.runs,
-              wicketType: DismissalType.runOut.label,
-              dismissal: DismissalType.runOut.name,
-              fielderName: c.fielderName,
-              outAtNonStrikerEnd: c.nonStrikerOut,
-              outAtStrikerEnd: c.outAtStrikerEnd,
-            );
-            if (err != null && context.mounted) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(err)));
-            }
+            showNextBatterAfterRunOut(context, store, c);
           },
         ),
       ),
     ),
   );
+}
+
+/// Second sheet after run-out facts: pick who comes next. Scores the one
+/// atomic ball with [newBatterId]. Skipped when nobody is left to bat or
+/// the innings ends on this ball (last over ball, last wicket, chase won).
+/// Closing without a pick records nothing — the umpire re-taps WICKET.
+void showNextBatterAfterRunOut(
+  BuildContext context,
+  MatchStore store,
+  RunOutChoice c,
+) {
+  final sheet = store.currentSheet;
+  final m = store.match;
+  final inn = store.innings;
+  if (sheet == null || m == null || inn == null) {
+    _scoreRunOutNow(context, store, c, null);
+    return;
+  }
+
+  final outId = c.nonStrikerOut
+      ? (sheet.nonStrikerId ?? '')
+      : (sheet.strikerId ?? '');
+  final waiting = sheet.nextBatterOptions(outId);
+  if (waiting.isEmpty || _runOutEndsInnings(store, c)) {
+    _scoreRunOutNow(context, store, c, '');
+    return;
+  }
+
+  final badge = wicketBadge(c.runs);
+  final outName = outId.isEmpty ? '—' : sheet.nameOf(outId);
+  final endLine = c.outAtStrikerEnd ? "STRIKER'S END" : "BOWLER'S END";
+  showAppSheet(
+    context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetCtx) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '$badge · $outName OUT — $endLine',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            RowSectionLabel('NEXT BATTER', color: context.colors.primary),
+            for (final id in waiting)
+              PlayerRow(
+                name: sheet.nameOf(id),
+                subtitle: (sheet.batting[id]?.position ?? 0) > 0
+                    ? 'Retired hurt — coming back in'
+                    : 'Yet to bat • ${sheet.battingTeam}',
+                selected: false,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _scoreRunOutNow(context, store, c, id);
+                },
+              ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(sheetCtx),
+              child: const Text('CANCEL — RECORD NOTHING'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+void _scoreRunOutNow(
+  BuildContext context,
+  MatchStore store,
+  RunOutChoice c,
+  String? newBatterId,
+) {
+  final err = store.score(
+    action: 'WICKET',
+    runs: c.runs,
+    wicketType: DismissalType.runOut.label,
+    dismissal: DismissalType.runOut.name,
+    fielderName: c.fielderName,
+    newBatterId: newBatterId,
+    outAtNonStrikerEnd: c.nonStrikerOut,
+    outAtStrikerEnd: c.outAtStrikerEnd,
+  );
+  if (err != null && context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(err)));
+  }
+}
+
+/// Mirrors `_checkEnd` before the ball is scored: does this run-out end the
+/// innings (last legal ball, last wicket, or chase already won)?
+bool _runOutEndsInnings(MatchStore store, RunOutChoice c) {
+  final m = store.match;
+  final inn = store.innings;
+  if (m == null || inn == null) return false;
+  final maxBalls = CricketMath.totalBalls(m.config.totalOvers);
+  final maxW = CricketMath.getMaxWickets(
+    m.config.playersPerSide,
+    m.config.rules.lastManStanding,
+  );
+  if (inn.wickets + 1 >= maxW) return true;
+  if (!store.nbArmed && inn.legalDeliveries + 1 >= maxBalls) return true;
+  if (m.currentInnings == 2) {
+    final tgt = m.target ?? (m.innings1.runs + 1);
+    if (inn.runs + c.runs >= tgt) return true;
+  }
+  return false;
 }
 
 /// Fielding side's XI, for the optional fielder credit.

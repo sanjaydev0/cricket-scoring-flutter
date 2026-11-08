@@ -92,7 +92,11 @@ Widget _wicketKey(BuildContext context, MatchStore store, DismissalType type) {
       );
     },
     child: Text(
-      type == DismissalType.runOut ? 'RUN OUT ›' : type.label.toUpperCase(),
+      type == DismissalType.runOut
+          ? 'RUN OUT ›'
+          : type == DismissalType.bowled
+              ? 'WICKET'
+              : type.label.toUpperCase(),
     ),
   );
 }

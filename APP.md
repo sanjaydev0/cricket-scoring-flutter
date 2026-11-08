@@ -23,6 +23,9 @@ account, no server, and no network permission.
 - Overs roll at 6 legal balls; the completed over stays visible until the
   next ball (deferred rollover).
 - Extras never consume a legal ball. Run-outs with runs record as `W+n`.
+  Wicket-grid "WICKET" records as Bowled ("b Ravi" on the card); run-out is
+  two sheets — facts, then next batter — scored only after a pick (skipped
+  on last ball / last wicket / chase won).
 - Free hit protects all dismissals except run-out; consumed on the next
   legal delivery. Bowler changes go through `MatchStore.setBowler`
   (no consecutive overs).
