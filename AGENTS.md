@@ -4,12 +4,11 @@
 **Repo:** https://github.com/sanjaydev0/cricket-scoring-flutter (branch `main`)
 **Stack:** Flutter 3.47.7 / Dart 3.13.5 · Material 3 · `flutter_soloud` · `shared_preferences` · `intl` (100% offline — no network layer)
 **Anchor:** `APP.md` (root) is the memory of what the app is. Read it before touching scoring/persistence/sound/screens. Feature change requires updating the relevant `APP.md` section + bumping `pubspec.yaml` in the same commit; `tool/check-master.sh` guards word count + version match and runs in `tool/release.sh`.
-**UI contract:** `.agents/skills/flutter-clean-ui/SKILL.md` (softer rule) — new UI uses `context.spacing`/`context.colors`/`context.textStyles` and saturated preset data via `context.tokens`; raw `Color(0x` stays in `theme.dart`/`app_tokens.dart` only. Glare-first visuals win over flat M3 subtlety. Dart MCP (`opencode.jsonc`) + official flutter/dart skills are dev-loop only.
+**UI contract:** `DESIGN.md` (root) is normative and is written in **theme roles**, not hex — read it before any UI change. New UI uses `context.spacing` / `context.colors` / `context.tokens` (`DesignTokens` is a `ThemeExtension` registered on both `UmpireTheme.light()` and `dark()`, so a role flips instead of a screen hardcoding a light-mode colour). Raw `Color(0x` stays in `theme.dart` (preset registry) and `app_tokens.dart` (role definitions) only. `.agents/skills/flutter-clean-ui/SKILL.md` is the softer rule; glare-first visuals win over flat M3 subtlety. Dart MCP (`opencode.jsonc`) + official flutter/dart skills are dev-loop only.
+**Component index:** `docs/ui-inventory.html` maps every screen, sheet, widget and badge to a stable ID (`sheet.settings`, `scoring.keypad.grid`, `widget.playerrow`); `tool/ui-inventory.sh --no-open` verifies its refs. Paste an ID when asking for a UI change.
 **Config:** `opencode.jsonc` (default agent `build`, formatter enabled, tool_output/watcher/permissions tuned)
 **Verification:** run `flutter analyze --no-pub` and `flutter test`; do not record counts here.
-**Design system:** `DESIGN.md` (root) holds the normative tokens, components and design
-rules — read it before any UI change. `.impeccable/design.json` is its machine-readable
-sidecar (motion, colour roles, component snippets); regenerate it with `DESIGN.md`.
+**Design gates:** `tool/check-master.sh` runs in `tool/release.sh` and fails on APP.md drift, a returning `design-system/` tree, a role named in `DESIGN.md` that is missing from `app_tokens.dart`, ink dimmed by alpha, or bare bright green/amber in screens. `.impeccable/design.json` is `DESIGN.md`'s machine-readable sidecar.
 
 ---
 
@@ -133,7 +132,7 @@ Classify every path before opening it:
 Rules:
 
 - grep/glob only with `path:` = `lib`, `test`, `tool`, or one feature dir.
-- Never pass `build`, `.dart_tool`, `.agents`, `.git`, `design-system`, or `assets` as `path:`.
+- Never pass `build`, `.dart_tool`, `.agents`, `.git`, or `assets` as `path:`.
 - `pubspec.lock` and `.flutter-plugins-dependencies`: grep only, never read wholesale.
 - `assets/` is binary: use `ls`, `file`, or `du`; one screenshot only for a visual bug.
 - Read ±60 lines around a symbol, not a whole file.
@@ -146,7 +145,7 @@ Rules:
 | Change | Read first | Test |
 |---|---|---|
 | Scoring law | `domain/players.dart` (`applyDelivery`, `closeOver`), `scoring_engine.dart`, `store.dart` (`setBowler`), `models.dart` | `store_test`, `match_sim_test`, `players_test` |
-| UI / screen | `screens/<target>.dart`, `theme.dart`, `widgets.dart`, route in `main.dart` | `design_test`, `screens_layout_test` |
+| UI / screen | `DESIGN.md`, `screens/<target>.dart`, `theme.dart`, `core/theme/app_tokens.dart`, `widgets.dart`, route in `main.dart` | `design_test`, `screens_layout_test` |
 | Persistence / undo | save/load in `store.dart`, `undo_log.dart`, `backup.dart` | `backup_test`, `store_test` |
 | Battery | `store.dart` (`_persist`, `_maybeBackup`), `sound.dart`, `screens/scoring.dart` | `store_test`, `screens_layout_test` |
 | Sound | `sound.dart`, preload in `main.dart`, `assets/audio/` | `sound_test` |

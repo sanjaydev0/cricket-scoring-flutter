@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../domain/players.dart';
 import '../models.dart';
 import '../store.dart';
+import '../theme.dart';
 import 'widgets.dart';
 
 /// Bowling figures in the newspaper scorecard convention: `O M R W` under a
@@ -51,7 +52,7 @@ class BowlerRows extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final faint = cs.onSurface.withValues(alpha: 0.6);
+    final faint = cs.onSurfaceVariant;
     final hasExtras = bowlers.any((c) => c.wides > 0 || c.noBalls > 0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,11 +110,11 @@ class BowlerRows extends StatelessWidget {
                 _cell('${c.runsConceded}'),
                 _cell(
                   '${c.wickets}',
-                  color: c.wickets > 0 ? const Color(0xFF22C55E) : null,
+                  color: c.wickets > 0 ? context.tokens.statGoodInk : null,
                 ),
                 _cell(
                   c.economy == null ? '—' : c.economy!.toStringAsFixed(2),
-                  color: const Color(0xFFF59E0B),
+                  color: context.tokens.statWarnInk,
                   width: 36,
                 ),
                 if (hasExtras) ...[
@@ -487,7 +488,6 @@ class TopPerformersView extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = store.match;
     if (m == null || !store.tracking) return const SizedBox.shrink();
-    final cs = Theme.of(context).colorScheme;
     final rows = <Widget>[];
     final squad = m.config.playersPerSide;
     final many = squad >= 8; // more players per side -> 3 batters, else 2
@@ -565,7 +565,7 @@ class TopPerformersView extends StatelessWidget {
         const SizedBox(height: 4),
         ...rows,
         const SizedBox(height: 4),
-        Container(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+        Container(height: 1, color: context.tokens.borderRow),
       ],
     );
   }
@@ -580,7 +580,7 @@ class TopPerformersView extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: 1.4,
-          color: cs.onSurface.withValues(alpha: 0.55),
+          color: cs.onSurfaceVariant,
         ),
       ),
     );
@@ -598,17 +598,14 @@ class TopPerformersView extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 13,
-                color: cs.onSurface.withValues(alpha: 0.8),
+                color: cs.onSurfaceVariant,
               ),
             ),
           ),
           if (right != null)
             Text(
               right,
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurface.withValues(alpha: 0.6),
-              ),
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),
         ],
       ),
@@ -626,9 +623,7 @@ class TopPerformersView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
+        border: Border(bottom: BorderSide(color: context.tokens.borderRow)),
       ),
       child: Row(
         children: [
@@ -650,10 +645,7 @@ class TopPerformersView extends StatelessWidget {
                 ),
                 Text(
                   sub,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: cs.onSurface.withValues(alpha: 0.65),
-                  ),
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
               ],
             ),

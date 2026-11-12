@@ -92,7 +92,7 @@ class RectBtn extends StatelessWidget {
                 : cs.onSurface,
             side: (primary || danger)
                 ? null
-                : const BorderSide(color: Colors.black, width: 1.5),
+                : BorderSide(color: context.tokens.surfaceOutline, width: 1.5),
             textStyle: context.textStyles.labelLarge?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -553,8 +553,16 @@ class PlayerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = context.tokens;
     final dim = !enabled;
     final sub = subtitle ?? blockedReason;
+    // Selection and lock are solid fills, never an opacity. A 45%-alpha name
+    // turned into a smudge at 10,000 lux; the fill keeps the ink at full
+    // contrast in both themes.
+    final fill = selected
+        ? t.primaryFill
+        : (dim ? t.lockedFill : Colors.transparent);
+    final ink = selected ? t.onPrimaryFill : (dim ? t.lockedInk : cs.onSurface);
     return InkWell(
       onTap: enabled ? onTap : null,
       child: Container(
@@ -562,11 +570,10 @@ class PlayerRow extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
-          // Selection is a filled slab, not a tint: readable in sunlight.
-          color: selected ? const Color(0xFF131316) : Colors.transparent,
-          border: Border(
-            bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-          ),
+          color: fill,
+          // Solid 1px, never 50% alpha: a half-transparent rule disappears
+          // outdoors and the rows run together.
+          border: Border(bottom: BorderSide(color: t.borderRow)),
         ),
         child: Row(
           children: [
@@ -582,9 +589,7 @@ class PlayerRow extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
-                      color: dim
-                          ? cs.onSurface.withValues(alpha: 0.45)
-                          : (selected ? Colors.white : cs.onSurface),
+                      color: ink,
                     ),
                   ),
                   if (sub != null)
@@ -594,9 +599,10 @@ class PlayerRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
+                        fontWeight: FontWeight.w600,
                         color: selected
-                            ? Colors.white70
-                            : cs.onSurface.withValues(alpha: 0.6),
+                            ? t.onPrimaryFill
+                            : (dim ? t.lockedInk : cs.onSurfaceVariant),
                       ),
                     ),
                 ],
@@ -604,15 +610,17 @@ class PlayerRow extends StatelessWidget {
             ),
             if (trailing != null)
               trailing!
+            // A lock glyph, not a faded radio: the umpire has to see *why* the
+            // row will not respond.
+            else if (dim)
+              Icon(Icons.lock_outline, size: 18, color: t.lockedInk)
             else
               Icon(
                 selected
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
                 size: 20,
-                color: selected
-                    ? const Color(0xFF22C55E)
-                    : cs.onSurface.withValues(alpha: dim ? 0.25 : 0.5),
+                color: selected ? t.onPrimaryFill : cs.onSurfaceVariant,
               ),
           ],
         ),
@@ -660,16 +668,17 @@ class DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final ink = dimmed ? cs.onSurface.withValues(alpha: 0.4) : cs.onSurface;
+    final t = context.tokens;
+    // Locked, not faded: a 40%-alpha name was unreadable outdoors.
+    final ink = dimmed ? t.lockedInk : cs.onSurface;
     return InkWell(
       onTap: enabled ? onTap : null,
       child: Container(
         constraints: const BoxConstraints(minHeight: 54),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-          ),
+          color: dimmed ? t.lockedFill : null,
+          border: Border(bottom: BorderSide(color: t.borderRow)),
         ),
         child: Row(
           children: [
@@ -769,11 +778,7 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: compact ? 28 : 44,
-            color: cs.onSurface.withValues(alpha: 0.4),
-          ),
+          Icon(icon, size: compact ? 28 : 44, color: cs.onSurfaceVariant),
           SizedBox(height: compact ? 6 : 12),
           Text(
             title,
@@ -790,7 +795,7 @@ class EmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: compact ? 12 : 14,
-              color: cs.onSurface.withValues(alpha: 0.7),
+              color: cs.onSurfaceVariant,
             ),
           ),
         ],
@@ -902,7 +907,7 @@ class BowlerFigureBlock extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
-                color: cs.onSurface.withValues(alpha: 0.55),
+                color: cs.onSurfaceVariant,
               ),
             ),
           ],
@@ -911,14 +916,18 @@ class BowlerFigureBlock extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.trending_down, size: 11, color: Color(0xFFF59E0B)),
+            Icon(
+              Icons.trending_down,
+              size: 11,
+              color: context.tokens.statWarnInk,
+            ),
             const SizedBox(width: 2),
             Text(
               fmt2(c.economy),
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 11,
-                color: Color(0xFFF59E0B),
+                color: context.tokens.statWarnInk,
               ),
             ),
             Text(
@@ -926,7 +935,7 @@ class BowlerFigureBlock extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
-                color: cs.onSurface.withValues(alpha: 0.55),
+                color: cs.onSurfaceVariant,
               ),
             ),
           ],
@@ -954,10 +963,7 @@ class BowlingFiguresPanel extends StatelessWidget {
               width: 96,
               child: Text(
                 label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: cs.onSurface.withValues(alpha: 0.65),
-                ),
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
               ),
             ),
             Text(
@@ -985,7 +991,7 @@ class BowlingFiguresPanel extends StatelessWidget {
         cell(
           'Wickets',
           '${c.wickets}',
-          color: c.wickets > 0 ? const Color(0xFF22C55E) : null,
+          color: c.wickets > 0 ? context.tokens.statGoodInk : null,
         ),
         cell('Maidens', '${c.maidens}'),
         cell('Average', fmt2(c.average)),
@@ -998,10 +1004,7 @@ class BowlingFiguresPanel extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               'Runs given already includes ${extras.join(' and ')}',
-              style: TextStyle(
-                fontSize: 11,
-                color: cs.onSurface.withValues(alpha: 0.6),
-              ),
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
             ),
           ),
       ],
@@ -1038,63 +1041,64 @@ class TeamPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = context.tokens;
     final team = Color(colorValue);
-    final on = selected ? Colors.white : cs.onSurface;
-    return Opacity(
-      opacity: enabled ? 1 : 0.45,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 54),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? team : Colors.transparent,
-            border: Border.all(
-              color: selected ? team : cs.onSurface.withValues(alpha: 0.35),
-              width: 1.5,
+    // Locked is a solid fill, not an opacity: a 45%-alpha pill is a smudge in
+    // daylight, and the figure inside it still has to be readable.
+    final locked = !enabled;
+    final on = selected ? Colors.white : (locked ? t.lockedInk : cs.onSurface);
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 54),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? team : (locked ? t.lockedFill : Colors.transparent),
+          border: Border.all(
+            color: selected ? team : t.surfaceOutline,
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            TeamDot(selected ? 0xFFFFFFFF : colorValue, size: 10),
+            const SizedBox(width: 8),
+            // The name gives way first, the score never gets cut: a pill
+            // that says "302-9 (5…" is worse than one that says "EAG…".
+            Expanded(
+              flex: 2,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                  color: on,
+                ),
+              ),
             ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              TeamDot(selected ? 0xFFFFFFFF : colorValue, size: 10),
-              const SizedBox(width: 8),
-              // The name gives way first, the score never gets cut: a pill
-              // that says "302-9 (5…" is worse than one that says "EAG…".
-              Expanded(
-                flex: 2,
+            const SizedBox(width: 6),
+            Expanded(
+              flex: 3,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
                 child: Text(
-                  label,
+                  figure,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
                     color: on,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                flex: 3,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    figure,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      color: selected ? Colors.white : cs.onSurface,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1185,7 +1189,7 @@ class UnderlineTabs extends StatelessWidget {
                         letterSpacing: 1,
                         color: i == selected
                             ? cs.onSurface
-                            : cs.onSurface.withValues(alpha: 0.5),
+                            : cs.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 6),

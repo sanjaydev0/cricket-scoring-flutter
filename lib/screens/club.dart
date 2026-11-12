@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/players.dart';
 import '../store.dart';
+import '../theme.dart';
 import 'widgets.dart';
 
 /// CLUB: profiles (local PIN unlock), the club, and its roster.
@@ -161,8 +162,8 @@ class _ClubScreenState extends State<ClubScreen> {
                           : Icons.radio_button_unchecked,
                       size: 18,
                       color: store.activeClubId == c.id
-                          ? const Color(0xFF22C55E)
-                          : const Color(0xFF94A3B8),
+                          ? context.tokens.statGoodInk
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -432,8 +433,7 @@ class _ClubScreenState extends State<ClubScreen> {
                 trailing: Icon(
                   Icons.chevron_right,
                   size: 20,
-                  color: Theme.of(context).colorScheme.onSurface
-                      .withValues(alpha: 0.45),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 onTap: () => _playerSheet(context, store, p),
               ),

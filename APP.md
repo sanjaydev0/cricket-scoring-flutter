@@ -74,7 +74,11 @@ account, no server, and no network permission.
   re-add network code without a new design review.
 - **Archives keep sheets.** A tracked match must archive with its sheets.
   Deleting one archive must never strip another's cards.
-- **Design rules live in `DESIGN.md`.** Read it before any UI change.
+- **Design rules live in `DESIGN.md`.** Read it before any UI change. It is
+  written in theme roles (`context.tokens.*`), not hex; the component ID index is
+  `docs/ui-inventory.html`. `bash tool/check-master.sh` enforces the daylight
+  rules (no ink dimming by alpha, no bare bright green/amber, no
+  `design-system/` tree).
 
 ## Commands
 

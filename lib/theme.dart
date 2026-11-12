@@ -249,7 +249,7 @@ class UmpireTheme {
         );
     return ThemeData(
       useMaterial3: true,
-      extensions: const [AppSpacing()],
+      extensions: const [AppSpacing(), DesignTokens.light],
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: _NoTransition(),
@@ -298,7 +298,7 @@ class UmpireTheme {
         );
     return ThemeData(
       useMaterial3: true,
-      extensions: const [AppSpacing()],
+      extensions: const [AppSpacing(), DesignTokens.dark],
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: _NoTransition(),

@@ -63,21 +63,120 @@ class AppSpacing extends ThemeExtension<AppSpacing> {
   }
 }
 
-/// Softer-rule aliases: saturated glare-proof fills stay the source of truth
-/// in `StylePreset`; widgets read them via `context.tokens` instead of
-/// hardcoding a new hex value per screen.
+/// Semantic colour roles for the rules in `DESIGN.md`. A widget asks for a
+/// role ("the fill behind a locked row") and never for a hex value, so the same
+/// widget is legible on the paper theme and on the night theme.
+///
+/// This is a [ThemeExtension] on purpose: the old `const DesignTokens()` was
+/// theme-blind, which is how a light-mode `#E2E8F0` slab ends up on near-black.
 @immutable
-class DesignTokens {
+class DesignTokens extends ThemeExtension<DesignTokens> {
   /// Primary CTA fill (scoreboard-style near-black in both themes).
   final Color primaryFill;
   final Color onPrimaryFill;
+
+  /// Structural border: 1.5px around a card, sheet section or tile. Strong
+  /// enough to read in direct sun, where a 1px 50%-alpha hairline vanishes.
   final Color surfaceOutline;
 
+  /// Inner divider between rows of the same table/list. Solid, 1px, never
+  /// alpha-blended — the row rule is a rule, not a suggestion.
+  final Color borderRow;
+
+  /// Solid fill behind a locked or disabled row. A fill, not an opacity, so
+  /// the name stays readable at 10,000 lux.
+  final Color lockedFill;
+
+  /// Ink on [lockedFill]. Full contrast against its own fill.
+  final Color lockedInk;
+
+  /// Positive derived figure (wickets taken, a completed XI slot) as text.
+  final Color statGoodInk;
+
+  /// Pill fill when a positive figure needs to sit on a surface.
+  final Color statGoodFill;
+
+  /// Economy / strike-rate style advisory figure as text. Never bare amber.
+  final Color statWarnInk;
+
   const DesignTokens({
-    this.primaryFill = const Color(0xFF131316),
-    this.onPrimaryFill = Colors.white,
-    this.surfaceOutline = const Color(0xFFE2E2E2),
+    required this.primaryFill,
+    required this.onPrimaryFill,
+    required this.surfaceOutline,
+    required this.borderRow,
+    required this.lockedFill,
+    required this.lockedInk,
+    required this.statGoodInk,
+    required this.statGoodFill,
+    required this.statWarnInk,
   });
+
+  /// Paper theme: near-black structure, slate-filled locked rows, deep inks.
+  static const DesignTokens light = DesignTokens(
+    primaryFill: Color(0xFF131316),
+    onPrimaryFill: Colors.white,
+    surfaceOutline: Color(0xFF0F172A),
+    borderRow: Color(0xFFCBD5E1),
+    lockedFill: Color(0xFFE2E8F0),
+    lockedInk: Color(0xFF0F172A),
+    statGoodInk: Color(0xFF14532D),
+    statGoodFill: Color(0xFFDCFCE7),
+    statWarnInk: Color(0xFF92400E),
+  );
+
+  /// Night theme: the same roles, flipped so nothing turns into a light slab.
+  static const DesignTokens dark = DesignTokens(
+    primaryFill: Color(0xFFF2F2F2),
+    onPrimaryFill: Color(0xFF0A0A0A),
+    surfaceOutline: Color(0xFFE2E8F0),
+    borderRow: Color(0xFF3F3F46),
+    lockedFill: Color(0xFF24242A),
+    lockedInk: Color(0xFFE8E8EC),
+    statGoodInk: Color(0xFF6EE7A0),
+    statGoodFill: Color(0xFF0B2A18),
+    statWarnInk: Color(0xFFFCD34D),
+  );
+
+  @override
+  DesignTokens copyWith({
+    Color? primaryFill,
+    Color? onPrimaryFill,
+    Color? surfaceOutline,
+    Color? borderRow,
+    Color? lockedFill,
+    Color? lockedInk,
+    Color? statGoodInk,
+    Color? statGoodFill,
+    Color? statWarnInk,
+  }) {
+    return DesignTokens(
+      primaryFill: primaryFill ?? this.primaryFill,
+      onPrimaryFill: onPrimaryFill ?? this.onPrimaryFill,
+      surfaceOutline: surfaceOutline ?? this.surfaceOutline,
+      borderRow: borderRow ?? this.borderRow,
+      lockedFill: lockedFill ?? this.lockedFill,
+      lockedInk: lockedInk ?? this.lockedInk,
+      statGoodInk: statGoodInk ?? this.statGoodInk,
+      statGoodFill: statGoodFill ?? this.statGoodFill,
+      statWarnInk: statWarnInk ?? this.statWarnInk,
+    );
+  }
+
+  @override
+  DesignTokens lerp(ThemeExtension<DesignTokens>? other, double t) {
+    if (other is! DesignTokens) return this;
+    return DesignTokens(
+      primaryFill: Color.lerp(primaryFill, other.primaryFill, t)!,
+      onPrimaryFill: Color.lerp(onPrimaryFill, other.onPrimaryFill, t)!,
+      surfaceOutline: Color.lerp(surfaceOutline, other.surfaceOutline, t)!,
+      borderRow: Color.lerp(borderRow, other.borderRow, t)!,
+      lockedFill: Color.lerp(lockedFill, other.lockedFill, t)!,
+      lockedInk: Color.lerp(lockedInk, other.lockedInk, t)!,
+      statGoodInk: Color.lerp(statGoodInk, other.statGoodInk, t)!,
+      statGoodFill: Color.lerp(statGoodFill, other.statGoodFill, t)!,
+      statWarnInk: Color.lerp(statWarnInk, other.statWarnInk, t)!,
+    );
+  }
 }
 
 extension ThemeContextExtension on BuildContext {
@@ -86,5 +185,6 @@ extension ThemeContextExtension on BuildContext {
   TextTheme get textStyles => Theme.of(this).textTheme;
   AppSpacing get spacing =>
       Theme.of(this).extension<AppSpacing>() ?? const AppSpacing();
-  DesignTokens get tokens => const DesignTokens();
+  DesignTokens get tokens =>
+      Theme.of(this).extension<DesignTokens>() ?? DesignTokens.light;
 }

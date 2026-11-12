@@ -841,10 +841,7 @@ Widget _bentoTile(
     padding: EdgeInsets.all(sp.sm + sp.xs),
     decoration: BoxDecoration(
       color: cs.surface,
-      border: Border.all(
-        color: cs.onSurface.withValues(alpha: 0.22),
-        width: 1.5,
-      ),
+      border: Border.all(color: context.tokens.surfaceOutline, width: 1.5),
       borderRadius: BorderRadius.circular(sp.radiusMd),
     ),
     child: Column(
@@ -937,7 +934,7 @@ class _RuleChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? cs.primary : cs.surface,
           border: Border.all(
-            color: active ? cs.primary : cs.onSurface.withValues(alpha: 0.28),
+            color: active ? cs.primary : context.tokens.surfaceOutline,
             width: 1.5,
           ),
           borderRadius: BorderRadius.circular(sp.radiusSm),
@@ -1094,7 +1091,10 @@ class _TeamColumn extends StatelessWidget {
     final color = Color(colorValue);
     return Container(
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
+        // No tint: the solid header band and the 1.5px team border already
+        // carry the side. A 5% wash is exactly the pastel the Sunlight Rule
+        // bans, and it muddies the rows inside.
+        color: cs.surface,
         border: Border.all(color: color, width: 1.5),
         borderRadius: BorderRadius.circular(sp.radiusMd),
       ),
@@ -1156,8 +1156,10 @@ class _TeamColumn extends StatelessWidget {
   }
 }
 
-/// One XI member: name left, bench/lock right. Played players keep full
-/// contrast and a lock — dimming the name is what made this list unreadable.
+/// One XI member: name left, bench/lock right. A played player is *locked*, not
+/// faded: solid [DesignTokens.lockedFill], full-contrast [DesignTokens.lockedInk],
+/// a lock glyph and the reason in words — dimming the name is what made this
+/// list unreadable in daylight.
 class _SquadMemberRow extends StatelessWidget {
   final MatchStore store;
   final StateSetter setSheet;
@@ -1178,7 +1180,11 @@ class _SquadMemberRow extends StatelessWidget {
     final played = _hasPlayed(store, id);
     return PlayerRow(
       name: store.playerName(id),
-      subtitle: common ? 'Both XIs' : null,
+      // A locked row always says why it will not respond.
+      subtitle: played
+          ? 'Already played — locked'
+          : (common ? 'Both XIs' : null),
+      enabled: !played,
       onTap: null,
       trailing: SizedBox(
         width: 44,
@@ -1189,7 +1195,7 @@ class _SquadMemberRow extends StatelessWidget {
           tooltip: played ? 'Already played — locked' : 'Bench from $team',
           icon: Icon(
             played ? Icons.lock_outline : Icons.close,
-            color: played ? cs.onSurfaceVariant : cs.onSurface,
+            color: played ? context.tokens.lockedInk : cs.onSurface,
           ),
           onPressed: played
               ? null
@@ -1253,10 +1259,7 @@ class _BenchPool extends StatelessWidget {
       padding: EdgeInsets.all(sp.sm),
       decoration: BoxDecoration(
         color: cs.surface,
-        border: Border.all(
-          color: cs.onSurface.withValues(alpha: 0.22),
-          width: 1.5,
-        ),
+        border: Border.all(color: context.tokens.surfaceOutline, width: 1.5),
         borderRadius: BorderRadius.circular(sp.radiusMd),
       ),
       child: Column(
@@ -1290,7 +1293,8 @@ class _BenchPool extends StatelessWidget {
             Container(
               padding: EdgeInsets.only(left: sp.sm),
               decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.10),
+                color: cs.surfaceContainerHighest,
+                border: Border.all(color: context.tokens.borderRow),
                 borderRadius: BorderRadius.circular(sp.radiusSm),
               ),
               child: Row(
@@ -1476,7 +1480,6 @@ class _AssignBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = context.colors;
     return SizedBox(
       height: 40,
       child: TextButton(
@@ -1484,10 +1487,8 @@ class _AssignBtn extends StatelessWidget {
         style: TextButton.styleFrom(
           minimumSize: const Size(44, 40),
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          backgroundColor: enabled
-              ? color
-              : cs.onSurface.withValues(alpha: 0.10),
-          foregroundColor: enabled ? Colors.white : cs.onSurfaceVariant,
+          backgroundColor: enabled ? color : context.tokens.lockedFill,
+          foregroundColor: enabled ? Colors.white : context.tokens.lockedInk,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(context.spacing.radiusSm),
           ),

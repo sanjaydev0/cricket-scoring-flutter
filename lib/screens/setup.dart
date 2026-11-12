@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../store.dart';
 import '../domain/players.dart';
 import '../models.dart';
+import '../theme.dart';
 import 'club.dart';
 import 'widgets.dart';
 
@@ -400,15 +401,15 @@ class _SetupScreenState extends State<SetupScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: open
-                  ? Color(color).withValues(alpha: 0.10)
-                  : Colors.transparent,
+              // Open = a solid team slab with white ink, not a 10% wash: a
+              // low-alpha tint is unreadable outdoors and is not a state.
+              color: open ? Color(color) : Colors.transparent,
               border: Border.all(color: Color(color), width: 1.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                TeamDot(color),
+                TeamDot(open ? 0xFFFFFFFF : color),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -418,16 +419,18 @@ class _SetupScreenState extends State<SetupScreen> {
                         team.trim().isEmpty ? side : team.trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 15,
+                          color: open ? Colors.white : null,
                         ),
                       ),
                       Text(
                         '${sel.length} of $cap picked',
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: cs.onSurface.withValues(alpha: 0.65),
+                          fontWeight: FontWeight.w600,
+                          color: open ? Colors.white : cs.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -443,15 +446,16 @@ class _SetupScreenState extends State<SetupScreen> {
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.8,
-                        color: cs.onSurface.withValues(alpha: 0.6),
+                        color: open ? Colors.white : cs.onSurfaceVariant,
                       ),
                     ),
                     Text(
                       '${sel.length}/$cap',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 15,
-                        fontFeatures: [FontFeature.tabularFigures()],
+                        color: open ? Colors.white : null,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -460,7 +464,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 Icon(
                   open ? Icons.expand_less : Icons.expand_more,
                   size: 22,
-                  color: cs.onSurface,
+                  color: open ? Colors.white : cs.onSurface,
                 ),
               ],
             ),
@@ -664,9 +668,8 @@ class _SetupScreenState extends State<SetupScreen> {
                       : Icons.radio_button_unchecked,
                   size: 20,
                   color: sel.contains(p.id)
-                      ? const Color(0xFF16A34A)
-                      : Theme.of(context).colorScheme.onSurface
-                            .withValues(alpha: 0.4),
+                      ? context.tokens.statGoodInk
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 onTap: () => setState(() {
                   if (sel.contains(p.id)) {

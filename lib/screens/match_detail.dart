@@ -4,6 +4,7 @@ import '../domain/players.dart';
 import '../math.dart';
 import '../models.dart';
 import '../store.dart';
+import '../theme.dart';
 import 'summary.dart';
 import 'widgets.dart';
 
@@ -109,9 +110,15 @@ class _MatchDetailState extends State<MatchDetail> {
                 alignEnd: false,
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6),
-              child: Icon(Icons.bolt, size: 20, color: Color(0xFFF59E0B)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              // A versus separator, not an event: amber is reserved for a
+              // cricket ball event, so this is structural ink.
+              child: Icon(
+                Icons.bolt,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             Expanded(
               child: second == null
@@ -134,11 +141,9 @@ class _MatchDetailState extends State<MatchDetail> {
             style: TextStyle(
               fontWeight: FontWeight.w900,
               fontSize: 13,
-              // Amber on dark, deep amber on light: the result line has to
-              // read in sunlight AND at night.
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFFF59E0B)
-                  : const Color(0xFFB45309),
+              // Deep amber on paper, light amber at night: one role, two
+              // values, and never bare #F59E0B on white.
+              color: context.tokens.statWarnInk,
             ),
           ),
         ),
@@ -191,10 +196,7 @@ class _MatchDetailState extends State<MatchDetail> {
             if (alignEnd && overs != null) ...[
               Text(
                 overs,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: cs.onSurface.withValues(alpha: 0.6),
-                ),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
               const SizedBox(width: 6),
             ],
@@ -211,10 +213,7 @@ class _MatchDetailState extends State<MatchDetail> {
               const SizedBox(width: 6),
               Text(
                 overs,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: cs.onSurface.withValues(alpha: 0.6),
-                ),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
             ],
           ],
@@ -484,7 +483,7 @@ class _MatchDetailState extends State<MatchDetail> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            color: cs.onSurface.withValues(alpha: 0.65),
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -544,7 +543,7 @@ class _MatchDetailState extends State<MatchDetail> {
             style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 13,
-              color: cs.onSurface.withValues(alpha: 0.8),
+              color: cs.onSurfaceVariant,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -611,7 +610,7 @@ class _MatchDetailState extends State<MatchDetail> {
                             'incl ${c.penaltyRuns} penalty',
                             style: TextStyle(
                               fontSize: 11,
-                              color: cs.onSurface.withValues(alpha: 0.65),
+                              color: cs.onSurfaceVariant,
                             ),
                           ),
                         if (c.balls == 0 && c.wickets == 0)
@@ -619,7 +618,7 @@ class _MatchDetailState extends State<MatchDetail> {
                             'did not bowl',
                             style: TextStyle(
                               fontSize: 11,
-                              color: cs.onSurface.withValues(alpha: 0.65),
+                              color: cs.onSurfaceVariant,
                             ),
                           ),
                       ],

@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
-# CricScore anchor check: APP.md stays short and in sync with pubspec.yaml.
-# Fails release if the anchor drifts or swells past its budget.
+# CricScore anchor + design gate. Runs inside tool/release.sh.
+#
+# Two jobs:
+#   1. APP.md stays short and in sync with pubspec.yaml.
+#   2. The daylight rules in DESIGN.md stay true of the code, so the doc cannot
+#      drift back into advice the app does not follow.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+# ---- 1. Anchor ------------------------------------------------------------
 [ -f APP.md ] || { echo "FAIL: APP.md missing" >&2; exit 1; }
 WORDS="$(wc -w < APP.md | tr -d ' ')"
 if [ "$WORDS" -ge 1000 ]; then
@@ -22,6 +28,25 @@ if [ "$PUBSPEC_BASE" != "$APP_BASE" ]; then
   echo "FAIL: APP.md version $APP_BASE != pubspec $PUBSPEC_BASE" >&2
   exit 1
 fi
+
+# ---- 2. Design system -----------------------------------------------------
+# One normative doc. The old design-system/ tree shipped a generated web
+# template whose rules overrode DESIGN.md, which is how agents ended up writing
+# Google Fonts CDN imports and backdrop blurs into an offline Flutter app.
+[ -f DESIGN.md ] || { echo "FAIL: DESIGN.md missing" >&2; exit 1; }
+if [ -d design-system ]; then
+  echo "FAIL: design-system/ is back — DESIGN.md is the only design doc" >&2
+  exit 1
+fi
+# The roles named in DESIGN.md must exist in the token layer.
+for ROLE in primaryFill onPrimaryFill surfaceOutline borderRow lockedFill \
+            lockedInk statGoodInk statGoodFill statWarnInk; do
+  grep -q "$ROLE" lib/core/theme/app_tokens.dart || {
+    echo "FAIL: DESIGN.md names '$ROLE' but app_tokens.dart has no such role" >&2
+    exit 1
+  }
+done
+
 # Softer-rule token gate: Home + Result must stay free of raw hex colors;
 # the whole screens tree must not grow raw-color debt past baseline.
 HOME_RAW="$( { grep -c 'Color(0x' lib/screens/home.dart lib/screens/break_result.dart 2>/dev/null || true; } | awk -F: '{s+=$NF} END {print s+0}')"
@@ -34,4 +59,25 @@ if [ "$TOTAL_RAW" -gt 64 ]; then
   echo "FAIL: screens raw Color(0x count $TOTAL_RAW exceeds baseline 64 — tokens, not hex" >&2
   exit 1
 fi
-echo "APP.md ok ($WORDS words, v$APP_BASE) + token gate ok (raw colors: $TOTAL_RAW/64)"
+
+# The Locked-Not-Faded Rule: no text is dimmed by multiplying its ink alpha.
+# A 45%-alpha name is a smudge at 10,000 lux; locked rows get lockedFill +
+# lockedInk. (Opacity on white ink over a saturated fill is allowed and is not
+# matched here.)
+DIM="$(grep -rn 'onSurface\.withValues(alpha:' lib/screens --include='*.dart' 2>/dev/null || true)"
+if [ -n "$DIM" ]; then
+  echo "FAIL: text dimmed by ink alpha — use onSurfaceVariant or lockedInk/lockedFill:" >&2
+  echo "$DIM" | head -n 10 >&2
+  exit 1
+fi
+
+# Bright green/amber as bare text on a surface is 2.1–2.2:1 in daylight. Use
+# statGoodInk / statGoodFill / statWarnInk.
+BRIGHT="$(grep -rn '0xFF22C55E\|0xFFF59E0B\|0xFF16A34A' lib/screens --include='*.dart' 2>/dev/null || true)"
+if [ -n "$BRIGHT" ]; then
+  echo "FAIL: bare bright green/amber in screens — use statGoodInk/statWarnInk:" >&2
+  echo "$BRIGHT" | head -n 10 >&2
+  exit 1
+fi
+
+echo "APP.md ok ($WORDS words, v$APP_BASE) + token gate ok (raw colors: $TOTAL_RAW/64) + design gate ok"
