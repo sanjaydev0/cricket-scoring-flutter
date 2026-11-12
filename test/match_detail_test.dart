@@ -173,10 +173,14 @@ void main() {
     testWidgets('offers the batter picker by itself', (tester) async {
       final s = fixture();
       await phone(tester, ScoringScreen(s));
-      // No tap: the picker is already there.
-      expect(find.textContaining('START INNINGS'), findsOneWidget);
-      expect(find.text('STRIKER — FACING'), findsOneWidget);
-      expect(find.text('OPENING BOWLER'), findsOneWidget);
+      // No tap: the picker is already there. Nothing is picked yet, so the
+      // primary key names the missing work instead of pretending to start.
+      expect(find.text('OPENERS + BOWLER'), findsOneWidget);
+      expect(find.text('STRIKER'), findsOneWidget);
+      expect(find.text('NON-STRIKER'), findsOneWidget);
+      expect(find.text('BOWLER'), findsOneWidget);
+      expect(find.text('PICK ALL THREE'), findsOneWidget);
+      expect(find.text('START INNINGS'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -186,7 +190,7 @@ void main() {
       s.setOpeners(blue[0].id, blue[1].id);
       s.setBowler(s.squadForTeam('RED')[0].id);
       await phone(tester, ScoringScreen(s));
-      expect(find.textContaining('START INNINGS'), findsNothing);
+      expect(find.text('OPENERS + BOWLER'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

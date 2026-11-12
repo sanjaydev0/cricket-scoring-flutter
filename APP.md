@@ -1,6 +1,6 @@
 # CricScore — App Anchor
 
-Version: 2.27.0
+Version: 2.28.0
 
 > **How to read this:** this file is the memory of what CricScore *is*.
 > Read it before touching scoring, persistence, sound, or screens.
@@ -29,6 +29,12 @@ account, no server, and no network permission.
 - Free hit protects all dismissals except run-out; consumed on the next
   legal delivery. Bowler changes go through `MatchStore.setBowler`
   (no consecutive overs).
+- Innings start is three answers committed together: `MatchStore.startInnings`
+  seats the pair and the bowler in ONE undo snapshot, so a mistap costs one
+  UNDO. A picked name leaves the pool — never listed twice, never listed
+  locked. Re-picking before ball one is a correction (the replaced cards are
+  un-seated); after a ball it is refused, and mid-innings changes stay in
+  PLAYERS.
 - UI never mutates state — screens call `MatchStore` only. The store never
   imports widgets (except `services.dart` for haptics).
 

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cricket_scoring/domain/players.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/screens/player_sheets.dart';
+import 'package:cricket_scoring/screens/widgets.dart';
 import 'package:cricket_scoring/store.dart';
 
 /// Mid-over batter changes, and the setup defaults that came with them.
@@ -14,7 +15,7 @@ import 'package:cricket_scoring/store.dart';
 /// WRONG end (the striker's end swallowed the non-striker's replacement), and
 /// a change that could not be undone in one tap.
 
-MatchStore _fixture({int players = 5}) {
+MatchStore _fixture({int players = 5, bool openers = true}) {
   final s = MatchStore();
   s.hapticsOn = false;
   s.createClub(name: 'Gully Kings');
@@ -30,8 +31,10 @@ MatchStore _fixture({int players = 5}) {
     squadB: b,
   );
   s.startMatch(s.draft);
-  s.setOpeners(a[0], a[1]);
-  s.setBowler(b[0]);
+  if (openers) {
+    s.setOpeners(a[0], a[1]);
+    s.setBowler(b[0]);
+  }
   return s;
 }
 
@@ -203,10 +206,7 @@ void main() {
   });
 
   group('innings-start selection', () {
-    testWidgets('a pick can be taken back and changed without leaving', (
-      tester,
-    ) async {
-      final s = _fixture();
+    Future<void> openSheet(WidgetTester tester, MatchStore s) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
@@ -222,50 +222,169 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
+    }
 
-      // Pick the striker.
-      await tester.tap(find.text('A1').first);
+    testWidgets('a picked name leaves the pool instead of being locked', (
+      tester,
+    ) async {
+      final s = _fixture(openers: false);
+      await openSheet(tester, s);
+      expect(find.byType(PlayerRow), findsNWidgets(5));
+
+      await tester.tap(find.text('A1'));
       await tester.pumpAndSettle();
-      // A5 is listed by the striker group AND by the still-open non-striker
-      // group; once the striker group collapses to its pick, only the
-      // non-striker group lists him.
+
+      // A1 is in the striker slot and nowhere else: not in the list, not as a
+      // greyed-out "already the striker" row, not in the non-striker pool.
+      expect(find.text('A1'), findsOneWidget);
+      expect(find.byType(PlayerRow), findsNWidgets(4));
+      expect(find.text('1/3'), findsOneWidget);
+    });
+
+    testWidgets('a pick advances to the next empty answer', (tester) async {
+      final s = _fixture(openers: false);
+      await openSheet(tester, s);
+
+      await tester.tap(find.text('A1'));
+      await tester.pumpAndSettle();
+      // The pool is now the non-striker pool: A2 fills that slot.
+      await tester.tap(find.text('A2'));
+      await tester.pumpAndSettle();
+      expect(find.text('2/3'), findsOneWidget);
+      // The pair is in, so the pool has already switched to the bowling XI:
+      // no Lion is listed any more, not even as a locked row.
+      expect(find.byType(PlayerRow), findsNWidgets(5));
+      expect(find.text('A3'), findsNothing);
+
+      // Third pick fills the bowler slot; the pool keeps the bowling XI and
+      // drops the man now in it.
+      expect(find.text('B1'), findsOneWidget);
+      await tester.tap(find.text('B1'));
+      await tester.pumpAndSettle();
+      expect(find.text('3/3'), findsOneWidget);
+      expect(find.byType(PlayerRow), findsNWidgets(4));
+      expect(find.text('B1'), findsOneWidget, reason: 'in the bowler slot');
+      expect(find.text('START INNINGS'), findsOneWidget);
+      expect(find.text('PICK ALL THREE'), findsNothing);
+    });
+
+    testWidgets('tapping a filled slot takes the answer back', (tester) async {
+      final s = _fixture(openers: false);
+      await openSheet(tester, s);
+      await tester.tap(find.text('A1'));
+      await tester.pumpAndSettle();
+      expect(find.text('1/3'), findsOneWidget);
+
+      await tester.tap(find.text('STRIKER'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('0/3'), findsOneWidget);
+      expect(find.text('A1'), findsOneWidget, reason: 'back in the pool');
+      expect(find.byType(PlayerRow), findsNWidgets(5));
+    });
+
+    testWidgets('CLEAR ALL empties all three answers', (tester) async {
+      final s = _fixture();
+      await openSheet(tester, s);
+      expect(find.text('3/3'), findsOneWidget);
+
+      await tester.tap(find.text('CLEAR ALL'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('0/3'), findsOneWidget);
+      expect(find.text('PICK ALL THREE'), findsOneWidget);
+      expect(find.byType(PlayerRow), findsNWidgets(5));
+    });
+
+    testWidgets('START commits all three in one store call', (tester) async {
+      final s = _fixture(openers: false);
+      await openSheet(tester, s);
+      await tester.tap(find.text('A1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('A2'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('B1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('START INNINGS'));
+      await tester.pumpAndSettle();
+
+      final sheet = s.currentSheet!;
+      expect(sheet.strikerId, s.squadForTeam('Lions')[0].id);
+      expect(sheet.nonStrikerId, s.squadForTeam('Lions')[1].id);
+      expect(sheet.bowlerId, s.squadForTeam('Tigers')[0].id);
+      expect(find.text('START INNINGS'), findsNothing, reason: 'sheet closed');
+    });
+  });
+
+  group('innings-start commit', () {
+    test('one snapshot covers the pair and the bowler', () {
+      final s = _fixture(openers: false);
+      final a = s.squadForTeam('Lions');
+      final b = s.squadForTeam('Tigers');
       expect(
-        find.text('A5'),
-        findsNWidgets(1),
-        reason: 'the striker group collapses to the pick',
+        s.startInnings(striker: a[0].id, nonStriker: a[1].id, bowler: b[0].id),
+        isNull,
       );
+      expect(s.currentSheet!.bowlerId, b[0].id);
+
+      s.undo();
+
+      expect(s.currentSheet!.strikerId, isNull);
+      expect(s.currentSheet!.nonStrikerId, isNull);
       expect(
-        find.text('A1'),
-        findsNWidgets(2),
-        reason: 'the pick is shown, and still listed by the other group',
+        s.currentSheet!.bowlerId,
+        isNull,
+        reason: 'one undo puts all three back, not just the bowler',
+      );
+    });
+
+    test('the same man cannot hold both ends', () {
+      final s = _fixture(openers: false);
+      final a = s.squadForTeam('Lions');
+      final b = s.squadForTeam('Tigers');
+      expect(
+        s.startInnings(striker: a[0].id, nonStriker: a[0].id, bowler: b[0].id),
+        isNotNull,
+      );
+    });
+
+    test('the pair is refused once a ball has been bowled', () {
+      final s = _fixture();
+      final a = s.squadForTeam('Lions');
+      s.score(action: 'DOT');
+      expect(
+        s.startInnings(
+          striker: a[2].id,
+          nonStriker: a[3].id,
+          bowler: s.squadForTeam('Tigers')[0].id,
+        ),
+        isNotNull,
+      );
+    });
+
+    test('re-picking an opener before ball one leaves no ghost card', () {
+      final s = _fixture();
+      final a = s.squadForTeam('Lions');
+      final b = s.squadForTeam('Tigers');
+      expect(s.currentSheet!.strikerId, a[0].id);
+
+      expect(
+        s.startInnings(striker: a[2].id, nonStriker: a[3].id, bowler: b[0].id),
+        isNull,
       );
 
-      // Tap the chosen row: the list must come BACK. It used to promise
-      // "Tap to change" and nothing reopened it.
-      await tester.tap(find.text('A1').first);
-      await tester.pumpAndSettle();
-      expect(
-        find.text('A5'),
-        findsNWidgets(2),
-        reason: 'the list reopens so another name can be chosen',
-      );
-
-      // Tap the selected name again: it is un-picked.
-      await tester.tap(find.text('A1').first);
-      await tester.pumpAndSettle();
-      expect(
-        find.text('A5'),
-        findsNWidgets(2),
-        reason: 'the list stays open after an un-pick',
-      );
-      expect(
-        find.text('PICK ALL THREE'),
-        findsOneWidget,
-        reason: 'START is locked until all three are chosen',
-      );
+      final sheet = s.currentSheet!;
+      expect(sheet.strikerId, a[2].id);
+      expect(sheet.nonStrikerId, a[3].id);
+      // The replaced pair never batted, so they must not appear as
+      // "not out 0 (0)" on the scorecard.
+      expect(sheet.battingCards.length, 2);
+      expect(sheet.batting[a[0].id]!.position, 0);
+      expect(sheet.batting[a[1].id]!.position, 0);
+      expect(sheet.batting[a[2].id]!.position, 1);
+      expect(sheet.batting[a[3].id]!.position, 2);
     });
   });
 }

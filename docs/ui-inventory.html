@@ -299,11 +299,17 @@
       <p>Just-bowled player is locked (consecutive overs illegal): solid locked fill, reason in the subtitle.</p>
       <button class="copybtn" data-id="sheet.bowler">COPY ID</button>
     </div>
-    <div class="card" data-tags="openers strikers innings start squad">
-      <h3>Innings-start picker</h3><div class="id">sheet.openers</div><div class="ref">lib/screens/player_sheets.dart · banner SET BATTERS + BOWLER</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">START INNINGS • EAGLES XI</b><div style="margin-top:6px"><div class="m-row sel">Rohit ★ <span>●</span></div><div class="m-row">Vikram <span>○</span></div><div class="m-row">Deepak <span>○</span></div></div></div></div>
-      <p>Striker + non-striker + opening bowler as name rows, START commits. Blue banner prompts until set.</p>
+    <div class="card" data-tags="openers strikers innings start squad search slots bowler auto advance">
+      <h3>Innings-start picker</h3><div class="id">sheet.openers</div><div class="ref">lib/screens/player_sheets.dart · three slots, one list</div>
+      <div class="mock"><div class="m-sheet"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12px">OPENERS + BOWLER · EAGLES XI</b><span style="font-size:10px;font-weight:900">2/3</span></div><div style="display:flex;gap:6px;margin-top:8px"><div style="flex:1;border:1.5px solid var(--carbon);background:var(--carbon);color:#fff;border-radius:8px;padding:6px"><div style="font-size:8px;font-weight:900;letter-spacing:1px">NON-STRIKER</div><div style="font-size:11px;font-weight:800">Vikram</div></div><div style="flex:1;border:1.5px solid #000;border-radius:8px;padding:6px"><div style="font-size:8px;font-weight:900;letter-spacing:1px;color:var(--muted)">BOWLER</div><div style="font-size:10px;font-weight:800;color:var(--muted)">TAP TO PICK</div></div></div><div style="height:8px"></div><div class="m-row sel">Deepak <span>○</span></div><div class="m-row">Ravi <span>○</span></div><div style="height:8px"></div><div style="display:flex;gap:6px"><div class="m-rectbtn sec" style="flex:1">CLEAR ALL</div><div class="m-rectbtn" style="flex:1">PICK ALL THREE</div></div></div></div>
+      <p>Striker + non-striker + bowler as three slots over one searchable name list. A picked name appears in its slot and leaves the pool — never twice, never locked. Tapping a filled slot takes the answer back; a pick auto-advances and clears the search. Names only, no role tags.</p>
       <button class="copybtn" data-id="sheet.openers">COPY ID</button>
+    </div>
+    <div class="card" data-tags="strip edit openers bowler before first ball over strip tail">
+      <h3>Strip EDIT key (before ball one)</h3><div class="id">scoring.strip.edit</div><div class="ref">lib/screens/scoring.dart · replaces the 0r • 0w › tail</div>
+      <div class="mock"><div class="m-strip"><span style="font-size:11px;font-weight:800">INN 1</span><span style="flex:1"></span><span style="border:1.5px solid #000;border-radius:8px;padding:5px 8px;font-size:9px;font-weight:900">✎ EDIT</span></div></div>
+      <p>Only while tracking is on, the innings has zero legal balls and all three innings-start answers are set; it reopens sheet.openers. After the first ball the tail is the overs tap-through again and changes live in PLAYERS.</p>
+      <button class="copybtn" data-id="scoring.strip.edit">COPY ID</button>
     </div>
     <div class="card" data-tags="player stats bottom sheet striker bowler partnership swap change bowler aligned columns">
       <h3>Player stats sheet</h3><div class="id">sheet.playerstats</div><div class="ref">lib/screens/player_sheets.dart · opened left of UNDO</div>

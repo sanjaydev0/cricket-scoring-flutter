@@ -301,6 +301,34 @@ identical so the *colour* carries the meaning. Ordered by impact: wicket crimson
    on every exit path — including the ✕, CANCEL and system back. Squad ticks
    commit immediately (each is its own undo snapshot).
 
+`sheet.openers` (innings start) — three answers, one list:
+
+1. Header band in the batting side's team colour: `OPENERS + BOWLER`, the team,
+   `n/3`, and the ✕.
+2. Three slots (`STRIKER`, `NON-STRIKER`, `BOWLER`) at 56dp, 8px corners, 6dp
+   gutter. The active slot is a `primaryFill` slab with `onPrimaryFill` ink; a
+   filled inactive slot is `surface` with a 1.5px `surfaceOutline` and a
+   `statGoodInk` check; an empty slot writes `TAP TO PICK` in
+   `onSurfaceVariant`, so no state is colour-only. No cricket-event colour
+   here — the bowler slot is structural, not a wicket.
+3. One search field, then one name list (`PlayerRow`, names only — no role or
+   style tags). The pool is the batting XI for the two batter slots and the
+   bowling XI for the bowler, minus every assigned name.
+4. Sticky footer: `CLEAR ALL` and the primary key, which reads `PICK ALL THREE`
+   on a `lockedFill` slab until all three are in, then `START INNINGS`.
+   Committing pushes ONE undo snapshot for the three, not three snapshots.
+
+Assigned names leave the pool entirely: a picked player appears in its slot and
+nowhere else — never twice, never as a locked row. The slots are the only
+picker: tapping a filled slot takes the answer back and makes that role active,
+and a pick auto-advances to the next empty slot and clears the search.
+
+The sheet is offered by itself before the first ball of each innings. Once all
+three are set and before ball one, the over strip's `0r • 0w ›` tail becomes an
+`EDIT` key (`scoring.strip.edit`) that reopens it; after the first ball the tail
+is the overs tap-through again and mid-innings changes stay in PLAYERS. The key
+never appears beside the blue `SET BATTERS + BOWLER TO START` card.
+
 `sheet.playerstats` (active matchup) — one aligned grid: batter rows with
 `R | B | 4s | 6s`, bowler rows with `O | M | R | W`, the striker marked with a
 filled badge, partnership strip below, then two equal-width actions

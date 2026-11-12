@@ -1088,9 +1088,7 @@ void _scoreRunOutNow(
     outAtStrikerEnd: c.outAtStrikerEnd,
   );
   if (err != null && context.mounted) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(err)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
   }
 }
 
@@ -1126,208 +1124,428 @@ List<String> _fieldingIds(MatchStore store, InningsSheet sheet) {
   ];
 }
 
-/// Openers + first bowler, picked once per innings when tracking is on.
+/// Overs bowled by [id], shown as `4.3` on the bowler picker.
 String _oversBowled(InningsSheet sheet, String id) {
   final c = sheet.bowling[id];
   if (c == null) return '0';
   return '${c.balls ~/ 6}.${c.balls % 6}';
 }
 
+/// Which of the three answers the next name tap fills.
+enum _StartRole { striker, nonStriker, bowler }
+
+/// Innings start: three answers, one list.
+///
+/// The old sheet was three independently collapsing groups, so a squad was
+/// repeated three times, the non-striker group listed the striker as a dead
+/// "already the striker" row, and the bowler group wore wicket crimson.
+///
+/// Now the slots ARE the state. A picked name appears once — in its slot —
+/// and leaves the pool entirely: it is never listed twice and never listed
+/// locked. Tapping a filled slot takes the answer back; picking a name while
+/// that slot is active replaces it. Both are one tap, with the whole tile as
+/// the target, so nothing here depends on hitting a small icon.
 void showInningsStartSheet(BuildContext context, MatchStore store) {
   final sheet = store.currentSheet;
   if (sheet == null) return;
-  final batting = [for (final p in store.squadForTeam(sheet.battingTeam)) p];
-  final bowling = [for (final p in store.squadForTeam(sheet.bowlingTeam)) p];
-  String? a;
-  String? b;
-  String? bowl;
-  // Which group shows its full list. A group collapses to its pick once one
-  // is made, and reopens when the umpire taps the chosen row.
-  var aExpanded = false;
-  var bExpanded = false;
-  var bowlExpanded = false;
-  // The first two who have not batted are the sensible defaults, but nothing
-  // is pre-committed: a wrong auto-picked striker silently corrupts figures,
-  // so START stays disabled until all three are chosen on purpose.
   showAppSheet(
     context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (sheetCtx) => StatefulBuilder(
-      builder: (ctx, setSheet) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.82,
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+    builder: (_) => _InningsStartSheet(store: store),
+  );
+}
+
+class _InningsStartSheet extends StatefulWidget {
+  final MatchStore store;
+  const _InningsStartSheet({required this.store});
+  @override
+  State<_InningsStartSheet> createState() => _InningsStartSheetState();
+}
+
+class _InningsStartSheetState extends State<_InningsStartSheet> {
+  final _search = TextEditingController();
+  String? _striker;
+  String? _nonStriker;
+  String? _bowler;
+  _StartRole _active = _StartRole.striker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Re-entered before the first ball: begin from what is already set, so
+    // the umpire changes one answer instead of re-answering all three.
+    final s = widget.store.currentSheet;
+    _striker = s?.strikerId;
+    _nonStriker = s?.nonStrikerId;
+    _bowler = s?.bowlerId;
+    _active = _firstEmpty() ?? _StartRole.striker;
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  _StartRole? _firstEmpty() {
+    if (_striker == null) return _StartRole.striker;
+    if (_nonStriker == null) return _StartRole.nonStriker;
+    if (_bowler == null) return _StartRole.bowler;
+    return null;
+  }
+
+  String? _idFor(_StartRole role) => switch (role) {
+    _StartRole.striker => _striker,
+    _StartRole.nonStriker => _nonStriker,
+    _StartRole.bowler => _bowler,
+  };
+
+  void _assign(_StartRole role, String? id) {
+    switch (role) {
+      case _StartRole.striker:
+        _striker = id;
+      case _StartRole.nonStriker:
+        _nonStriker = id;
+      case _StartRole.bowler:
+        _bowler = id;
+    }
+  }
+
+  Set<String> get _taken =>
+      {_striker, _nonStriker, _bowler}.whereType<String>().toSet();
+
+  void _pick(Player p) {
+    setState(() {
+      _assign(_active, p.id);
+      // The filter was typed to find THIS man; leaving it in place would hide
+      // the man being picked next.
+      _search.clear();
+      // Auto-advance: the next empty answer, or stay put when all three are in
+      // (then the next tap replaces that answer).
+      _active = _firstEmpty() ?? _active;
+    });
+  }
+
+  void _onSlot(_StartRole role) {
+    setState(() {
+      if (_idFor(role) != null) _assign(role, null);
+      _active = role;
+    });
+  }
+
+  void _clearAll() {
+    setState(() {
+      _striker = null;
+      _nonStriker = null;
+      _bowler = null;
+      _active = _StartRole.striker;
+      _search.clear();
+    });
+  }
+
+  void _start() {
+    final err = widget.store.startInnings(
+      striker: _striker!,
+      nonStriker: _nonStriker!,
+      bowler: _bowler!,
+    );
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = widget.store;
+    final sheet = store.currentSheet;
+    if (sheet == null) return const SizedBox.shrink();
+    final cs = context.colors;
+    final sp = context.spacing;
+    final m = store.match!;
+    final battingTeam = sheet.battingTeam;
+    final teamColor = Color(
+      battingTeam == m.config.teamA
+          ? MatchStore.teamAColor
+          : MatchStore.teamBColor,
+    );
+    // The pool follows the active answer: only the batting XI can bat, only
+    // the bowling XI can bowl. A double-side player may hold one slot, never
+    // two, because assigned names are excluded below.
+    final poolTeam = _active == _StartRole.bowler
+        ? sheet.bowlingTeam
+        : battingTeam;
+    final squad = store.squadForTeam(poolTeam);
+    final q = _search.text.trim().toLowerCase();
+    final taken = _taken;
+    final pool = [
+      for (final p in squad)
+        if (!taken.contains(p.id) &&
+            (q.isEmpty || p.name.toLowerCase().contains(q)))
+          p,
+    ];
+    final ready = _striker != null && _nonStriker != null && _bowler != null;
+
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.82,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _header(context, battingTeam, teamColor),
+            Padding(
+              padding: EdgeInsets.fromLTRB(sp.md, 10, sp.md, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      _slot(context, _StartRole.striker),
+                      const SizedBox(width: 6),
+                      _slot(context, _StartRole.nonStriker),
+                      const SizedBox(width: 6),
+                      _slot(context, _StartRole.bowler),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _search,
+                    // No autofocus: at innings start the umpire wants names,
+                    // not a keyboard covering them.
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      labelText: 'Search player',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              tooltip: 'Clear search',
+                              onPressed: () => setState(_search.clear),
+                            ),
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(sp.md, 4, sp.md, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (pool.isEmpty)
+                      _emptyPool(context, squad.isEmpty, q, poolTeam)
+                    else
+                      for (final p in pool)
+                        PlayerRow(name: p.name, onTap: () => _pick(p)),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: cs.surface,
+                border: Border(
+                  top: BorderSide(color: context.tokens.borderRow),
+                ),
+              ),
+              padding: EdgeInsets.fromLTRB(sp.md, 10, sp.md, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: RectBtn(
+                      primary: false,
+                      onTap: _clearAll,
+                      child: const Text('CLEAR ALL'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: RectBtn(
+                      onTap: ready ? _start : null,
+                      child: Text(ready ? 'START INNINGS' : 'PICK ALL THREE'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Team-colour band: who is batting, how many answers are in, and one exit.
+  Widget _header(BuildContext context, String team, Color teamColor) {
+    final picked = _taken.length;
+    return Container(
+      color: teamColor,
+      padding: const EdgeInsets.fromLTRB(16, 0, 6, 8),
+      child: Row(
+        children: [
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'OPENERS + BOWLER',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.6,
+                  ),
+                ),
+                Text(
+                  team,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '$picked/3',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            tooltip: 'Close',
+            color: Colors.white,
+            icon: const Icon(Icons.close, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// One answer. Active is the solid slab; filled-inactive is an outline with
+  /// a check; empty writes out "TAP TO PICK" so no state is colour-only.
+  Widget _slot(BuildContext context, _StartRole role) {
+    final cs = context.colors;
+    final t = context.tokens;
+    final id = _idFor(role);
+    final name = id == null
+        ? null
+        : (widget.store.currentSheet?.nameOf(id) ?? id);
+    final active = _active == role;
+    final ink = active
+        ? t.onPrimaryFill
+        : (id == null ? cs.onSurfaceVariant : cs.onSurface);
+    final caption = switch (role) {
+      _StartRole.striker => 'STRIKER',
+      _StartRole.nonStriker => 'NON-STRIKER',
+      _StartRole.bowler => 'BOWLER',
+    };
+    return Expanded(
+      child: Semantics(
+        button: true,
+        label: name == null
+            ? '$caption: not picked. Tap to select.'
+            : '$caption: $name. Tap to change.',
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: () => _onSlot(role),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            decoration: BoxDecoration(
+              color: active ? t.primaryFill : cs.surface,
+              border: Border.all(
+                color: active ? t.primaryFill : t.surfaceOutline,
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'START INNINGS • ${sheet.battingTeam}',
-                  style: const TextStyle(
+                  caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    fontSize: 16,
+                    letterSpacing: 1,
+                    color: active ? t.onPrimaryFill : cs.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Pick the two batters and the opening bowler.',
-                  style: TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 6),
-                _pickGroup(
-                  label: 'STRIKER — FACING',
-                  accent: const Color(0xFF1D4ED8),
-                  people: batting,
-                  selected: a,
-                  expanded: aExpanded,
-                  enabledFor: (p) => true,
-                  emptyNote:
-                      'No squad for ${sheet.battingTeam} — add players mid-match.',
-                  onExpand: () => setSheet(() => aExpanded = true),
-                  onClear: () => setSheet(() {
-                    a = null;
-                    aExpanded = true;
-                  }),
-                  onPick: (p) => setSheet(() {
-                    a = p.id;
-                    aExpanded = false;
-                    if (b == p.id) b = null; // never both ends the same batter
-                  }),
-                ),
-                _pickGroup(
-                  label: 'NON-STRIKER',
-                  accent: const Color(0xFF0F766E),
-                  people: batting,
-                  selected: b,
-                  expanded: bExpanded,
-                  enabledFor: (p) => p.id != a,
-                  emptyNote: null,
-                  onExpand: () => setSheet(() => bExpanded = true),
-                  onClear: () => setSheet(() {
-                    b = null;
-                    bExpanded = true;
-                  }),
-                  onPick: (p) => setSheet(() {
-                    b = p.id;
-                    bExpanded = false;
-                  }),
-                ),
-                _pickGroup(
-                  label: 'OPENING BOWLER',
-                  accent: const Color(0xFFDC143C),
-                  people: bowling,
-                  selected: bowl,
-                  expanded: bowlExpanded,
-                  enabledFor: (p) => true,
-                  emptyNote:
-                      'No squad for ${sheet.bowlingTeam} — add players mid-match.',
-                  onExpand: () => setSheet(() => bowlExpanded = true),
-                  onClear: () => setSheet(() {
-                    bowl = null;
-                    bowlExpanded = true;
-                  }),
-                  onPick: (p) => setSheet(() {
-                    bowl = p.id;
-                    bowlExpanded = false;
-                  }),
-                ),
-                const SizedBox(height: 14),
-                RectBtn(
-                  onTap: (a != null && b != null && bowl != null)
-                      ? () {
-                          store.setOpeners(a!, b!);
-                          store.setBowler(bowl!);
-                          Navigator.pop(sheetCtx);
-                        }
-                      : null,
-                  child: Text(
-                    a == null || b == null || bowl == null
-                        ? 'PICK ALL THREE'
-                        : 'START INNINGS',
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name ?? 'TAP TO PICK',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: name == null ? 10 : 13,
+                          fontWeight: FontWeight.w800,
+                          color: ink,
+                        ),
+                      ),
+                    ),
+                    if (id != null && !active)
+                      Icon(Icons.check, size: 14, color: t.statGoodInk),
+                  ],
                 ),
               ],
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-/// One labelled group of name rows. Names are rows, never pills — a wrapped
-/// row of chips on a phone hides whole squads behind a scroll.
-/// One labelled group of name rows. Names are rows, never pills — a wrapped
-/// row of chips on a phone hides whole squads behind a scroll.
-///
-/// The group collapses to the chosen pick once one is made (this sheet is
-/// three choices, so a full roster of names is noise). Tapping the chosen row
-/// reopens the list — the old code promised "Tap to change" but nothing ever
-/// reopened it, so a mis-pick could only be fixed by backing out of the sheet
-/// — and tapping the highlighted name again UNPICKS it.
-Widget _pickGroup({
-  required String label,
-  required Color accent,
-  required List<Player> people,
-  required String? selected,
-  required bool expanded,
-  required bool Function(Player) enabledFor,
-  required void Function(Player) onPick,
-  required void Function() onClear,
-  required void Function() onExpand,
-  String? emptyNote,
-}) {
-  final chosen = selected == null
-      ? null
-      : [
-          for (final p in people)
-            if (p.id == selected) p,
-        ];
-  final collapsed = chosen != null && !expanded;
-  final shown = collapsed ? chosen : people;
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      RowSectionLabel(label, color: accent, filled: true),
-      if (people.isEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Text(
-            emptyNote ?? 'No players.',
-            style: const TextStyle(fontSize: 12),
-          ),
-        )
-      else
-        for (final p in shown)
-          PlayerRow(
-            name: p.name,
-            subtitle: collapsed
-                ? 'Tap to change'
-                : '${battingStyleLabel(p.battingStyle)} • ${bowlingStyleLabel(p.bowlingStyle)}',
-            selected: selected == p.id,
-            enabled: enabledFor(p),
-            blockedReason: enabledFor(p) ? null : 'already the striker',
-            onTap: () {
-              if (collapsed) {
-                // Reopen the list. The pick stays until another name is tapped.
-                onExpand();
-                return;
-              }
-              if (selected == p.id) {
-                // Un-pick: the mis-tap is fixed without leaving the sheet.
-                onClear();
-                return;
-              }
-              onPick(p);
-            },
-          ),
-    ],
-  );
+  /// An empty pool always says which kind of empty it is.
+  Widget _emptyPool(
+    BuildContext context,
+    bool squadEmpty,
+    String query,
+    String team,
+  ) {
+    final cs = context.colors;
+    final message = squadEmpty
+        ? 'No squad for $team — add players mid-match.'
+        : (query.isNotEmpty
+              ? 'No player matches "$query".'
+              : 'Everyone in this XI is already picked.');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+      child: Text(
+        message,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: cs.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
 }
 
 void showSwapSheet(BuildContext context, MatchStore store) {

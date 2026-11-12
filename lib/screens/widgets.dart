@@ -72,6 +72,7 @@ class RectBtn extends StatelessWidget {
             locale: c.locale,
           )
         : c;
+    final disabled = onTap == null;
     return FilledButton(
       onPressed: onTap,
       style:
@@ -84,15 +85,29 @@ class RectBtn extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(context.spacing.radiusSm),
             ),
-            backgroundColor: danger
-                ? cs.error
-                : (primary ? context.tokens.primaryFill : cs.surface),
-            foregroundColor: (primary || danger)
-                ? context.tokens.onPrimaryFill
-                : cs.onSurface,
-            side: (primary || danger)
-                ? null
-                : BorderSide(color: context.tokens.surfaceOutline, width: 1.5),
+            // Disabled is a solid fill with full-contrast ink and the reason
+            // in words on the label — never FilledButton's default 38%-alpha
+            // wash, which is exactly the faded state the Sunlight Rule bans.
+            backgroundColor: disabled
+                ? context.tokens.lockedFill
+                : (danger
+                      ? cs.error
+                      : (primary ? context.tokens.primaryFill : cs.surface)),
+            foregroundColor: disabled
+                ? context.tokens.lockedInk
+                : ((primary || danger)
+                      ? context.tokens.onPrimaryFill
+                      : cs.onSurface),
+            disabledBackgroundColor: context.tokens.lockedFill,
+            disabledForegroundColor: context.tokens.lockedInk,
+            side: disabled
+                ? BorderSide(color: context.tokens.surfaceOutline, width: 1.5)
+                : ((primary || danger)
+                      ? null
+                      : BorderSide(
+                          color: context.tokens.surfaceOutline,
+                          width: 1.5,
+                        )),
             textStyle: context.textStyles.labelLarge?.copyWith(
               fontWeight: FontWeight.w800,
             ),

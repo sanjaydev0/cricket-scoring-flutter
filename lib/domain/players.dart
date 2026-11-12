@@ -751,7 +751,25 @@ class InningsSheet {
     return list;
   }
 
+  /// Seats the opening pair.
+  ///
+  /// Safe to call again before the first ball: the pair being replaced is
+  /// un-seated first. A re-pick at innings start is a correction, not a second
+  /// innings — without this the man who was replaced kept batting position 1
+  /// and showed up on the scorecard as "not out 0 (0)" having faced nothing.
   void setOpeners(String a, String b) {
+    for (final id in [strikerId, nonStrikerId]) {
+      if (id == null || id == a || id == b) continue;
+      final c = batting[id];
+      if (c == null) continue;
+      // Only a card with no innings behind it may be un-seated. The store
+      // refuses a re-pick once a ball has been bowled, so this can never
+      // erase real figures.
+      if (c.balls == 0 && c.runs == 0 && c.dismissal == null) {
+        c.position = 0;
+        c.isNotOut = false;
+      }
+    }
     strikerId = a;
     nonStrikerId = b;
     _enter(a, 1);

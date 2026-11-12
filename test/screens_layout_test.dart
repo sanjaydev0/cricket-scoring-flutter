@@ -18,24 +18,30 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  MatchStore fixture() {
+  MatchStore fixture({int players = 6, bool openers = true}) {
     final s = MatchStore();
     s.hapticsOn = false;
     s.createClub(name: 'Gully Kings');
-    final a = [for (var i = 1; i <= 6; i++) s.addPlayer(name: 'Player $i')!.id];
-    final b = [for (var i = 1; i <= 6; i++) s.addPlayer(name: 'Batter $i')!.id];
+    final a = [
+      for (var i = 1; i <= players; i++) s.addPlayer(name: 'Player $i')!.id,
+    ];
+    final b = [
+      for (var i = 1; i <= players; i++) s.addPlayer(name: 'Batter $i')!.id,
+    ];
     s.draft = MatchConfig(
       teamA: 'BLUE',
       teamB: 'RED',
       totalOvers: 3,
-      playersPerSide: 6,
+      playersPerSide: players,
       trackPlayers: true,
       squadA: a,
       squadB: b,
     );
     s.startMatch(s.draft);
-    s.setOpeners(a[0], a[1]);
-    s.setBowler(b[0]);
+    if (openers) {
+      s.setOpeners(a[0], a[1]);
+      s.setBowler(b[0]);
+    }
     return s;
   }
 
@@ -104,6 +110,37 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Player 1'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the innings-start sheet fits a phone with a full XI', (
+    tester,
+  ) async {
+    final s = fixture(players: 15, openers: false);
+    await phone(
+      tester,
+      Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () => showInningsStartSheet(context, s),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // Three answers, one list: the slots and the footer must both survive a
+    // 360dp-wide phone with fifteen names to scroll.
+    expect(find.text('STRIKER'), findsOneWidget);
+    expect(find.text('NON-STRIKER'), findsOneWidget);
+    expect(find.text('BOWLER'), findsOneWidget);
+    expect(find.text('CLEAR ALL'), findsOneWidget);
+    expect(find.text('PICK ALL THREE'), findsOneWidget);
+    expect(find.text('Player 1'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

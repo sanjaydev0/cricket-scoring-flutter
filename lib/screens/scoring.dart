@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../domain/players.dart';
+import '../models.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'widgets.dart';
@@ -69,7 +70,6 @@ class _ScoringScreenState extends State<ScoringScreen> {
           );
         }
         final inn = store.innings!;
-        final cur = inn.currentOverBalls;
         final nb = store.nbArmed;
         final preset = StylePreset.of(store.styleId);
         final scoreFamily = ScoreFonts.family(store.fontId);
@@ -114,28 +114,7 @@ class _ScoringScreenState extends State<ScoringScreen> {
                     // A compact tap-through, not a TextButton: the button's
                     // own padding pushed the strip row past the card edge
                     // on a 360dp phone.
-                    stripTrailing: InkWell(
-                      onTap: () => _oversSheet(context),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${cur.fold<int>(0, (s, b) => s + b.totalRuns)}r • ${cur.where((b) => b.isWicket).length}w',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right, size: 16),
-                          ],
-                        ),
-                      ),
-                    ),
+                    stripTrailing: _stripTrailing(context, store, inn),
                   ),
                   if (store.breakDest != null) ...[
                     const SizedBox(height: 10),
@@ -593,13 +572,89 @@ class _ScoringScreenState extends State<ScoringScreen> {
         type == DismissalType.runOut
             ? 'RUN OUT ›'
             : type == DismissalType.bowled
-                ? 'WICKET'
-                : type.label.toUpperCase(),
+            ? 'WICKET'
+            : type.label.toUpperCase(),
       ),
     );
   }
 
   void _oversSheet(BuildContext context) => showOversSheet(context, store);
+
+  /// The over strip's tail.
+  ///
+  /// Before the first ball of an innings the `0r • 0w ›` tail has nothing to
+  /// say, so it becomes the one place to change the openers or the bowler —
+  /// and only once all three are already set, so it never competes with the
+  /// blue `SET BATTERS + BOWLER TO START` card. After the first ball the tail
+  /// is the overs tap-through again; mid-innings changes live in PLAYERS.
+  Widget _stripTrailing(BuildContext context, MatchStore store, Innings inn) {
+    final sheet = store.currentSheet;
+    final editable =
+        store.tracking &&
+        inn.legalDeliveries == 0 &&
+        sheet != null &&
+        sheet.strikerId != null &&
+        sheet.nonStrikerId != null &&
+        sheet.bowlerId != null;
+    final cur = inn.currentOverBalls;
+    if (!editable) {
+      return InkWell(
+        onTap: () => _oversSheet(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${cur.fold<int>(0, (s, b) => s + b.totalRuns)}r • ${cur.where((b) => b.isWicket).length}w',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 16),
+            ],
+          ),
+        ),
+      );
+    }
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: 'Change openers or bowler',
+      child: InkWell(
+        onTap: () => showInningsStartSheet(context, store),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: context.tokens.surfaceOutline,
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.edit_outlined, size: 14, color: cs.onSurface),
+              const SizedBox(width: 4),
+              Text(
+                'EDIT',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _moreSheet(BuildContext context) => showExtrasSheet(context, store);
   void _settingsSheet(BuildContext context) =>
       showSettingsSheet(context, store);

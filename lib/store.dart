@@ -52,7 +52,14 @@ class MatchStore extends ChangeNotifier {
 
   /// The part of the preference store a scorer would actually miss. Settings
   /// alone never justify restoring a snapshot over a newer store.
-  static const userDataKeys = [kActive, kHistory, kSheets, kRoster, kClubs, kProfiles];
+  static const userDataKeys = [
+    kActive,
+    kHistory,
+    kSheets,
+    kRoster,
+    kClubs,
+    kProfiles,
+  ];
 
   /// Team colors: fixed dots for differentiation (blue = Team A, red = Team B).
   static const teamAColor = 0xFF2563EB; // blue-600
@@ -94,6 +101,7 @@ class MatchStore extends ChangeNotifier {
     this.draft = draft;
     presetSquads = true;
   }
+
   bool get nbArmed => engine.nbArmed;
   set nbArmed(bool v) => engine.nbArmed = v;
   String themeId = 'light'; // 'light' | 'dark'
@@ -446,7 +454,9 @@ class MatchStore extends ChangeNotifier {
     }
     final now = DateTime.now();
     final last = _lastBackupAttempt;
-    if (!force && last != null && now.difference(last) < const Duration(seconds: 60)) {
+    if (!force &&
+        last != null &&
+        now.difference(last) < const Duration(seconds: 60)) {
       return;
     }
     if (!force && isBatterySaverOn) return;
@@ -1050,6 +1060,42 @@ class MatchStore extends ChangeNotifier {
     sheet.setOpeners(a, b);
     _persist();
     notifyListeners();
+  }
+
+  /// Seats the opening pair and the first bowler as ONE commit.
+  ///
+  /// The innings-start sheet asks three questions and answers them together.
+  /// Calling `setOpeners` then `setBowler` (what the sheet used to do) pushed
+  /// two snapshots, so a mistyped opener cost two UNDOs to repair.
+  ///
+  /// Returns a reason when the pair cannot be seated: the innings has already
+  /// started (after a ball the pair is a cricket fact, not a setting — use
+  /// [substituteBatter]), the two batters are the same man, or the bowler is
+  /// barred by Law 17.4.
+  String? startInnings({
+    required String striker,
+    required String nonStriker,
+    required String bowler,
+  }) {
+    final sheet = currentSheet;
+    if (sheet == null) return 'Player tracking is off';
+    final inn = innings;
+    if (inn == null) return 'No innings';
+    if (inn.legalDeliveries > 0) return 'The innings has already started';
+    if (striker == nonStriker) return 'Pick two different batters';
+    // Re-committing the same bowler is not a change: only a NEW bowler has to
+    // clear the consecutive-over law (and at innings start nothing is set).
+    if (sheet.bowlerId != bowler) {
+      final block = sheet.bowlBlockReason(bowler);
+      if (block != null) return '${sheet.nameOf(bowler)} $block';
+    }
+    pushSnapshot();
+    sheet.setOpeners(striker, nonStriker);
+    sheet.setBowler(bowler);
+    sheet.needsNewBowler = false;
+    _persist();
+    notifyListeners();
+    return null;
   }
 
   /// Assigns the over's bowler. Returns an error when the Laws forbid it —
