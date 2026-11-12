@@ -37,6 +37,11 @@ account, no server, and no network permission.
 - `/` Home: Start / **Rematch** (session-first, archive-fallback) / Resume / Archives,
   settings (sound, haptics, dark mode, ask-fielder, **battery saver**), data backup.
 - `/setup`: teams, batting-first, format, squad XIs (when tracking is on).
+- `/scoring` → mid-match config sheet (bento): OVERS / PLAYERS tiles, five
+  rule chips, both XIs as side-by-side columns, one bench pool with `+TEAM`
+  assignment and `＋ NEW` (create → club → bench), then DECLARE WINNER and
+  ABANDON. Rules stay pending (UNSAVED badge, SAVE/discard prompt on exit,
+  no drag-dismiss); squad ticks commit immediately.
 - `/scoring`: keypad, undo, extras, over strip, hero scoreboard.
 - `/break` / `/result`: 10-second handoff with NEXT; awards, WhatsApp share,
   full-width REMATCH primary + HOME / NEW MATCH secondaries, all single-line.

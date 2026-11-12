@@ -883,7 +883,9 @@ class _RunOutFormState extends State<RunOutForm> {
         const RowSectionLabel('RUN OUT', color: Color(0xFFDC143C)),
         const SizedBox(height: 6),
         const RowSectionLabel('1. RUNS COMPLETED', color: Color(0xFFDC143C)),
-        for (final n in [0, 1, 2, 3])
+        // 0–2 only: three completed runs before a run-out is a rarity in this
+        // format, and the fourth row pushed the confirm key off short screens.
+        for (final n in [0, 1, 2])
           PlayerRow(
             // The badge IS the label. It is what the strip, the overs history
             // and the scorecard will show for this ball, so the option the

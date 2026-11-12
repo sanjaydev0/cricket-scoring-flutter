@@ -95,8 +95,8 @@ Widget _wicketKey(BuildContext context, MatchStore store, DismissalType type) {
       type == DismissalType.runOut
           ? 'RUN OUT ›'
           : type == DismissalType.bowled
-              ? 'WICKET'
-              : type.label.toUpperCase(),
+          ? 'WICKET'
+          : type.label.toUpperCase(),
     ),
   );
 }
@@ -248,6 +248,9 @@ Widget _pillGroup(
   );
 }
 
+/// Mid-match config, bento layout: two stepper tiles, a rule chip strip,
+/// two side-by-side XI columns and one shared bench pool. Rules stay pending
+/// until SAVE; squad ticks land immediately (each is its own undo snapshot).
 void showSettingsSheet(BuildContext context, MatchStore store) {
   final m = store.match!;
   final cfg = m.config;
@@ -258,12 +261,13 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
   int noball = cfg.rules.noBallPenalty;
   bool freeHit = cfg.rules.freeHit;
   bool lms = cfg.rules.lastManStanding;
-  // Per-team squad editor state (Setup-parity accordion).
-  var openTeam = cfg.teamA;
-  final searchCtrls = <String, TextEditingController>{
-    cfg.teamA: TextEditingController(),
-    cfg.teamB: TextEditingController(),
-  };
+  // Bench search + expand state belong to the sheet so they survive the
+  // rebuild after every squad tick.
+  final benchCtrl = TextEditingController();
+  var benchAll = false;
+  final tagA = _teamTag(cfg.teamA);
+  final tagB = _teamTag(cfg.teamB);
+
   bool isDirty() =>
       overs != cfg.totalOvers ||
       players != cfg.playersPerSide ||
@@ -272,371 +276,419 @@ void showSettingsSheet(BuildContext context, MatchStore store) {
       noball != cfg.rules.noBallPenalty ||
       freeHit != cfg.rules.freeHit ||
       lms != cfg.rules.lastManStanding;
+
   String? savePending() => store.applyMidMatch(
-        totalOvers: overs,
-        playersPerSide: players,
-        commonPlayers: common,
-        widePenalty: wide,
-        noBallPenalty: noball,
-        freeHit: freeHit,
-        lastManStanding: lms,
-      );
-  void confirmClose(BuildContext c, BuildContext sheetCtx) {
+    totalOvers: overs,
+    playersPerSide: players,
+    commonPlayers: common,
+    widePenalty: wide,
+    noBallPenalty: noball,
+    freeHit: freeHit,
+    lastManStanding: lms,
+  );
+
+  void toast(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+  // Leaving with pending rule edits asks first. Squad ticks are already
+  // committed, so only overs/rules/double-side can be "unsaved".
+  void confirmClose(BuildContext sheetCtx) {
     if (!isDirty()) {
       Navigator.pop(sheetCtx);
       return;
     }
     showDialog(
-      context: c,
-      builder: (_) => AlertDialog(
-        title: const Text('Save changes?'),
-        content: const Text('You changed overs or rules. Save before leaving?'),
+      context: context,
+      builder: (dCtx) => AlertDialog(
+        title: const Text('SAVE CHANGES?'),
+        content: const Text(
+          'Overs, rules or double-side were changed and are not saved yet.',
+        ),
         actions: [
           RectBtn(
             primary: false,
             onTap: () {
-              Navigator.pop(c);
+              Navigator.pop(dCtx);
               Navigator.pop(sheetCtx);
             },
-            child: const Text('DISCARD'),
+            child: const Text('NO, DISCARD'),
           ),
           RectBtn(
             onTap: () {
               final err = savePending();
               if (err != null) {
-                ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(err)));
+                Navigator.pop(dCtx);
+                toast(err);
                 return;
               }
-              Navigator.pop(c);
+              Navigator.pop(dCtx);
               Navigator.pop(sheetCtx);
-              ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Saved')));
+              toast('Saved');
             },
-            child: const Text('SAVE'),
+            child: const Text('YES, SAVE'),
           ),
         ],
       ),
     );
   }
+
+  // Double-side carries side effects: +1 player slot on, and every shared
+  // pick is un-shared (and the slot returned) off.
+  void setCommon(int next) {
+    if (next == common) return;
+    if (next > 0) {
+      players = players < 15 ? players + 1 : players;
+      common = 1;
+      return;
+    }
+    for (final id in cfg.squadA.where(cfg.squadB.contains).toList()) {
+      final err = store.removeCommonPlayer(id);
+      if (err != null) {
+        toast(err);
+        return;
+      }
+    }
+    players = players > 2 ? players - 1 : players;
+    common = 0;
+  }
+
   showAppSheet(
     context,
-    showDragHandle: true,
+    // No drag-dismiss: a downward swipe pops the route directly and would
+    // throw pending rule edits away without ever reaching confirmClose.
+    showDragHandle: false,
+    enableDrag: false,
+    isDismissible: false,
     isScrollControlled: true,
     builder: (sheetCtx) => StatefulBuilder(
-      builder: (ctx, setSheet) =>
-          PopScope(
-            canPop: false,
-            onPopInvokedWithResult: (didPop, _) {
-              if (didPop) return;
-              confirmClose(context, sheetCtx);
-            },
-            child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'MID-MATCH CONFIG',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1,
+      builder: (ctx, setSheet) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          confirmClose(sheetCtx);
+        },
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Text(
+                            'MID-MATCH CONFIG',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (isDirty()) ...[
+                            const SizedBox(width: 8),
+                            const _UnsavedBadge(),
+                          ],
+                        ],
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.pop(sheetCtx),
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
-              _flatRow(
-                'MATCH OVERS',
-                StepperRow(
-                  label: '',
-                  value: overs,
-                  min: 1,
-                  max: 50,
-                  onChanged: (v) => setSheet(() => overs = v),
-                ),
-              ),
-              _flatRow(
-                'PLAYERS / SIDE',
-                StepperRow(
-                  label: '',
-                  value: players,
-                  min: 2,
-                  max: 15,
-                  onChanged: (v) => setSheet(() => players = v),
-                ),
-              ),
-              _flatRow(
-                'DOUBLE-SIDE',
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('None')),
-                    ButtonSegment(value: 1, label: Text('One')),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Close',
+                      onPressed: () => confirmClose(sheetCtx),
+                    ),
                   ],
-                  selected: {common},
-                  onSelectionChanged: (s) {
-                    final next = s.first;
-                    if (next == common) return;
-                    if (next == 1 && common == 0) {
-                      if (players < 15) players += 1;
-                      setSheet(() => common = 1);
-                    } else if (next == 0 && common == 1) {
-                      final commonIds = cfg.squadA
-                          .where((id) => cfg.squadB.contains(id))
-                          .toList();
-                      for (final id in commonIds) {
-                        final rerr = store.removeCommonPlayer(id);
-                        if (rerr != null) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(content: Text(rerr)));
-                          setSheet(() => common = 1);
-                          return;
-                        }
-                      }
-                      if (players > 2) players -= 1;
-                      setSheet(() => common = 0);
-                    }
-                  },
                 ),
-              ),
-              if (store.tracking && common > 0)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 4,
-                  ),
-                  child: _commonPlayerPicker(
+                const SizedBox(height: 8),
+                _bentoPair(
+                  context,
+                  a: _bentoTile(
                     context,
-                    store,
-                    setSheet,
-                    players,
-                    common,
-                  ),
-                ),
-              _flatRow(
-                'WIDE',
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('0')),
-                    ButtonSegment(value: 1, label: Text('+1')),
-                  ],
-                  selected: {wide},
-                  onSelectionChanged: (s) => setSheet(() => wide = s.first),
-                ),
-              ),
-              _flatRow(
-                'NO-BALL',
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('0')),
-                    ButtonSegment(value: 1, label: Text('+1')),
-                  ],
-                  selected: {noball},
-                  onSelectionChanged: (s) => setSheet(() => noball = s.first),
-                ),
-              ),
-              _flatRow(
-                'FREE HIT',
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('OFF')),
-                    ButtonSegment(value: true, label: Text('ON')),
-                  ],
-                  selected: {freeHit},
-                  onSelectionChanged: (s) => setSheet(() => freeHit = s.first),
-                ),
-              ),
-              _flatRow(
-                'LAST MAN',
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('OFF')),
-                    ButtonSegment(value: true, label: Text('ON')),
-                  ],
-                  selected: {lms},
-                  onSelectionChanged: (s) => setSheet(() => lms = s.first),
-                ),
-              ),
-              const Divider(height: 24),
-              if (store.tracking)
-                _SquadAccordion(
-                  store: store,
-                  setSheet: setSheet,
-                  openTeam: openTeam,
-                  onOpenTeam: (t) => setSheet(() => openTeam = t),
-                  searchCtrls: searchCtrls,
-                  cap: players,
-                  common: common,
-                ),
-              if (store.tracking) const Divider(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: RectBtn(
-                      primary: false,
-                      onTap: () => confirmClose(context, sheetCtx),
-                      child: const Text('CANCEL'),
+                    label: 'OVERS',
+                    child: _bentoStepper(
+                      context,
+                      label: 'overs',
+                      value: overs,
+                      min: 1,
+                      max: 50,
+                      onChanged: (v) => setSheet(() => overs = v),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: RectBtn(
-                      onTap: () {
-                        final err = savePending();
-                        if (err != null) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(SnackBar(content: Text(err)));
-                          return;
-                        }
-                        Navigator.pop(sheetCtx);
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(content: Text('Saved')));
-                      },
-                      child: const Text('✓ SAVE'),
+                  b: _bentoTile(
+                    context,
+                    label: 'PLAYERS / SIDE',
+                    child: _bentoStepper(
+                      context,
+                      label: 'players per side',
+                      value: players,
+                      min: 2,
+                      max: 15,
+                      onChanged: (v) => setSheet(() => players = v),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'MATCH ENDS',
-                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: RectBtn(
-                      primary: false,
-                      onTap: () => _declareWinner(context, store, cfg.teamA),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const TeamDot(MatchStore.teamAColor, size: 10),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              cfg.teamA,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _RuleChip(
+                      label: 'DOUBLE',
+                      value: common > 0 ? 'ONE' : 'NONE',
+                      active: common > 0,
+                      onTap: () =>
+                          setSheet(() => setCommon(common > 0 ? 0 : 1)),
+                    ),
+                    _RuleChip(
+                      label: 'WIDE',
+                      value: wide > 0 ? '+1' : '+0',
+                      active: wide > 0,
+                      onTap: () => setSheet(() => wide = wide > 0 ? 0 : 1),
+                    ),
+                    _RuleChip(
+                      label: 'NO-BALL',
+                      value: noball > 0 ? '+1' : '+0',
+                      active: noball > 0,
+                      onTap: () => setSheet(() => noball = noball > 0 ? 0 : 1),
+                    ),
+                    _RuleChip(
+                      label: 'FREE HIT',
+                      value: freeHit ? 'ON' : 'OFF',
+                      active: freeHit,
+                      onTap: () => setSheet(() => freeHit = !freeHit),
+                    ),
+                    _RuleChip(
+                      label: 'LAST MAN',
+                      value: lms ? 'ON' : 'OFF',
+                      active: lms,
+                      onTap: () => setSheet(() => lms = !lms),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (store.tracking) ...[
+                  _squadHeader(context),
+                  const SizedBox(height: 6),
+                  _squadColumns(
+                    context,
+                    store: store,
+                    setSheet: setSheet,
+                    cap: players,
+                  ),
+                  const SizedBox(height: 8),
+                  _BenchPool(
+                    store: store,
+                    setSheet: setSheet,
+                    ctrl: benchCtrl,
+                    cap: players,
+                    common: common,
+                    showAll: benchAll,
+                    onToggleAll: () => setSheet(() => benchAll = !benchAll),
+                    onCreate: () => _showCreatePlayer(context, store, setSheet),
+                  ),
+                ] else
+                  Text(
+                    'Player tracking is off — squads are fixed for this match.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: RectBtn(
+                        primary: false,
+                        onTap: () => confirmClose(sheetCtx),
+                        child: const Text('CANCEL'),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: RectBtn(
-                      primary: false,
-                      onTap: () => _declareWinner(context, store, cfg.teamB),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const TeamDot(MatchStore.teamBColor, size: 10),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              cfg.teamB,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: RectBtn(
+                        onTap: () {
+                          final err = savePending();
+                          if (err != null) {
+                            toast(err);
+                            return;
+                          }
+                          Navigator.pop(sheetCtx);
+                          toast('Config saved');
+                        },
+                        child: const Text('✓ SAVE CONFIG'),
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'DECLARE WINNER',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1,
+                    fontSize: 12,
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              RectBtn(
-                danger: true,
-                onTap: () {
-                  Navigator.pop(sheetCtx);
-                  _confirmAbandon(context, store);
-                },
-                child: const Text('ABANDON MATCH'),
-              ),
-              const SizedBox(height: 8),
-            ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Ends the match now and archives the result.',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: RectBtn(
+                        primary: false,
+                        onTap: () => _declareWinner(
+                          context,
+                          store,
+                          cfg.teamA,
+                          unsaved: isDirty(),
+                          sheetCtx: sheetCtx,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const TeamDot(MatchStore.teamAColor, size: 10),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                tagA,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: RectBtn(
+                        primary: false,
+                        onTap: () => _declareWinner(
+                          context,
+                          store,
+                          cfg.teamB,
+                          unsaved: isDirty(),
+                          sheetCtx: sheetCtx,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const TeamDot(MatchStore.teamBColor, size: 10),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                tagB,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                RectBtn(
+                  danger: true,
+                  onTap: () =>
+                      _confirmAbandon(context, store, sheetCtx: sheetCtx),
+                  child: const Text('ABANDON MATCH'),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
-          ),
-          ),
+        ),
       ),
     ),
   );
 }
 
-/// Flat label-left / control-right row for the compact settings sheet.
-Widget _flatRow(String title, Widget control) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-          ),
-        ),
-        Expanded(child: control),
-      ],
-    ),
-  );
-}
-
-void _declareWinner(BuildContext context, MatchStore store, String team) {
-  Navigator.pop(context);
+void _declareWinner(
+  BuildContext context,
+  MatchStore store,
+  String team, {
+  required bool unsaved,
+  required BuildContext sheetCtx,
+}) {
+  final tag = _teamTag(team);
+  final colorValue = team == store.match?.config.teamA
+      ? MatchStore.teamAColor
+      : MatchStore.teamBColor;
   showDialog(
     context: context,
-    builder: (_) => AlertDialog(
-      title: Text('Declare $team winner?'),
+    builder: (dCtx) => AlertDialog(
+      title: Text('DECLARE $tag WINNER?'),
+      content: Text(
+        'The match ends now and the result is archived.'
+        '${unsaved ? '\n\nUnsaved overs or rule changes are discarded.' : ''}',
+      ),
       actions: [
         RectBtn(
           primary: false,
-          onTap: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          onTap: () => Navigator.pop(dCtx),
+          child: const Text('NO'),
         ),
         RectBtn(
           onTap: () {
             store.declareWinner(team);
-            Navigator.pop(context);
+            Navigator.pop(dCtx);
+            if (sheetCtx.mounted) Navigator.pop(sheetCtx);
             Navigator.pushReplacementNamed(context, '/result');
           },
-          child: const Text('Declare'),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TeamDot(colorValue, size: 10),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text('YES — $tag WINS', overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
         ),
       ],
     ),
   );
 }
 
-void _confirmAbandon(BuildContext context, MatchStore store) {
+void _confirmAbandon(
+  BuildContext context,
+  MatchStore store, {
+  required BuildContext sheetCtx,
+}) {
   showDialog(
     context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('Abandon match?'),
+    builder: (dCtx) => AlertDialog(
+      title: const Text('ABANDON MATCH?'),
+      content: const Text(
+        'The live match is deleted. Nothing is archived, undo history is '
+        'cleared, and this cannot be undone.',
+      ),
       actions: [
         RectBtn(
           primary: false,
-          onTap: () => Navigator.pop(context),
-          child: const Text('Keep scoring'),
+          onTap: () => Navigator.pop(dCtx),
+          child: const Text('NO'),
         ),
         RectBtn(
           danger: true,
           onTap: () {
             store.abandon();
-            Navigator.pop(context);
+            Navigator.pop(dCtx);
+            if (sheetCtx.mounted) Navigator.pop(sheetCtx);
             Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
           },
-          child: const Text('Abandon'),
+          child: const Text('YES, ABANDON'),
         ),
       ],
     ),
@@ -725,288 +777,394 @@ void showLookSheet(BuildContext context, MatchStore store) {
   );
 }
 
-Widget _commonPlayerPicker(
-  BuildContext context,
-  MatchStore store,
-  StateSetter setSheet,
-  int cap,
-  int common,
-) {
-  final m = store.match!;
-  final squadA = m.config.squadA;
-  final squadB = m.config.squadB;
-  final commonIds = squadA.where((id) => squadB.contains(id)).toList();
-  final eligible = store.clubRoster
-      .where(
-        (p) => p.active && !squadA.contains(p.id) && !squadB.contains(p.id),
-      )
-      .toList();
-  final full = squadA.length >= cap || squadB.length >= cap;
-  if (commonIds.isNotEmpty) {
-    return Row(
+/// Short, unambiguous tag for a team name — `BLUE XI` becomes `BLUE`, and a
+/// two-word name keeps only its first word so it fits a 60dp assign button.
+String _teamTag(String team) {
+  final t = team.trim();
+  if (t.isEmpty) return 'TEAM';
+  final first = t.split(RegExp(r'\s+')).first.toUpperCase();
+  return first.length <= 7 ? first : first.substring(0, 7);
+}
+
+/// Has this player batted or bowled in the live innings? Such a player can
+/// never be benched: the figures already reference him.
+bool _hasPlayed(MatchStore store, String id) {
+  final sheet = store.currentSheet;
+  final b = sheet?.batting[id];
+  final w = sheet?.bowling[id];
+  return (b != null && b.position > 0) ||
+      (w != null && (w.balls > 0 || w.wickets > 0));
+}
+
+/// Two bento tiles side by side, stacking under 360dp so the steppers keep
+/// their 44dp targets instead of being crushed.
+Widget _bentoPair(
+  BuildContext context, {
+  required Widget a,
+  required Widget b,
+}) {
+  final sp = context.spacing;
+  return LayoutBuilder(
+    builder: (c, cons) {
+      if (cons.maxWidth < 360) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            a,
+            SizedBox(height: sp.sm),
+            b,
+          ],
+        );
+      }
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: a),
+            SizedBox(width: sp.sm),
+            Expanded(child: b),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _bentoTile(
+  BuildContext context, {
+  required String label,
+  required Widget child,
+}) {
+  final sp = context.spacing;
+  final cs = context.colors;
+  return Container(
+    padding: EdgeInsets.all(sp.sm + sp.xs),
+    decoration: BoxDecoration(
+      color: cs.surface,
+      border: Border.all(
+        color: cs.onSurface.withValues(alpha: 0.22),
+        width: 1.5,
+      ),
+      borderRadius: BorderRadius.circular(sp.radiusMd),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'DOUBLE-SIDE:',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            commonIds.map(store.playerName).join(', '),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-            overflow: TextOverflow.ellipsis,
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            color: cs.onSurfaceVariant,
           ),
         ),
-        IconButton(
-          icon: const Icon(Icons.close, size: 16),
-          tooltip: 'Remove common player',
-          padding: EdgeInsets.zero,
-          // A 16px glyph with zero constraints was a ~20dp target; 48dp is the
-          // floor for anything that deletes a squad entry.
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          onPressed: () {
-            for (final id in commonIds) {
-              final err = store.removeCommonPlayer(id);
-              if (err != null) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(err)));
-              }
-            }
-            setSheet(() {});
-          },
-        ),
+        SizedBox(height: sp.xs),
+        child,
       ],
-    );
-  }
-  if (full) {
-    return const Text(
-      'DOUBLE-SIDE: XI full — raise players per side first.',
-      style: TextStyle(fontSize: 11),
-    );
-  }
-  if (eligible.isEmpty) {
-    return const Text(
-      'DOUBLE-SIDE: no eligible players — add to a squad first.',
-      style: TextStyle(fontSize: 11),
-    );
-  }
-  return Row(
-    children: [
-      const Text(
-        'DOUBLE-SIDE:',
-        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+    ),
+  );
+}
+
+Widget _bentoStepper(
+  BuildContext context, {
+  required String label,
+  required int value,
+  required int min,
+  required int max,
+  required ValueChanged<int> onChanged,
+}) {
+  final cs = context.colors;
+  final sp = context.spacing;
+  Widget key(IconData icon, bool on, int delta) => IconButton(
+    onPressed: on ? () => onChanged(value + delta) : null,
+    tooltip: delta < 0 ? 'Decrease $label' : 'Increase $label',
+    icon: Icon(icon, size: 20),
+    style: IconButton.styleFrom(
+      minimumSize: const Size(44, 44),
+      backgroundColor: cs.surfaceContainerHighest,
+      foregroundColor: cs.onSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(sp.radiusSm),
       ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: DropdownButton<String>(
-          hint: const Text(
-            'Pick common player',
-            style: TextStyle(fontSize: 12),
-          ),
-          isDense: true,
-          isExpanded: true,
-          items: eligible
-              .map(
-                (p) => DropdownMenuItem<String>(
-                  value: p.id,
-                  child: Text(p.name, style: const TextStyle(fontSize: 12)),
-                ),
-              )
-              .toList(),
-          onChanged: (id) {
-            if (id == null) return;
-            final err = store.addCommonPlayer(
-              id,
-              cap: cap,
-              commonPlayers: common,
-            );
-            setSheet(() {});
-            if (err != null) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(err)));
-            }
-          },
+    ),
+  );
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      key(Icons.remove, value > min, -1),
+      Text(
+        '$value',
+        style: TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w900,
+          height: 1,
+          color: cs.onSurface,
         ),
       ),
+      key(Icons.add, value < max, 1),
     ],
   );
 }
 
-/// Mid-match XI editor: Setup-parity accordion, one team open at a time.
-/// Search + tap-to-add/remove, played rows grey, ADD NEW PLAYER creates
-/// in-club + lands in the XI in one commit. Same cap/cross rules as setup.
-class _SquadAccordion extends StatelessWidget {
-  final MatchStore store;
-  final StateSetter setSheet;
-  final String openTeam;
-  final ValueChanged<String> onOpenTeam;
-  final Map<String, TextEditingController> searchCtrls;
-  final int cap;
-  final int common;
-  const _SquadAccordion({
-    required this.store,
-    required this.setSheet,
-    required this.openTeam,
-    required this.onOpenTeam,
-    required this.searchCtrls,
-    required this.cap,
-    required this.common,
+/// One rule as a two-state bento chip. Active is a saturated fill, never a
+/// black slab: a strip of near-black chips was unreadable in sunlight.
+class _RuleChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool active;
+  final VoidCallback onTap;
+  const _RuleChip({
+    required this.label,
+    required this.value,
+    required this.active,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final m = store.match!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'SQUADS',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
-        ),
-        const SizedBox(height: 8),
-        for (final team in [m.config.teamA, m.config.teamB])
-          _TeamPanel(
-            store: store,
-            setSheet: setSheet,
-            team: team,
-            open: openTeam == team,
-            onTapHeader: () => onOpenTeam(team),
-            ctrl: searchCtrls[team]!,
-            cap: cap,
+    final cs = context.colors;
+    final sp = context.spacing;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(sp.radiusSm),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: EdgeInsets.symmetric(horizontal: sp.sm, vertical: sp.xs),
+        decoration: BoxDecoration(
+          color: active ? cs.primary : cs.surface,
+          border: Border.all(
+            color: active ? cs.primary : cs.onSurface.withValues(alpha: 0.28),
+            width: 1.5,
           ),
-      ],
+          borderRadius: BorderRadius.circular(sp.radiusSm),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+                color: active ? cs.onPrimary : cs.onSurfaceVariant,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                height: 1.1,
+                color: active ? cs.onPrimary : cs.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _TeamPanel extends StatelessWidget {
+class _UnsavedBadge extends StatelessWidget {
+  const _UnsavedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: cs.primary,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        'UNSAVED',
+        style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.8,
+          color: cs.onPrimary,
+        ),
+      ),
+    );
+  }
+}
+
+Widget _squadHeader(BuildContext context) {
+  final cs = context.colors;
+  final hint = TextStyle(fontSize: 10, color: cs.onSurfaceVariant);
+  return Row(
+    children: [
+      const Text(
+        'SQUADS',
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1,
+          fontSize: 12,
+        ),
+      ),
+      const Spacer(),
+      Icon(Icons.close, size: 12, color: cs.onSurfaceVariant),
+      const SizedBox(width: 2),
+      Text('benches', style: hint),
+      const SizedBox(width: 8),
+      Icon(Icons.lock_outline, size: 12, color: cs.onSurfaceVariant),
+      const SizedBox(width: 2),
+      Text('played', style: hint),
+    ],
+  );
+}
+
+/// Both XIs as bento columns. Under 360dp they stack instead of squeezing two
+/// 44dp targets and a name into 140dp.
+Widget _squadColumns(
+  BuildContext context, {
+  required MatchStore store,
+  required StateSetter setSheet,
+  required int cap,
+}) {
+  final m = store.match!;
+  final sp = context.spacing;
+  final a = _TeamColumn(
+    store: store,
+    setSheet: setSheet,
+    team: m.config.teamA,
+    cap: cap,
+  );
+  final b = _TeamColumn(
+    store: store,
+    setSheet: setSheet,
+    team: m.config.teamB,
+    cap: cap,
+  );
+  return LayoutBuilder(
+    builder: (c, cons) {
+      if (cons.maxWidth < 360) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            a,
+            SizedBox(height: sp.sm),
+            b,
+          ],
+        );
+      }
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: a),
+            SizedBox(width: sp.sm),
+            Expanded(child: b),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _TeamColumn extends StatelessWidget {
   final MatchStore store;
   final StateSetter setSheet;
   final String team;
-  final bool open;
-  final VoidCallback onTapHeader;
-  final TextEditingController ctrl;
   final int cap;
-  const _TeamPanel({
+  const _TeamColumn({
     required this.store,
     required this.setSheet,
     required this.team,
-    required this.open,
-    required this.onTapHeader,
-    required this.ctrl,
     required this.cap,
   });
 
   @override
   Widget build(BuildContext context) {
     final m = store.match!;
+    final cs = context.colors;
+    final sp = context.spacing;
     final mine = team == m.config.teamA ? m.config.squadA : m.config.squadB;
     final other = team == m.config.teamA ? m.config.squadB : m.config.squadA;
     final colorValue = team == m.config.teamA
         ? MatchStore.teamAColor
         : MatchStore.teamBColor;
-    final query = ctrl.text.trim().toLowerCase();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          onTap: onTapHeader,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: open
-                  ? Color(colorValue).withValues(alpha: 0.10)
-                  : Colors.transparent,
-              border: Border.all(color: Color(colorValue), width: 1.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
+    final color = Color(colorValue);
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        border: Border.all(color: color, width: 1.5),
+        borderRadius: BorderRadius.circular(sp.radiusMd),
+      ),
+      // Clip so the solid header band keeps the card's rounded top corners.
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: color,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             child: Row(
               children: [
-                TeamDot(colorValue),
-                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     team,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.4,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 6),
                 Text(
                   '${mine.length}/$cap',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
                 ),
-                Icon(open ? Icons.expand_less : Icons.expand_more, size: 20),
               ],
             ),
           ),
-        ),
-        if (open) ...[
-          const SizedBox(height: 8),
-          TextField(
-            controller: ctrl,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Search roster',
-              prefixIcon: Icon(Icons.search, size: 20),
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            onChanged: (_) => setSheet(() {}),
-          ),
-          const SizedBox(height: 6),
-          for (final id in mine.toList())
-            _PlayedAwareRow(
-              store: store,
-              setSheet: setSheet,
-              team: team,
-              id: id,
-              common: other.contains(id),
-            ),
-          // Eligible roster (not in either XI), filtered by search.
-          for (final p in store.clubRoster.where((p) {
-            if (!p.active && !mine.contains(p.id)) return false;
-            if (mine.contains(p.id) || other.contains(p.id)) return false;
-            if (query.isEmpty) return true;
-            return p.name.toLowerCase().contains(query);
-          }).toList())
-            PlayerRow(
-              name: p.name,
-              subtitle: '${store.playerAppearances[p.id] ?? 0} appearances',
-              selected: false,
-              enabled: mine.length < cap,
-              blockedReason: mine.length >= cap ? 'XI full ($cap)' : null,
-              onTap: () {
-                final err = store.addToSquad(team, p.id, cap: cap);
-                setSheet(() {});
-                if (err != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
-                }
-              },
-              trailing: const Icon(Icons.add_circle_outline, size: 20),
-            ),
-          const SizedBox(height: 6),
-          RectBtn(
-            primary: false,
-            onTap: mine.length >= cap
-                ? null
-                : () => _showCreatePlayer(context, store, setSheet, team, cap),
-            child: const Text('＋ ADD NEW PLAYER'),
-          ),
-          const SizedBox(height: 10),
+          if (mine.isEmpty)
+            Padding(
+              padding: EdgeInsets.all(sp.sm),
+              child: Text(
+                'Empty — assign from the bench',
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+              ),
+            )
+          else
+            for (final id in mine.toList())
+              _SquadMemberRow(
+                store: store,
+                setSheet: setSheet,
+                team: team,
+                id: id,
+                common: other.contains(id),
+              ),
         ],
-      ],
+      ),
     );
   }
 }
 
-class _PlayedAwareRow extends StatelessWidget {
+/// One XI member: name left, bench/lock right. Played players keep full
+/// contrast and a lock — dimming the name is what made this list unreadable.
+class _SquadMemberRow extends StatelessWidget {
   final MatchStore store;
   final StateSetter setSheet;
   final String team;
   final String id;
   final bool common;
-  const _PlayedAwareRow({
+  const _SquadMemberRow({
     required this.store,
     required this.setSheet,
     required this.team,
@@ -1016,82 +1174,399 @@ class _PlayedAwareRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sheet = store.currentSheet;
-    final b = sheet?.batting[id];
-    final w = sheet?.bowling[id];
-    final played = (b != null && b.position > 0) ||
-        (w != null && (w.balls > 0 || w.wickets > 0));
-    // Membership is the green check, not a black slab: a list of black
-    // slabs with dimmed text on locked rows read as unreadable. Surface
-    // rows + team-accent check stays sunlight-legible without the fill.
+    final cs = context.colors;
+    final played = _hasPlayed(store, id);
     return PlayerRow(
-      name: store.playerName(id) + (common ? ' • COMMON' : ''),
-      subtitle: played
-          ? 'Already played — locked'
-          : 'In XI — tap to remove',
-      selected: false,
-      enabled: !played,
-      onTap: () {
-        final err = store.removeFromSquad(team, id);
-        setSheet(() {});
-        if (err != null) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
-        }
-      },
-      trailing: Icon(
-        played
-            ? Icons.lock_outline
-            : Icons.check_circle,
-        size: 20,
-        color: played
-            ? context.colors.onSurfaceVariant
-            : const Color(0xFF16A34A),
+      name: store.playerName(id),
+      subtitle: common ? 'Both XIs' : null,
+      onTap: null,
+      trailing: SizedBox(
+        width: 44,
+        height: 44,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          iconSize: 18,
+          tooltip: played ? 'Already played — locked' : 'Bench from $team',
+          icon: Icon(
+            played ? Icons.lock_outline : Icons.close,
+            color: played ? cs.onSurfaceVariant : cs.onSurface,
+          ),
+          onPressed: played
+              ? null
+              : () {
+                  final err = store.removeFromSquad(team, id);
+                  setSheet(() {});
+                  if (err != null) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(err)));
+                  }
+                },
+        ),
       ),
     );
   }
 }
 
+/// Everyone not in an XI, with one-tap assignment to either side. The shared
+/// double-side pick appears once as BOTH and greys out once taken.
+class _BenchPool extends StatelessWidget {
+  final MatchStore store;
+  final StateSetter setSheet;
+  final TextEditingController ctrl;
+  final int cap;
+  final int common;
+  final bool showAll;
+  final VoidCallback onToggleAll;
+  final VoidCallback onCreate;
+  const _BenchPool({
+    required this.store,
+    required this.setSheet,
+    required this.ctrl,
+    required this.cap,
+    required this.common,
+    required this.showAll,
+    required this.onToggleAll,
+    required this.onCreate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final m = store.match!;
+    final cs = context.colors;
+    final sp = context.spacing;
+    final q = ctrl.text.trim();
+    final shared = m.config.squadA.where(m.config.squadB.contains).toList();
+    final pool =
+        store.clubRoster.where((p) {
+          if (!p.active) return false;
+          if (m.config.squadA.contains(p.id)) return false;
+          if (m.config.squadB.contains(p.id)) return false;
+          if (q.isEmpty) return true;
+          return p.name.toLowerCase().contains(q.toLowerCase());
+        }).toList()..sort(
+          (a, b) => (store.playerAppearances[b.id] ?? 0).compareTo(
+            store.playerAppearances[a.id] ?? 0,
+          ),
+        );
+    final visible = q.isEmpty && !showAll ? pool.take(6).toList() : pool;
+    return Container(
+      padding: EdgeInsets.all(sp.sm),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border.all(
+          color: cs.onSurface.withValues(alpha: 0.22),
+          width: 1.5,
+        ),
+        borderRadius: BorderRadius.circular(sp.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'BENCH / ROSTER',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              Text(
+                '${pool.length} free',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          if (shared.isNotEmpty) ...[
+            SizedBox(height: sp.sm),
+            Container(
+              padding: EdgeInsets.only(left: sp.sm),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(sp.radiusSm),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'BOTH XIs · ${shared.map(store.playerName).join(', ')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    tooltip: 'Un-share',
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    onPressed: () {
+                      for (final id in shared) {
+                        final err = store.removeCommonPlayer(id);
+                        if (err != null) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(err)));
+                          return;
+                        }
+                      }
+                      setSheet(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+          SizedBox(height: sp.sm),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: ctrl,
+                  textCapitalization: TextCapitalization.words,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: const InputDecoration(
+                    hintText: 'Search roster',
+                    prefixIcon: Icon(Icons.search, size: 18),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (_) => setSheet(() {}),
+                ),
+              ),
+              SizedBox(width: sp.sm),
+              RectBtn(
+                primary: false,
+                onTap: onCreate,
+                child: const Text('＋ NEW'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          if (pool.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: sp.sm),
+              child: Text(
+                q.isEmpty
+                    ? 'Everyone on the roster is already in an XI.'
+                    : 'No roster player matches “$q”.',
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+              ),
+            )
+          else
+            for (final p in visible)
+              _BenchRow(
+                store: store,
+                setSheet: setSheet,
+                player: p,
+                cap: cap,
+                common: common,
+              ),
+          if (q.isEmpty && pool.length > 6)
+            TextButton(
+              onPressed: onToggleAll,
+              child: Text(showAll ? 'SHOW FEWER' : 'SHOW ALL ${pool.length}'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BenchRow extends StatelessWidget {
+  final MatchStore store;
+  final StateSetter setSheet;
+  final Player player;
+  final int cap;
+  final int common;
+  const _BenchRow({
+    required this.store,
+    required this.setSheet,
+    required this.player,
+    required this.cap,
+    required this.common,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final m = store.match!;
+    final aFull = m.config.squadA.length >= cap;
+    final bFull = m.config.squadB.length >= cap;
+    final shared = m.config.squadA.any(m.config.squadB.contains);
+    void assign(String team) {
+      final err = store.addToSquad(team, player.id, cap: cap);
+      setSheet(() {});
+      if (err != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(err)));
+      }
+    }
+
+    return PlayerRow(
+      name: player.name,
+      subtitle: '${store.playerAppearances[player.id] ?? 0} apps',
+      onTap: null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _AssignBtn(
+            label: _teamTag(m.config.teamA),
+            color: Color(MatchStore.teamAColor),
+            enabled: !aFull,
+            onTap: () => assign(m.config.teamA),
+          ),
+          const SizedBox(width: 4),
+          _AssignBtn(
+            label: _teamTag(m.config.teamB),
+            color: Color(MatchStore.teamBColor),
+            enabled: !bFull,
+            onTap: () => assign(m.config.teamB),
+          ),
+          if (common > 0 && !shared) ...[
+            const SizedBox(width: 4),
+            _AssignBtn(
+              label: 'BOTH',
+              color: context.tokens.primaryFill,
+              enabled: !aFull && !bFull,
+              onTap: () {
+                final err = store.addCommonPlayer(
+                  player.id,
+                  cap: cap,
+                  commonPlayers: common,
+                );
+                setSheet(() {});
+                if (err != null) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(err)));
+                }
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Solid team-colour assign key. Disabled keeps the label readable instead of
+/// fading into the card.
+class _AssignBtn extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool enabled;
+  final VoidCallback onTap;
+  const _AssignBtn({
+    required this.label,
+    required this.color,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colors;
+    return SizedBox(
+      height: 40,
+      child: TextButton(
+        onPressed: enabled ? onTap : null,
+        style: TextButton.styleFrom(
+          minimumSize: const Size(44, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          backgroundColor: enabled
+              ? color
+              : cs.onSurface.withValues(alpha: 0.10),
+          foregroundColor: enabled ? Colors.white : cs.onSurfaceVariant,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(context.spacing.radiusSm),
+          ),
+        ),
+        child: Text(
+          '+$label',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Create a brand-new player mid-match. He is born on the club roster and
+/// lands in the bench pool, then gets assigned with +TEAM (one commit each,
+/// so undo still steps back a single change).
 void _showCreatePlayer(
   BuildContext context,
   MatchStore store,
   StateSetter setSheet,
-  String team,
-  int cap,
 ) {
   final nameCtrl = TextEditingController();
   var role = PlayerRole.allRounder;
   var bat = BattingStyle.rightHand;
   var bowl = BowlingStyle.none;
-  void commit() {
-    final err = store.createAndAddToSquad(
-      team,
-      name: nameCtrl.text.trim(),
+  const roleLabels = {
+    PlayerRole.batter: 'BATTER',
+    PlayerRole.bowler: 'BOWLER',
+    PlayerRole.allRounder: 'ALL-ROUNDER',
+    PlayerRole.keeper: 'KEEPER',
+  };
+  void toast(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  void commit(BuildContext dCtx) {
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) {
+      toast('Type a name');
+      return;
+    }
+    if (store.duplicateName(name)) {
+      toast('$name is already on the roster');
+      return;
+    }
+    final created = store.addPlayer(
+      name: name,
       role: role,
       battingStyle: bat,
       bowlingStyle: bowl,
-      cap: cap,
     );
-    if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+    if (created == null) {
+      toast('Could not add player');
       return;
     }
-    Navigator.pop(context);
+    Navigator.pop(dCtx);
     setSheet(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${nameCtrl.text.trim()} added to $team')),
-    );
+    toast('$name added to the bench');
   }
 
   showDialog(
     context: context,
-    builder: (_) => StatefulBuilder(
+    builder: (dCtx) => StatefulBuilder(
       builder: (c, setD) => AlertDialog(
-        title: Text('NEW PLAYER — $team'),
+        title: const Text('NEW PLAYER'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Text(
+                'Joins the club roster and the bench. Assign him to an XI next.',
+                style: TextStyle(fontSize: 11),
+              ),
+              const SizedBox(height: 10),
               TextField(
                 controller: nameCtrl,
                 textCapitalization: TextCapitalization.words,
@@ -1101,48 +1576,71 @@ void _showCreatePlayer(
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
-                onSubmitted: (_) => commit(),
+                onSubmitted: (_) => commit(dCtx),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'ROLE',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final r in PlayerRole.values)
+                    ChoiceChip(
+                      label: Text(roleLabels[r]!),
+                      selected: role == r,
+                      onSelected: (_) => setD(() => role = r),
+                    ),
+                ],
               ),
               const SizedBox(height: 10),
-              const Text('ROLE', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              Wrap(spacing: 8, children: [
-                for (final r in PlayerRole.values)
-                  ChoiceChip(
-                    label: Text(r.name),
-                    selected: role == r,
-                    onSelected: (_) => setD(() => role = r),
-                  ),
-              ]),
-              const SizedBox(height: 8),
-              const Text('BATTING', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              Wrap(spacing: 8, children: [
-                for (final s in BattingStyle.values)
-                  ChoiceChip(
-                    label: Text(s == BattingStyle.rightHand ? 'RHB' : 'LHB'),
-                    selected: bat == s,
-                    onSelected: (_) => setD(() => bat = s),
-                  ),
-              ]),
-              const SizedBox(height: 8),
-              const Text('BOWLING', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              Wrap(spacing: 8, children: [
-                for (final s in BowlingStyle.values)
-                  ChoiceChip(
-                    label: Text(bowlingStyleLabel(s)),
-                    selected: bowl == s,
-                    onSelected: (_) => setD(() => bowl = s),
-                  ),
-              ]),
+              const Text(
+                'BATTING',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                children: [
+                  for (final s in BattingStyle.values)
+                    ChoiceChip(
+                      label: Text(battingStyleLabel(s)),
+                      selected: bat == s,
+                      onSelected: (_) => setD(() => bat = s),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'BOWLING',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final s in BowlingStyle.values)
+                    ChoiceChip(
+                      label: Text(bowlingStyleLabel(s)),
+                      selected: bowl == s,
+                      onSelected: (_) => setD(() => bowl = s),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
         actions: [
           RectBtn(
             primary: false,
-            onTap: () => Navigator.pop(c),
-            child: const Text('Cancel'),
+            onTap: () => Navigator.pop(dCtx),
+            child: const Text('CANCEL'),
           ),
-          RectBtn(onTap: commit, child: const Text('Add + pick')),
+          RectBtn(onTap: () => commit(dCtx), child: const Text('ADD TO BENCH')),
         ],
       ),
     ),

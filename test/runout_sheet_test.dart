@@ -210,14 +210,17 @@ void main() {
       expect(find.text('2. WHO WAS DISMISSED?'), findsOneWidget);
       expect(find.text('3. WHICH END WAS HE OUT AT?'), findsOneWidget);
 
-      // The four run options are labelled with the badge, not a bare number.
-      for (final badge in ['W', 'W+1', 'W+2', 'W+3']) {
+      // The three run options are labelled with the badge, not a bare number.
+      // W+3 is deliberately absent: three completed runs before a run-out is a
+      // rarity here and the extra row pushed the confirm key off short screens.
+      for (final badge in ['W', 'W+1', 'W+2']) {
         expect(find.text(badge), findsOneWidget, reason: '$badge is an option');
       }
+      expect(find.text('W+3'), findsNothing, reason: 'W+3 is not offered');
 
       // Reachable means inside the screen: the old button measured 1007..1021
       // against a 731-tall screen.
-      final confirm = find.text('W · A1 OUT');
+      final confirm = find.text('W · WHO COMES NEXT ›');
       expect(confirm, findsOneWidget);
       final rect = tester.getRect(confirm);
       expect(
@@ -300,7 +303,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text("Bowler's end"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('W+2 · A2 OUT'));
+    // Sheet 1 records nothing; sheet 2 names who comes next and scores the
+    // ball atomically with him.
+    await tester.tap(find.text('W+2 · WHO COMES NEXT ›'));
+    await tester.pumpAndSettle();
+    expect(find.text('W+2 · A2 OUT — BOWLER\'S END'), findsOneWidget);
+    await tester.tap(find.text('A3'));
     await tester.pumpAndSettle();
 
     final ball = s.innings!.overs.last.balls.last;
@@ -314,10 +322,9 @@ void main() {
     expect(sheet.strikerId, a[0], reason: 'A1 stays on strike');
     expect(
       sheet.nonStrikerId,
-      isNot(a[1]),
-      reason: 'the dismissed man is on neither end',
+      a[2],
+      reason: 'the newcomer fills the end the dismissed man left',
     );
-    expect(sheet.nonStrikerId, isNot(a[0]));
   });
 
   testWidgets('an untracked match is asked the same three questions', (
@@ -359,7 +366,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text("Bowler's end"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('W+1 · Non-striker OUT'));
+    // Untracked: there is no XI to pick from, so confirming scores straight
+    // away instead of opening the next-batter sheet.
+    await tester.tap(find.text('W+1 · WHO COMES NEXT ›'));
     await tester.pumpAndSettle();
 
     final ball = s.innings!.overs.last.balls.last;

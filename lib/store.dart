@@ -1719,28 +1719,6 @@ class MatchStore extends ChangeNotifier {
     return addToSquad(team, created.id, cap: cap);
   }
 
-  /// Create-and-add: Setup-parity create (name + role + styles), born in
-  /// the active club and immediately placed in [team]'s XI in one commit.
-  String? createAndAddToSquad(
-    String team, {
-    required String name,
-    PlayerRole role = PlayerRole.allRounder,
-    BattingStyle battingStyle = BattingStyle.rightHand,
-    BowlingStyle bowlingStyle = BowlingStyle.none,
-    int? cap,
-  }) {
-    final existing = playerByName(name.trim());
-    if (existing != null) return addToSquad(team, existing.id, cap: cap);
-    final created = addPlayer(
-      name: name.trim(),
-      role: role,
-      battingStyle: battingStyle,
-      bowlingStyle: bowlingStyle,
-    );
-    if (created == null) return 'Could not add player';
-    return addToSquad(team, created.id, cap: cap);
-  }
-
   /// Removes an uncapped pick mid-match. Anyone who batted or bowled stays:
   /// figures already reference them.
   String? removeFromSquad(String team, String playerId) {

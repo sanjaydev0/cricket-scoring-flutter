@@ -592,7 +592,7 @@ test('run-out honors chosen new batter at dismissal end', () {
     expect(s.currentSheet!.nonStrikerId, ids[1]);
     expect(s.currentSheet!.batting[ids[0]]!.runs, 1);
   });
-test('createAndAddToSquad births in club and lands in XI', () {
+  test('a new mid-match player starts on the bench, not in an XI', () {
     final s = MatchStore();
     s.createClub(name: 'Eagles');
     final a1 = s.addPlayer(name: 'A1')!.id;
@@ -609,11 +609,13 @@ test('createAndAddToSquad births in club and lands in XI', () {
     s.startMatch(s.draft);
     final a2 = s.addPlayer(name: 'A2')!.id;
     s.setOpeners(a1, a2);
-    expect(
-      s.createAndAddToSquad('A', name: 'New Guy'),
-      isNull,
-    );
-    expect(s.match!.config.squadA.map(s.playerName), contains('New Guy'));
+    // The bento sheet creates into the club first, then assigns from the bench.
+    final created = s.addPlayer(name: 'New Guy', role: PlayerRole.bowler)!;
+    expect(s.match!.config.squadA, isNot(contains(created.id)));
+    expect(s.match!.config.squadB, isNot(contains(created.id)));
     expect(s.clubRoster.map((p) => p.name), contains('New Guy'));
+    expect(s.addToSquad('A', created.id, cap: 5), isNull);
+    expect(s.match!.config.squadA, contains(created.id));
+    expect(s.match!.config.squadB, isNot(contains(created.id)));
   });
 }

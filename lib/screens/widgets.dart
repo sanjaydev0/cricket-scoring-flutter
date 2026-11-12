@@ -15,6 +15,10 @@ Future showAppSheet(
   BuildContext context, {
   bool showDragHandle = true,
   bool isScrollControlled = true,
+  // A sheet that holds unsaved edits must close through its own guard, not
+  // through a swipe: drag-dismiss pops the route directly and skips PopScope.
+  bool isDismissible = true,
+  bool enableDrag = true,
   required WidgetBuilder builder,
 }) {
   final reduced = MediaQuery.disableAnimationsOf(context);
@@ -25,6 +29,8 @@ Future showAppSheet(
     context: context,
     showDragHandle: showDragHandle,
     isScrollControlled: isScrollControlled,
+    isDismissible: isDismissible,
+    enableDrag: enableDrag,
     sheetAnimationStyle: AnimationStyle(
       duration: dur,
       reverseDuration: dur,
