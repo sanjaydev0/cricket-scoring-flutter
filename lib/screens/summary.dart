@@ -23,6 +23,7 @@ class BowlerRows extends StatelessWidget {
   const BowlerRows(this.bowlers, {super.key});
 
   Widget _cell(
+    BuildContext context,
     String v, {
     Color? color,
     bool header = false,
@@ -35,10 +36,11 @@ class BowlerRows extends StatelessWidget {
         textAlign: TextAlign.center,
         maxLines: 1,
         style: header
-            ? const TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.5,
+            ? TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                color: color ?? context.tokens.mutedInk,
               )
             : TextStyle(
                 fontWeight: FontWeight.w900,
@@ -51,8 +53,7 @@ class BowlerRows extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final faint = cs.onSurfaceVariant;
+    final faint = context.tokens.mutedInk;
     final hasExtras = bowlers.any((c) => c.wides > 0 || c.noBalls > 0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,21 +67,21 @@ class BowlerRows extends StatelessWidget {
                 child: Text(
                   'BOWLING',
                   style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: 1.2,
                     color: faint,
                   ),
                 ),
               ),
-              _cell('O', color: faint, header: true),
-              _cell('M', color: faint, header: true),
-              _cell('R', color: faint, header: true),
-              _cell('W', color: faint, header: true),
-              _cell('ECO', color: faint, header: true, width: 36),
+              _cell(context, 'O', color: faint, header: true),
+              _cell(context, 'M', color: faint, header: true),
+              _cell(context, 'R', color: faint, header: true),
+              _cell(context, 'W', color: faint, header: true),
+              _cell(context, 'ECO', color: faint, header: true, width: 36),
               if (hasExtras) ...[
-                _cell('WD', color: faint, header: true, width: 26),
-                _cell('NB', color: faint, header: true, width: 26),
+                _cell(context, 'WD', color: faint, header: true, width: 26),
+                _cell(context, 'NB', color: faint, header: true, width: 26),
               ],
               const SizedBox(width: 2),
             ],
@@ -90,7 +91,9 @@ class BowlerRows extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: cs.outlineVariant)),
+              border: Border(
+                bottom: BorderSide(color: context.tokens.borderRow),
+              ),
             ),
             child: Row(
               children: [
@@ -105,25 +108,29 @@ class BowlerRows extends StatelessWidget {
                     ),
                   ),
                 ),
-                _cell(c.oversDisplay),
-                _cell('${c.maidens}'),
-                _cell('${c.runsConceded}'),
+                _cell(context, c.oversDisplay),
+                _cell(context, '${c.maidens}'),
+                _cell(context, '${c.runsConceded}'),
                 _cell(
+                  context,
                   '${c.wickets}',
                   color: c.wickets > 0 ? context.tokens.statGoodInk : null,
                 ),
                 _cell(
+                  context,
                   c.economy == null ? '—' : c.economy!.toStringAsFixed(2),
                   color: context.tokens.statWarnInk,
                   width: 36,
                 ),
                 if (hasExtras) ...[
                   _cell(
+                    context,
                     c.wides > 0 ? '${c.wides}' : '·',
                     color: faint,
                     width: 26,
                   ),
                   _cell(
+                    context,
                     c.noBalls > 0 ? '${c.noBalls}' : '·',
                     color: faint,
                     width: 26,
@@ -158,45 +165,50 @@ class AwardsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final awards = computeAwards(store);
     if (awards.isEmpty) return const SizedBox.shrink();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'MATCH AWARDS',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            for (final a in awards)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        a.label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      child: Text(
-                        a.value,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
+    return RectCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SectionBand('Match awards'),
+          for (final a in awards)
+            Container(
+              constraints: const BoxConstraints(minHeight: 40),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: context.tokens.borderRow),
                 ),
               ),
-            const SizedBox(height: 8),
-            _potm(context),
-          ],
-        ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      a.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: context.tokens.mutedInk,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    a.value,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          _potm(context),
+        ],
       ),
     );
   }
@@ -207,46 +219,52 @@ class AwardsView extends StatelessWidget {
     final current = m?.potmId != null
         ? store.playerName(m!.potmId!)
         : suggestion;
+    final picks = _candidates();
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: 20),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'PLAYER OF THE MATCH',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-            Text(
-              current ?? '—',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-        if (!readOnly) ...[
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          child: Row(
             children: [
-              for (final id in _candidates())
-                ChoiceChip(
-                  label: Text(store.playerName(id)),
-                  selected:
-                      m?.potmId == id ||
-                      (m?.potmId == null && suggestion == store.playerName(id)),
-                  onSelected: (_) {
-                    if (store.match != null) {
-                      store.match!.potmId = id;
-                      store.persistOnly();
-                    }
-                  },
+              Expanded(
+                child: Text(
+                  'PLAYER OF THE MATCH',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: context.tokens.mutedInk,
+                  ),
                 ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                current ?? '—',
+                maxLines: 1,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
-        ],
+        ),
+        // A person is a row, never a chip: the candidate list is the same
+        // picker shape used everywhere else in the app.
+        if (!readOnly)
+          for (var i = 0; i < picks.length; i++)
+            PlayerRow(
+              name: store.playerName(picks[i]),
+              subtitle: picks[i] == m?.potmId ? 'AWARDED' : null,
+              selected: picks[i] == m?.potmId,
+              onTap: () {
+                if (store.match != null) {
+                  store.match!.potmId = picks[i];
+                  store.persistOnly();
+                }
+              },
+            ),
       ],
     );
   }
@@ -558,9 +576,14 @@ class TopPerformersView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'TOP PERFORMERS',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.4,
+            color: context.tokens.mutedInk,
+          ),
         ),
         const SizedBox(height: 4),
         ...rows,
@@ -571,23 +594,21 @@ class TopPerformersView extends StatelessWidget {
   }
 
   Widget _sectionLabel(BuildContext context, String label) {
-    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      padding: const EdgeInsets.only(top: 8, bottom: 2),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 10,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
           letterSpacing: 1.4,
-          color: cs.onSurfaceVariant,
+          color: context.tokens.mutedInk,
         ),
       ),
     );
   }
 
   Widget _inningsHeader(BuildContext context, String left, String? right) {
-    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 2),
       child: Row(
@@ -595,17 +616,17 @@ class TopPerformersView extends StatelessWidget {
           Expanded(
             child: Text(
               left,
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-                color: cs.onSurfaceVariant,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
             ),
           ),
           if (right != null)
             Text(
               right,
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: context.tokens.mutedInk,
+              ),
             ),
         ],
       ),
@@ -619,7 +640,6 @@ class TopPerformersView extends StatelessWidget {
     required String figure,
     required int color,
   }) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -645,7 +665,11 @@ class TopPerformersView extends StatelessWidget {
                 ),
                 Text(
                   sub,
-                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: context.tokens.mutedInk,
+                  ),
                 ),
               ],
             ),
