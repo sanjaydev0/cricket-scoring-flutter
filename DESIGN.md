@@ -28,9 +28,10 @@ that only works on paper is a broken rule.
 
 **The preset boundary.** A `StylePreset` may own exactly six things: `heroBg`,
 `heroFg`, `keyDefault`, `keyFg`, `keyRadius`, `stripBg`. Nothing outside
-`scoreboard.dart` and the keypad may read a preset. Picking *Game Boy* recolours
-the score tile and the keys; it never turns the club roster green. This is what
-keeps seven arcade presets compatible with one calm, modern chrome.
+`scoreboard.dart` and the keypad may read a preset — plus the settings style
+picker, which has to show a swatch of the preset it selects. Picking *Game Boy*
+recolours the score tile and the keys; it never turns the club roster green. This
+is what keeps seven arcade presets compatible with one calm, modern chrome.
 
 ## 1. Core mandate: an instrument, in direct sunlight
 

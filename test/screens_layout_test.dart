@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/screens/player_sheets.dart';
 import 'package:cricket_scoring/screens/history.dart';
+import 'package:cricket_scoring/screens/home.dart';
 import 'package:cricket_scoring/screens/scorecard.dart';
 import 'package:cricket_scoring/screens/setup.dart';
 import 'package:cricket_scoring/screens/widgets.dart';
@@ -199,6 +200,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('TOP PERFORMERS'), findsOneWidget);
     expect(find.textContaining('SR:'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('home fits a phone, empty and with a live match', (tester) async {
+    await phone(tester, HomeScreen(MatchStore()));
+    expect(find.text('CRICSCORE'), findsOneWidget);
+    expect(find.text('START NEW MATCH'), findsOneWidget);
+    expect(find.text('ARCHIVES'), findsOneWidget);
+    // The identity plate reports what is actually stored, not a slogan.
+    expect(find.textContaining('OFFLINE'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home leads with the live match when one is in play', (
+    tester,
+  ) async {
+    final s = fixture();
+    s.score(action: 'FOUR');
+    await phone(tester, HomeScreen(s));
+    expect(find.textContaining('LIVE'), findsOneWidget);
+    // The score is on the card, so a resume never needs a second screen.
+    expect(find.text('4/0'), findsOneWidget);
+    expect(find.textContaining('CRR'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
