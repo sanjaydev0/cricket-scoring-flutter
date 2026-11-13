@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -244,6 +246,22 @@ void main() {
   testWidgets('an empty club offers to create one', (tester) async {
     await phone(tester, ClubScreen(MatchStore()));
     expect(find.text('CREATE CLUB'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('an archive row carries both innings and fits a phone', (
+    tester,
+  ) async {
+    final s = fixture();
+    s.score(action: 'FOUR');
+    final rec = s.match!.toJson();
+    rec['savedAt'] = DateTime.now().toIso8601String();
+    SharedPreferences.setMockInitialValues({
+      MatchStore.kHistory: jsonEncode([rec]),
+    });
+    await phone(tester, HistoryScreen(MatchStore()));
+    // The result line names the winner and both innings scores on one row.
+    expect(find.textContaining('WON'), findsOneWidget);
+    expect(find.textContaining('BLUE'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

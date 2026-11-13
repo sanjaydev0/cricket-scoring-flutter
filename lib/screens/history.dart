@@ -5,6 +5,7 @@ import '../math.dart';
 import '../domain/players.dart';
 import '../models.dart';
 import '../store.dart';
+import '../theme.dart';
 import 'match_detail.dart';
 import 'summary.dart';
 import 'widgets.dart';
@@ -34,18 +35,66 @@ class _HistoryScreenState extends State<HistoryScreen> {
         title: Text(title),
         content: Text(body),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dctx, false),
+          RectBtn(
+            primary: false,
+            onTap: () => Navigator.pop(dctx, false),
             child: const Text('CANCEL'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dctx, true),
+          RectBtn(
+            danger: true,
+            onTap: () => Navigator.pop(dctx, true),
             child: const Text('DELETE'),
           ),
         ],
       ),
     );
     return yes == true;
+  }
+
+  /// One archived match: teams on the title line, result and innings scores
+  /// beneath, delete on the right. A row, never a card.
+  Widget _archiveRow(
+    BuildContext context,
+    List<Map<String, dynamic>> h,
+    int i,
+  ) {
+    final m = Match.fromJson(h[i]);
+    final inn2 = m.innings2;
+    final result = [
+      '${m.winner} WON',
+      '${m.innings1.battingTeam}: ${m.innings1.runs}/${m.innings1.wickets} '
+          '(${CricketMath.ballsToOvers(m.innings1.legalDeliveries)})',
+      if (inn2 != null)
+        '${inn2.battingTeam}: ${inn2.runs}/${inn2.wickets} '
+            '(${CricketMath.ballsToOvers(inn2.legalDeliveries)})',
+    ].join('  ·  ');
+    return DetailRow(
+      title: '${m.config.teamA} vs ${m.config.teamB}',
+      subtitle: '${_dateLine(m)}\n$result',
+      last: i == h.length - 1,
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_outline, size: 20),
+        tooltip: 'Delete this match',
+        onPressed: () async {
+          final yes = await _confirm(
+            title: 'Delete ${m.config.teamA} vs ${m.config.teamB}?',
+            body: 'The full scorecard for this match is removed from the archives. This cannot be undone.',
+          );
+          if (!yes || !mounted) return;
+          await widget.store.deleteHistoryAt(i);
+          setState(() => fut = widget.store.historyRecords());
+        },
+      ),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ArchiveDetail(
+            match: m,
+            sheets: MatchStore.sheetsFromRecord(h[i]),
+          ),
+        ),
+      ),
+    );
   }
 
   String _dateLine(Match m) {
@@ -61,8 +110,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ARCHIVES'),
+      appBar: RectAppBar(
+        title: 'Archives',
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
@@ -98,70 +147,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 );
               }
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: h.length,
-                itemBuilder: (_, i) {
-                  final m = Match.fromJson(h[i]);
-                  return Card(
-                    child: ListTile(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ArchiveDetail(
-                            match: m,
-                            sheets: MatchStore.sheetsFromRecord(h[i]),
-                          ),
-                        ),
-                      ),
-                      title: Row(
-                        children: [
-                          const TeamDot(MatchStore.teamAColor, size: 9),
-                          const SizedBox(width: 5),
-                          Flexible(
-                            child: Text(
-                              '${m.config.teamA} vs ${m.config.teamB}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          const TeamDot(MatchStore.teamBColor, size: 9),
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _dateLine(m),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            '${m.winner} WON • ${m.innings1.battingTeam}: ${m.innings1.runs}/${m.innings1.wickets} (${CricketMath.ballsToOvers(m.innings1.legalDeliveries)})${m.innings2 == null ? '' : ' • ${m.innings2!.battingTeam}: ${m.innings2!.runs}/${m.innings2!.wickets}'}',
-                          ),
-                        ],
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        tooltip: 'Delete this match',
-                        onPressed: () async {
-                          final yes = await _confirm(
-                            title:
-                                'Delete ${m.config.teamA} vs ${m.config.teamB}?',
-                            body: 'The full scorecard for this match is removed from the archives. This cannot be undone.',
-                          );
-                          if (!yes || !mounted) return;
-                          await widget.store.deleteHistoryAt(i);
-                          setState(() => fut = widget.store.historyRecords());
-                        },
-                      ),
+              // One card, one table: archives are a homogeneous list, so the
+              // rows share a frame and a rule instead of twelve separate
+              // Cards, each with its own shadowless border.
+              return ListView(
+                padding: EdgeInsets.all(context.spacing.md),
+                children: [
+                  RectCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < h.length; i++)
+                          _archiveRow(context, h, i),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                ],
               );
             },
           ),
@@ -200,12 +201,7 @@ class ArchiveDetail extends StatelessWidget {
     final m = match;
     final g = _ghost();
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          '${m.config.teamA} vs ${m.config.teamB}',
-          style: const TextStyle(fontSize: 15),
-        ),
-      ),
+      appBar: RectAppBar(title: '${m.config.teamA} vs ${m.config.teamB}'),
       body: SafeArea(
         child: ResponsiveCenter(
           maxWidth: 640,

@@ -714,11 +714,14 @@ class DetailRow extends StatelessWidget {
                   if (subtitle != null)
                     Text(
                       subtitle!,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: ink.withValues(alpha: 0.65),
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                        // A real ink role, never onSurface x 0.65.
+                        color: dimmed ? t.lockedInk : t.mutedInk,
                       ),
                     ),
                 ],
@@ -737,7 +740,7 @@ class DetailRow extends StatelessWidget {
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.8,
-                        color: ink.withValues(alpha: 0.6),
+                        color: dimmed ? t.lockedInk : t.mutedInk,
                       ),
                     ),
                   if (value != null)
