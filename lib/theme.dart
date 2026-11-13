@@ -193,112 +193,230 @@ class _NoTransition extends PageTransitionsBuilder {
 }
 
 class UmpireTheme {
-  static ChipThemeData _chips(ColorScheme scheme) => ChipThemeData(
+  /// Chip: 8px rectangle, solid `primaryFill` slab when selected.
+  static ChipThemeData _chips(DesignTokens t) => ChipThemeData(
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     showCheckmark: false,
     // 44px+ touch targets per platform guidance.
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-    selectedColor: const Color(0xFF131316),
-    labelStyle: TextStyle(fontWeight: FontWeight.w800, color: scheme.onSurface),
-    secondaryLabelStyle: const TextStyle(
+    backgroundColor: t.surface,
+    selectedColor: t.primaryFill,
+    labelStyle: TextStyle(fontWeight: FontWeight.w700, color: t.onSurface),
+    secondaryLabelStyle: TextStyle(
       fontWeight: FontWeight.w800,
-      color: Colors.white,
+      color: t.onPrimaryFill,
     ),
-    side: BorderSide(color: scheme.outline),
+    side: BorderSide(color: t.surfaceOutline, width: 1.5),
   );
 
   /// M3's icon button is a 40dp container. Every icon action in this app is
   /// pressed by a thumb in daylight, so the floor is lifted to 48dp here once
   /// instead of per-widget; a caller may still force a smaller box deliberately.
-  static IconButtonThemeData _iconButtons() => IconButtonThemeData(
-    style: ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-      tapTargetSize: MaterialTapTargetSize.padded,
-    ),
-  );
+  static IconButtonThemeData _iconButtons(DesignTokens t) =>
+      IconButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+          tapTargetSize: MaterialTapTargetSize.padded,
+          foregroundColor: WidgetStatePropertyAll(t.onSurface),
+        ),
+      );
 
-  static SegmentedButtonThemeData _segmented() => SegmentedButtonThemeData(
-    style: ButtonStyle(
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      // 44px+ touch targets per platform guidance.
-      minimumSize: const WidgetStatePropertyAll(Size(48, 44)),
-      backgroundColor: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.selected) ? const Color(0xFF131316) : null,
-      ),
-      foregroundColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected) ? Colors.white : null,
-      ),
-      textStyle: const WidgetStatePropertyAll(
-        TextStyle(fontWeight: FontWeight.w800),
-      ),
-    ),
-  );
-  static ThemeData light() {
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1D4ED8),
-          brightness: Brightness.light,
-        ).copyWith(
-          surface: Colors.white,
-          onSurface: const Color(0xFF0A0A0A),
-          surfaceContainerHighest: const Color(0xFFF1F1F1),
-        );
-    return ThemeData(
-      useMaterial3: true,
-      extensions: const [AppSpacing(), DesignTokens.light],
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: _NoTransition(),
-          TargetPlatform.iOS: _NoTransition(),
-          TargetPlatform.linux: _NoTransition(),
-          TargetPlatform.macOS: _NoTransition(),
-          TargetPlatform.windows: _NoTransition(),
-        },
-      ),
-      colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFFFAFAFA),
-      cardTheme: const CardThemeData(
-        elevation: 2,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-          side: BorderSide(color: Color(0xFFE2E2E2)),
-        ),
-      ),
-      chipTheme: _chips(scheme),
-      iconButtonTheme: _iconButtons(),
-      segmentedButtonTheme: _segmented(),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
+  static SegmentedButtonThemeData _segmented(DesignTokens t) =>
+      SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+          // 44px+ touch targets per platform guidance.
+          minimumSize: const WidgetStatePropertyAll(Size(48, 44)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? t.primaryFill : t.surface,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected)
+                ? t.onPrimaryFill
+                : t.onSurface,
+          ),
+          side: WidgetStatePropertyAll(
+            BorderSide(color: t.surfaceOutline, width: 1.5),
+          ),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
+      );
+
+  /// One type voice for the chrome.
+  ///
+  /// `w900` is reserved for score numerals and tracked micro-labels. Every
+  /// bundled family is a single file, so `w800`/`w900` on body copy is
+  /// synthesised faux-bold — using it everywhere is what made the app read
+  /// blobby. Titles sit at w700, body at w500, subtitles at w600.
+  static TextTheme _text(DesignTokens t) {
+    const tabular = [FontFeature.tabularFigures()];
+    return TextTheme(
+      displayLarge: TextStyle(
+        fontSize: 68,
+        height: 1.0,
+        fontWeight: FontWeight.w900,
+        letterSpacing: -1.5,
+        fontFeatures: tabular,
+        color: t.onSurface,
+      ),
+      displayMedium: TextStyle(
+        fontSize: 48,
+        height: 1.05,
+        fontWeight: FontWeight.w900,
+        letterSpacing: -1,
+        fontFeatures: tabular,
+        color: t.onSurface,
+      ),
+      displaySmall: TextStyle(
+        fontSize: 34,
+        height: 1.1,
+        fontWeight: FontWeight.w900,
+        fontFeatures: tabular,
+        color: t.onSurface,
+      ),
+      headlineLarge: TextStyle(
+        fontSize: 20,
+        height: 1.2,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.3,
+        color: t.onSurface,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 17,
+        height: 1.2,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.4,
+        color: t.onSurface,
+      ),
+      headlineSmall: TextStyle(
+        fontSize: 16,
+        height: 1.2,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.5,
+        color: t.onSurface,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 16,
+        height: 1.25,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
+        color: t.onSurface,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 15,
+        height: 1.25,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
+        color: t.onSurface,
+      ),
+      titleSmall: TextStyle(
+        fontSize: 14,
+        height: 1.3,
+        fontWeight: FontWeight.w700,
+        color: t.onSurface,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 15,
+        height: 1.4,
+        fontWeight: FontWeight.w500,
+        color: t.onSurface,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 13.5,
+        height: 1.35,
+        fontWeight: FontWeight.w500,
+        color: t.onSurface,
+      ),
+      bodySmall: TextStyle(
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w600,
+        color: t.mutedInk,
+      ),
+      labelLarge: TextStyle(
+        fontSize: 13,
+        height: 1.2,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.4,
+        color: t.onSurface,
+      ),
+      labelMedium: TextStyle(
+        fontSize: 11,
+        height: 1.2,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1,
+        color: t.onSurface,
+      ),
+      labelSmall: TextStyle(
+        fontSize: 10,
+        height: 1.2,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.4,
+        color: t.mutedInk,
       ),
     );
   }
 
-  static ThemeData dark() {
+  static ThemeData light() =>
+      _build(DesignTokens.light, EventTokens.light, Brightness.light);
+
+  static ThemeData dark() =>
+      _build(DesignTokens.dark, EventTokens.dark, Brightness.dark);
+
+  /// Builds both themes from the same roles, so a role flips instead of a
+  /// screen hardcoding a light-mode colour.
+  static ThemeData _build(
+    DesignTokens t,
+    EventTokens events,
+    Brightness brightness,
+  ) {
+    final isDark = brightness == Brightness.dark;
+    // Seeded only for the members nothing reads directly (inverse colours,
+    // disabled washes). Every tonal member a screen touches is overridden
+    // below: the M3 pastel ladder is what made the app look dated.
     final scheme =
         ColorScheme.fromSeed(
-          seedColor: const Color(0xFF60A5FA),
-          brightness: Brightness.dark,
+          seedColor: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
+          brightness: brightness,
         ).copyWith(
-          surface: const Color(0xFF131316),
-          onSurface: Colors.white,
-          surfaceContainerHighest: const Color(0xFF232327),
+          primary: t.primaryFill,
+          onPrimary: t.onPrimaryFill,
+          primaryContainer: t.lockedFill,
+          onPrimaryContainer: t.lockedInk,
+          secondary: t.primaryFill,
+          onSecondary: t.onPrimaryFill,
+          secondaryContainer: t.lockedFill,
+          onSecondaryContainer: t.lockedInk,
+          tertiary: t.primaryFill,
+          onTertiary: t.onPrimaryFill,
+          tertiaryContainer: t.lockedFill,
+          onTertiaryContainer: t.lockedInk,
+          error: isDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C),
+          onError: isDark ? const Color(0xFF0A0A0A) : Colors.white,
+          errorContainer: t.lockedFill,
+          onErrorContainer: t.lockedInk,
+          surface: t.surface,
+          onSurface: t.onSurface,
+          onSurfaceVariant: t.mutedInk,
+          surfaceTint: Colors.transparent,
+          outline: t.surfaceOutline,
+          outlineVariant: t.borderRow,
+          surfaceContainerLowest: t.surface,
+          surfaceContainerLow: t.surface,
+          surfaceContainer: t.surface,
+          surfaceContainerHigh: t.surface,
+          surfaceContainerHighest: t.surface,
         );
+
     return ThemeData(
       useMaterial3: true,
-      extensions: const [AppSpacing(), DesignTokens.dark],
+      brightness: brightness,
+      extensions: [const AppSpacing(), t, events],
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: _NoTransition(),
@@ -309,27 +427,194 @@ class UmpireTheme {
         },
       ),
       colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFF0B0B0D),
-      cardTheme: const CardThemeData(
-        elevation: 2,
+      scaffoldBackgroundColor: t.scaffoldBg,
+      canvasColor: t.scaffoldBg,
+      textTheme: _text(t),
+      // Depth is border-led, not shadow-led: elevation 0 everywhere, and a
+      // 1.5px structural border does the separating. A soft shadow vanishes
+      // in sunlight and costs GPU overdraw for nothing.
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: t.surface,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-          side: BorderSide(color: Color(0xFF2E2E33)),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: t.surfaceOutline, width: 1.5),
         ),
       ),
-      chipTheme: _chips(scheme),
-      iconButtonTheme: _iconButtons(),
-      segmentedButtonTheme: _segmented(),
+      appBarTheme: AppBarTheme(
+        backgroundColor: t.scaffoldBg,
+        foregroundColor: t.onSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 16,
+        titleTextStyle: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
+          color: t.onSurface,
+        ),
+        iconTheme: IconThemeData(color: t.onSurface, size: 22),
+        actionsIconTheme: IconThemeData(color: t.onSurface, size: 22),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        isDense: true,
+        filled: true,
+        fillColor: t.surface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 14,
+        ),
+        labelStyle: TextStyle(fontWeight: FontWeight.w600, color: t.mutedInk),
+        hintStyle: TextStyle(fontWeight: FontWeight.w500, color: t.mutedInk),
+        floatingLabelStyle: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: t.onSurface,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: t.surfaceOutline, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: t.surfaceOutline, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: t.primaryFill, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: scheme.error, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: scheme.error, width: 2),
+        ),
+      ),
+      // The M3 switch is the last pill-shaped silhouette in the chrome; its
+      // track/thumb now read as a solid slab and a full-contrast knob.
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (s) =>
+              s.contains(WidgetState.selected) ? t.onPrimaryFill : t.lockedInk,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (s) =>
+              s.contains(WidgetState.selected) ? t.primaryFill : t.lockedFill,
+        ),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: t.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: t.surfaceOutline, width: 1.5),
+        ),
+        titleTextStyle: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          color: t.onSurface,
+        ),
+        contentTextStyle: TextStyle(
+          fontSize: 13.5,
+          height: 1.4,
+          fontWeight: FontWeight.w500,
+          color: t.onSurface,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: t.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        modalElevation: 0,
+        dragHandleColor: t.mutedInk,
+        modalBarrierColor: Colors.black.withValues(alpha: 0.7),
+        shape: RoundedRectangleBorder(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          side: BorderSide(color: t.surfaceOutline, width: 1.5),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: t.primaryFill,
+        contentTextStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: t.onPrimaryFill,
+        ),
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      dividerTheme: DividerThemeData(
+        color: t.borderRow,
+        thickness: 1,
+        space: 1,
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: t.onSurface,
+        textColor: t.onSurface,
+        titleTextStyle: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: t.onSurface,
+        ),
+        subtitleTextStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: t.mutedInk,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        minVerticalPadding: 8,
+      ),
+      chipTheme: _chips(t),
+      iconButtonTheme: _iconButtons(t),
+      segmentedButtonTheme: _segmented(t),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: t.primaryFill,
+          foregroundColor: t.onPrimaryFill,
+          disabledBackgroundColor: t.lockedFill,
+          disabledForegroundColor: t.lockedInk,
+          elevation: 0,
           textStyle: const TextStyle(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.4,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: t.onSurface,
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: t.onSurface,
+          side: BorderSide(color: t.surfaceOutline, width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: t.primaryFill),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: t.primaryFill,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        textStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: t.onPrimaryFill,
         ),
       ),
     );

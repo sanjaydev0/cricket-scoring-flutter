@@ -99,6 +99,21 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
   /// Economy / strike-rate style advisory figure as text. Never bare amber.
   final Color statWarnInk;
 
+  /// App canvas behind cards. Light is a bright neutral, not white: white
+  /// everywhere halates in midday sun and erases the card edges, so the card
+  /// has to earn its separation by luminance instead of by a heavy border.
+  final Color scaffoldBg;
+
+  /// Card, sheet and uncommitted-control fill. Always sits ON [scaffoldBg].
+  final Color surface;
+
+  /// Primary body ink: names, titles, values. Full contrast on [surface].
+  final Color onSurface;
+
+  /// Secondary ink: subtitles, reasons, captions, empty-state body. A real
+  /// ink role, never `onSurface` multiplied by an alpha (Ink-Not-Tint Rule).
+  final Color mutedInk;
+
   const DesignTokens({
     required this.primaryFill,
     required this.onPrimaryFill,
@@ -109,6 +124,10 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     required this.statGoodInk,
     required this.statGoodFill,
     required this.statWarnInk,
+    required this.scaffoldBg,
+    required this.surface,
+    required this.onSurface,
+    required this.mutedInk,
   });
 
   /// Paper theme: near-black structure, slate-filled locked rows, deep inks.
@@ -122,6 +141,10 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     statGoodInk: Color(0xFF14532D),
     statGoodFill: Color(0xFFDCFCE7),
     statWarnInk: Color(0xFF92400E),
+    scaffoldBg: Color(0xFFF3F4F6),
+    surface: Colors.white,
+    onSurface: Color(0xFF0A0A0A),
+    mutedInk: Color(0xFF475569),
   );
 
   /// Night theme: the same roles, flipped so nothing turns into a light slab.
@@ -135,6 +158,10 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     statGoodInk: Color(0xFF6EE7A0),
     statGoodFill: Color(0xFF0B2A18),
     statWarnInk: Color(0xFFFCD34D),
+    scaffoldBg: Color(0xFF09090B),
+    surface: Color(0xFF141417),
+    onSurface: Color(0xFFFAFAFA),
+    mutedInk: Color(0xFFA1A1AA),
   );
 
   @override
@@ -148,6 +175,10 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     Color? statGoodInk,
     Color? statGoodFill,
     Color? statWarnInk,
+    Color? scaffoldBg,
+    Color? surface,
+    Color? onSurface,
+    Color? mutedInk,
   }) {
     return DesignTokens(
       primaryFill: primaryFill ?? this.primaryFill,
@@ -159,6 +190,10 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
       statGoodInk: statGoodInk ?? this.statGoodInk,
       statGoodFill: statGoodFill ?? this.statGoodFill,
       statWarnInk: statWarnInk ?? this.statWarnInk,
+      scaffoldBg: scaffoldBg ?? this.scaffoldBg,
+      surface: surface ?? this.surface,
+      onSurface: onSurface ?? this.onSurface,
+      mutedInk: mutedInk ?? this.mutedInk,
     );
   }
 
@@ -175,6 +210,126 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
       statGoodInk: Color.lerp(statGoodInk, other.statGoodInk, t)!,
       statGoodFill: Color.lerp(statGoodFill, other.statGoodFill, t)!,
       statWarnInk: Color.lerp(statWarnInk, other.statWarnInk, t)!,
+      scaffoldBg: Color.lerp(scaffoldBg, other.scaffoldBg, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      onSurface: Color.lerp(onSurface, other.onSurface, t)!,
+      mutedInk: Color.lerp(mutedInk, other.mutedInk, t)!,
+    );
+  }
+}
+
+/// One cricket-event colour and the ink that sits on it.
+///
+/// The pair travels together because the contrast is the point: bye cyan at
+/// `#00B4D8` is 2.46:1 against white and 8.5:1 against black, so a badge that
+/// borrowed the white ink would be unreadable outdoors.
+@immutable
+class EventRole {
+  final Color fill;
+  final Color ink;
+  const EventRole(this.fill, this.ink);
+
+  static EventRole lerp(EventRole a, EventRole b, double t) =>
+      EventRole(Color.lerp(a.fill, b.fill, t)!, Color.lerp(a.ink, b.ink, t)!);
+}
+
+/// The six cricket-event colours, plus the dot and run tints.
+///
+/// These used to be inline `Color(0x…)` literals copied across four files —
+/// crimson alone appeared six times — which made the Event Colour Rule
+/// unenforceable: nothing stopped the same red becoming a settings accent.
+/// A role makes "this colour means a wicket" a lookup instead of a convention.
+@immutable
+class EventTokens extends ThemeExtension<EventTokens> {
+  final EventRole eventWicket;
+  final EventRole eventSix;
+  final EventRole eventFour;
+  final EventRole eventWide;
+  final EventRole eventNoBall;
+  final EventRole eventBye;
+  final EventRole eventDot;
+  final EventRole eventRun1;
+  final EventRole eventRun2;
+  final EventRole eventRun3;
+  final EventRole eventOther;
+
+  const EventTokens({
+    required this.eventWicket,
+    required this.eventSix,
+    required this.eventFour,
+    required this.eventWide,
+    required this.eventNoBall,
+    required this.eventBye,
+    required this.eventDot,
+    required this.eventRun1,
+    required this.eventRun2,
+    required this.eventRun3,
+    required this.eventOther,
+  });
+
+  /// Event colour carries meaning, not theme, so both themes share the fills.
+  /// Only the ink is theme-blind too: it is chosen for contrast against the
+  /// fill it sits on, never against the page.
+  static const EventTokens light = EventTokens(
+    eventWicket: EventRole(Color(0xFFDC143C), Colors.white),
+    eventSix: EventRole(Color(0xFFEC008C), Colors.white),
+    eventFour: EventRole(Color(0xFF15803D), Colors.white),
+    eventWide: EventRole(Color(0xFFFFBA08), Colors.black),
+    eventNoBall: EventRole(Color(0xFF7B2CBF), Colors.white),
+    eventBye: EventRole(Color(0xFF00B4D8), Colors.black),
+    eventDot: EventRole(Color(0xFF131316), Colors.white),
+    eventRun1: EventRole(Color(0xFFA5F3FC), Colors.black),
+    eventRun2: EventRole(Color(0xFF22D3EE), Colors.black),
+    eventRun3: EventRole(Color(0xFF0E7490), Colors.white),
+    eventOther: EventRole(Color(0xFF334155), Colors.white),
+  );
+
+  static const EventTokens dark = light;
+
+  @override
+  EventTokens copyWith({
+    EventRole? eventWicket,
+    EventRole? eventSix,
+    EventRole? eventFour,
+    EventRole? eventWide,
+    EventRole? eventNoBall,
+    EventRole? eventBye,
+    EventRole? eventDot,
+    EventRole? eventRun1,
+    EventRole? eventRun2,
+    EventRole? eventRun3,
+    EventRole? eventOther,
+  }) {
+    return EventTokens(
+      eventWicket: eventWicket ?? this.eventWicket,
+      eventSix: eventSix ?? this.eventSix,
+      eventFour: eventFour ?? this.eventFour,
+      eventWide: eventWide ?? this.eventWide,
+      eventNoBall: eventNoBall ?? this.eventNoBall,
+      eventBye: eventBye ?? this.eventBye,
+      eventDot: eventDot ?? this.eventDot,
+      eventRun1: eventRun1 ?? this.eventRun1,
+      eventRun2: eventRun2 ?? this.eventRun2,
+      eventRun3: eventRun3 ?? this.eventRun3,
+      eventOther: eventOther ?? this.eventOther,
+    );
+  }
+
+  @override
+  EventTokens lerp(ThemeExtension<EventTokens>? other, double t) {
+    if (other is! EventTokens) return this;
+    return EventTokens(
+      eventWicket: EventRole.lerp(eventWicket, other.eventWicket, t),
+      eventSix: EventRole.lerp(eventSix, other.eventSix, t),
+      eventFour: EventRole.lerp(eventFour, other.eventFour, t),
+      eventWide: EventRole.lerp(eventWide, other.eventWide, t),
+      eventNoBall: EventRole.lerp(eventNoBall, other.eventNoBall, t),
+      eventBye: EventRole.lerp(eventBye, other.eventBye, t),
+      eventDot: EventRole.lerp(eventDot, other.eventDot, t),
+      eventRun1: EventRole.lerp(eventRun1, other.eventRun1, t),
+      eventRun2: EventRole.lerp(eventRun2, other.eventRun2, t),
+      eventRun3: EventRole.lerp(eventRun3, other.eventRun3, t),
+      eventOther: EventRole.lerp(eventOther, other.eventOther, t),
     );
   }
 }
@@ -187,4 +342,6 @@ extension ThemeContextExtension on BuildContext {
       Theme.of(this).extension<AppSpacing>() ?? const AppSpacing();
   DesignTokens get tokens =>
       Theme.of(this).extension<DesignTokens>() ?? DesignTokens.light;
+  EventTokens get events =>
+      Theme.of(this).extension<EventTokens>() ?? EventTokens.light;
 }

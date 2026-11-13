@@ -40,7 +40,9 @@ if [ -d design-system ]; then
 fi
 # The roles named in DESIGN.md must exist in the token layer.
 for ROLE in primaryFill onPrimaryFill surfaceOutline borderRow lockedFill \
-            lockedInk statGoodInk statGoodFill statWarnInk; do
+            lockedInk statGoodInk statGoodFill statWarnInk scaffoldBg surface \
+            onSurface mutedInk eventWicket eventSix eventFour eventWide \
+            eventNoBall eventBye eventDot; do
   grep -q "$ROLE" lib/core/theme/app_tokens.dart || {
     echo "FAIL: DESIGN.md names '$ROLE' but app_tokens.dart has no such role" >&2
     exit 1

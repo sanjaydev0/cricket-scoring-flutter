@@ -1,31 +1,37 @@
 ---
 name: CricScore
-description: Offline gully-cricket umpire scorer — glare-first arcade scoring for a phone held in one hand in the sun.
+description: Offline gully-cricket umpire scorer — daylight-first instrument UI for a phone held one-handed in direct sun.
 ---
 
 # Design System: CricScore
 
 ## 0. How to read this
 
-This document names **roles**, not hex values. Every role is a real field on
-`DesignTokens` in `lib/core/theme/app_tokens.dart`, registered as a
-`ThemeExtension` on both `UmpireTheme.light()` and `UmpireTheme.dark()`, and read
-as `context.tokens.<role>`. Spacing and radii are `context.spacing.*`
+This document names **roles**, not raw hex values in screens. Every role is a
+real field on `DesignTokens` or `EventTokens` in `lib/core/theme/app_tokens.dart`,
+registered as a `ThemeExtension` on both `UmpireTheme.light()` and
+`UmpireTheme.dark()`, and read as `context.tokens.<role>` /
+`context.events.<role>.fill`. Spacing and radii are `context.spacing.*`
 (`AppSpacing`). The seven style presets and ten score fonts live in
 `lib/theme.dart`.
 
-The rule that follows from that: **if a screen needs a colour that is not a
-role, add the role** (light and dark values, in `app_tokens.dart`) — do not
-write `Color(0x…)` in a screen. `lib/screens` has a raw-colour budget of 64 and
-sits at 62; `tool/check-master.sh` fails the release if it grows. Raw hex is
-legal only in `theme.dart` (preset registry) and `app_tokens.dart` (role
-definitions).
+The rule that follows: **if a screen needs a colour that is not a role, add the
+role** (both light and dark values, in `app_tokens.dart`) — never write
+`Color(0x…)` in a screen. `lib/screens` has a raw-colour budget of 64 and sits
+at 46; `tool/check-master.sh` fails the release if it grows. Raw hex is legal
+only in `theme.dart` (preset registry) and `app_tokens.dart` (role definitions).
 
 Both themes ship. Dark mode is a user setting (`store.themeId`), so every role
 carries a light and a dark value and every widget must read the role. A rule
 that only works on paper is a broken rule.
 
-## 1. Core mandate: the umpire's scoreboard, in direct sunlight
+**The preset boundary.** A `StylePreset` may own exactly six things: `heroBg`,
+`heroFg`, `keyDefault`, `keyFg`, `keyRadius`, `stripBg`. Nothing outside
+`scoreboard.dart` and the keypad may read a preset. Picking *Game Boy* recolours
+the score tile and the keys; it never turns the club roster green. This is what
+keeps seven arcade presets compatible with one calm, modern chrome.
+
+## 1. Core mandate: an instrument, in direct sunlight
 
 CricScore is an offline-first outdoor utility, operated one-handed, at 10,000+
 lux, by someone who is also watching a cricket match. The design exists to make
@@ -37,19 +43,27 @@ fetch. Nothing in this app sells anything. There is no network layer at all:
 the live-rooms/viewer feature was removed in 2.27.0 and must not return without
 a design review.
 
-**The Sunlight Rule.** Every fill is a solid, saturated colour carrying white or
-near-black text. No pastels, no low-alpha tint as the only signal, no
-grey-on-grey. If a state can only be read by a subtle shade change, it is wrong.
+**The Bright-Neutral Sunlight Rule.** Pure white everywhere halates in midday
+sun, and grey-on-grey disappears. Light mode therefore pairs a **bright neutral
+scaffold** (`scaffoldBg`, `#F3F4F6`) with **pure white cards** (`surface`,
+`#FFFFFF`). Cards separate by luminance first and border second. Every active
+fill is a solid, saturated colour carrying white or near-black ink — no pastels,
+no low-alpha tint as the only signal.
 
 **The Locked-Not-Faded Rule.** Never express "disabled", "locked", "already
 played" or "just bowled" with opacity. A 45%-alpha name is a smudge in daylight.
-Locked rows get a solid `lockedFill`, full-contrast `lockedInk`, and an explicit
-lock glyph; the subtitle says why in words.
+Locked rows get a solid `lockedFill`, full-contrast `lockedInk`, an explicit
+lock glyph, and the subtitle says why in words.
 
 **The Ink-Not-Tint Rule.** Body copy, captions and subtitles use a real ink
-(`onSurface`, `onSurfaceVariant`, `lockedInk`), never `onSurface` with an alpha
+(`onSurface`, `mutedInk`, `lockedInk`), never `onSurface` with an alpha
 multiplier. Opacity on white ink over a saturated fill (hierarchy inside a hero
 tile) is allowed; opacity on dark ink over a light surface is not.
+
+**The Hierarchy Rule.** Passive containers and interactive controls never carry
+the same visual weight. Cards frame content quietly — surface fill, 1.5px
+border, generous padding. Buttons, keys and active chips look tactile — solid
+fill, full-contrast ink, decisive radius.
 
 ## 2. Colour roles
 
@@ -57,8 +71,12 @@ tile) is allowed; opacity on dark ink over a light surface is not.
 
 | Role | Means | Paper | Night |
 |---|---|---|---|
-| `primaryFill` | the "chosen / go" fill: primary buttons, selected rows | near-black | near-white |
+| `scaffoldBg` | the app canvas behind cards | `#F3F4F6` | `#09090B` |
+| `surface` | card, sheet and uncommitted-control fill | `#FFFFFF` | `#141417` |
+| `primaryFill` | the "chosen / go" fill: primary buttons, selected rows | `#131316` | `#F2F2F2` |
 | `onPrimaryFill` | ink on `primaryFill` | white | near-black |
+| `onSurface` | primary body ink: names, titles, values | `#0A0A0A` | `#FAFAFA` |
+| `mutedInk` | secondary ink: subtitles, reasons, captions | `#475569` | `#A1A1AA` |
 | `surfaceOutline` | 1.5px structural border on a card, tile, section or outline button | near-black | near-white |
 | `borderRow` | 1px divider between rows of one table/list, 100% opacity | slate | graphite |
 | `lockedFill` | solid fill behind a locked/disabled row or key | pale slate | charcoal |
@@ -67,6 +85,10 @@ tile) is allowed; opacity on dark ink over a light surface is not.
 Selection is a **filled slab**, never a tint and never a checkmark alone. An
 outline button is an outline (`surfaceOutline`, 1.5px) over the surface fill,
 not a lighter version of the primary.
+
+`mutedInk` is wired into `ColorScheme.onSurfaceVariant`, so a screen may keep
+reading `context.colors.onSurfaceVariant` and still get our value rather than a
+seeded M3 tone.
 
 ### Derived figures
 
@@ -82,15 +104,28 @@ white is 2.2:1 and `#F59E0B` is 2.1:1, both unreadable outdoors. Use
 
 ### Cricket events
 
-These carry meaning and nothing else. They are not decoration, not headings, not
-generic emphasis:
+`EventTokens` holds one `EventRole(fill, ink)` per event, because the contrast
+is the point: the fill and the numeral ink travel together. These carry meaning
+and nothing else:
 
-- **Wicket crimson** — wickets and `W+n` run-out badges.
-- **Six magenta** — a six.
-- **Four green** — a four.
-- **Wide amber** — wides, and the armed no-ball keypad state.
-- **No-ball purple** — no-balls and the `NB ARMED` caption.
-- **Bye cyan** — byes and leg-byes.
+| Role | Event | Fill | Ink |
+|---|---|---|---|
+| `eventWicket` | wickets, `W+n` run-out badges | `#DC143C` | white (5.0:1) |
+| `eventSix` | a six | `#EC008C` | white (4.3:1) |
+| `eventFour` | a four | `#15803D` | white (5.0:1) |
+| `eventNoBall` | no-balls, `NB ARMED` | `#7B2CBF` | white (7.1:1) |
+| `eventWide` | wides, armed wide key | `#FFBA08` | black (12.3:1) |
+| `eventBye` | byes and leg-byes | `#00B4D8` | black (8.5:1) |
+| `eventDot` | a dot ball | `#131316` | white |
+| `eventRun1` / `eventRun2` / `eventRun3` | 1 / 2 / 3 runs, by cyan depth | light → deep cyan | black / black / white |
+| `eventOther` | a badge with no event meaning | `#334155` | white |
+
+**The Badge Contrast Rule.** A 12px w900 badge numeral needs **≥3:1** against
+its fill (WCAG AA-large). Four of the six event fills sit between 4.3:1 and 5.0:1
+with white ink — that passes, but it is *not* 7:1, and no amount of "harmonising"
+will make crimson reach 7:1 while still reading as crimson. The one genuine trap
+is bye cyan: `#00B4D8` is 2.46:1 against white, which is why `eventBye` carries
+black ink. Never reassign an event ink without redoing that arithmetic.
 
 **The Event Colour Rule.** If a colour from that list appears anywhere that is
 not a ball event, its badge or its celebration tint, the design is wrong.
@@ -107,22 +142,29 @@ is never used as a 5%-alpha page wash.
 exposed through `ScoreFonts` (Stadium Sans, Condensed Punch, Block Heavy, Mono
 Ledger, Tech Board, Tall Ticket, Ultra Slab, Wide Circuit, Broadcast, Narrow
 Board).
-**Body font:** platform default (Roboto on Android), bundled and offline.
-**Label font:** the same default, forced to w900 with wide tracking.
+**Body font:** the platform grotesque (Roboto on Android). Bundled with the
+engine on Android; the Linux desktop preview resolves it through fontconfig, so
+a preview-only face difference is expected and is not a bug.
+**Micro-label font:** the same face at `w800–w900` with wide tracking.
 
-Character: a heavy grotesque for structure, an outsized tabular numeral face for
-the score. The UI never competes with the numerals — labels are small, tracked
-and uppercase; the score is the largest thing on any screen.
+Every bundled family is a **single file, single weight**, so anything above
+`w700` is synthesised faux-bold. That is why the chrome does not use `w900`
+everywhere: it reads blobby and it fights the numerals.
 
 ### Hierarchy
 
-- **Display score** — w900, 68px, line-height 1.05, tabular figures, the chosen
-  face. Never below 52px, never wrapped, never animated in size.
-- **Headline** — w900, 16px, uppercase: sheet titles, empty-state headlines.
-- **Title** — w800, 15px: a person's name in a row, a team name.
-- **Body** — w400–w700, 13px; list subtitles at 11–12px w600.
-- **Label** — w900, 9–11px, 1.2–2px tracking, uppercase: stat captions, section
-  bands, `OV` / `ECON` / `MATCHES` micro-labels, keypad key subtitles.
+- **Display score** — `w900`, 68px, line-height 1.0, letter-spacing −1.5,
+  tabular figures, the chosen face. Never below 52px, never wrapped, never
+  animated in size.
+- **Headline** — `w800`, 15–16px, +0.5 tracking, uppercase: sheet titles,
+  empty-state headlines, screen titles.
+- **Title** — `w700`, 15px, −0.2 tracking: a person's name in a row, a team
+  name, a card title.
+- **Body** — `w500`, 13.5–15px; row subtitles and reasons at 12px `w600` in
+  `mutedInk`.
+- **Micro-label** — `w800–w900`, 10–11px, +1.4 tracking, uppercase: stat
+  captions, table column headers, `OV` / `CRR` / `ECON` / `MATCHES`, keypad
+  subtitles.
 
 ### Named rules
 
@@ -131,8 +173,23 @@ change while it is on screen, so a live score, over count or economy never
 jitters.
 
 **The Smaller-Than-Content Ban.** A section heading is never smaller or lighter
-than the rows it introduces. Group labels are uppercase w900 with tracking or a
-filled colour band — never an 11px grey line above 14px bold names.
+than the rows it introduces. Group labels are uppercase `w800` with tracking and
+a 1.5px rule, or a filled colour band — never an 11px grey line above 14px bold
+names.
+
+**The Not-Everything-Is-Bold Rule.** `w900` belongs to score numerals and
+micro-labels. Names are `w700`, body is `w500`, subtitles are `w600`. A screen
+where every string is heavy has no hierarchy at all.
+
+### Iconography
+
+Uniform 2px-stroke outline glyphs (Material outlined set, already tree-shaken).
+Never mix a filled decorative icon with a thin outline icon in one toolbar.
+
+- `16dp` — inline status glyphs (lock on a locked row, check in a filled slot).
+- `20dp` — button and row affordance icons.
+- `22–24dp` — app bar actions, inside a 48dp target.
+- An icon beside text is optically centred to cap height with a fixed 8dp gap.
 
 ## 4. Layout
 
@@ -149,8 +206,8 @@ crush a name or a 44dp target.
 - Spacing scale: `context.spacing` — 4 / 8 / 16 / 24 / 32. Hand-tuned 6 and 10
   gaps are allowed inside a row; page padding is 12dp on dense live screens,
   16dp on home/history, 20dp inside sheets.
-- Cards stack with 8–10dp between them. Rows inside a card use a 1px solid
-  `borderRow` and no outer margin.
+- Cards stack with 10dp between them. Rows inside a card run edge to edge,
+  separated by a 1px `borderRow`, with 14dp horizontal padding.
 - The keypad is a fixed 3-column grid at 1.5 aspect ratio; keys are 72dp tall so
   a thumb can hit them without looking, at the bottom of the screen.
 - The over strip is a fixed **246dp** window showing exactly six balls — never a
@@ -160,82 +217,78 @@ crush a name or a 44dp target.
 
 ## 5. Elevation and depth
 
-Depth is border-led, not shadow-led. Every card carries Material elevation **2**
-with a **1.5px solid `surfaceOutline`** border and no visible drop shadow: a soft
-shadow disappears in sunlight while a border still reads. A 1px 50%-alpha
-hairline does not read either — that is why structural borders are 1.5px at full
-opacity and row rules are 1px at full opacity. A rule drawn *inside* a saturated
-fill (the hairline under the hero numerals) follows that fill's ink instead of
-`borderRow`, because `borderRow` is a surface-level role.
+Depth is **luminance-led and border-led**, never shadow-led. Soft shadows vanish
+in direct sunlight and cost GPU overdraw for nothing.
 
-Sheets are the only surfaces that float, and they float by scrim and position,
-not by blur or translucency. There is no glassmorphism, no gradient, and no tonal
-ladder beyond scaffold → card → inverted card.
-
-**The Border-Not-Shadow Rule.** A new surface gets a border before it gets a
-shadow. Nothing in this app is distinguished by blur.
+- **`elevation: 0` everywhere**, including `cardTheme`, `AppBar`, dialogs, sheets
+  and snackbars. Material's elevation 2 draws a shadow *and* a surface tint; it
+  is not a semantic label, it is a visual effect, and this app does not ship it.
+- Light mode separates by luminance: white `surface` on a `#F3F4F6` `scaffoldBg`.
+- **Border hierarchy:** outer card / control frame `1.5px` `surfaceOutline` at
+  100% opacity; internal row divider `1px` `borderRow` at 100% opacity; a hairline
+  drawn *inside* a saturated fill follows that fill's ink, never `borderRow`.
+- Sheets float by a 70%-black scrim and position, not by blur or translucency.
+  There is no glassmorphism and no tonal ladder beyond scaffold → card →
+  inverted card.
 
 ## 6. Shapes
 
-Rectangular and decisive. Controls are **8px** rectangles (`radiusSm`); cards and
-sheet sections are **16px** (`radiusLg`); the style preset carries its own keypad
-radius (6–14px) so the arcade presets can read as CRT or cabinet hardware. The
-registry ships seven presets (Umpire Pro, Solar Flare, Pure White, Crimson Court,
-Nothing Mono, Game Boy, Pro Red); `StylePreset.ids` is the only list to iterate.
+Rectangular and decisive.
 
-Full-round shapes are reserved for **36dp ball badges**, **team dots** and
-**initials avatars**. Nothing else is a pill — not names, not tabs, not filters.
-The one sanctioned slab is the innings switcher (12px), because it is a
-segmented control, not a chip.
+- **Controls, buttons, inputs, slots:** 8px (`radiusSm`).
+- **Segmented innings switcher:** 12px (`radiusMd`).
+- **Cards and sheet sections:** 16px (`radiusLg`).
+- **Keypad:** the preset's own radius, 6–14px, so an arcade preset can read as
+  CRT or cabinet hardware.
+- **Full circles:** only 36dp ball badges, team dots and initials avatars.
+
+Nothing else is a pill — not names, not tabs, not filters. A person is a row.
 
 ## 7. Components
 
 ### Buttons — `RectBtn`
 
-- **Shape:** 8px rectangle, min 64×52, 12/16 padding.
+- **Shape:** 8px rectangle, min 64×52, 12/16 padding, single-line label.
 - **Primary:** `primaryFill` fill, `onPrimaryFill` w800 text.
-- **Secondary:** surface fill with a **1.5px `surfaceOutline` border** and
-  `onSurface` text — an outline, not a tint. (The border is 1.5px, not 2px: it
-  has to match the card border and stay crisp at 1× DPI.)
+- **Secondary:** `surface` fill with a **1.5px `surfaceOutline` border** and
+  `onSurface` text — an outline, not a tint.
 - **Danger:** `error` fill, `onPrimaryFill` text. Exactly one meaning: this
   destroys something.
-- **Press:** feedback lands on pointer-down with an immediate 75–80% black
-  overlay, not a ripple. A ripple is invisible in direct sun.
+- **Press:** feedback lands on pointer-down with an immediate solid state change
+  plus `HapticFeedback.selectionClick()` — never a slow ripple that washes out
+  in sun.
 - **Disabled:** `lockedFill` fill, `lockedInk` text, and the reason in words in
-  the subtitle ("XI full (11)", "just bowled"). Never an opacity.
+  the label ("XI full (11)", "just bowled"). Never an opacity.
 
 ### Bento tiles and rule chips
 
-The compact mid-match control language, used where an umpire must see state
-without scrolling:
-
-- **Tile:** surface fill, 1.5px `surfaceOutline`, `radiusMd`, label at 10px w900
-  `onSurfaceVariant`, control beneath. Two tiles may sit side by side.
-- **Rule chip:** two-state, min height 44dp. **Active** = saturated `primary`
-  fill with `onPrimary` ink (a strip of near-black chips is unreadable in sun).
-  **Inactive** = surface fill with a 1.5px `surfaceOutline` border and
-  `onSurface` ink. The chip always shows its state in words (`ON` / `OFF`,
-  `+1` / `+0`, `ONE` / `NONE`), never by colour alone.
+- **Tile:** `surface` fill, 1.5px `surfaceOutline`, `radiusMd`, 12dp padding,
+  10px `w800` tracked `mutedInk` label above the control. Two tiles may sit
+  side by side.
+- **Rule chip:** two-state, min height 44dp, 8px radius. **Active** = solid
+  `primaryFill` with `onPrimaryFill`. **Inactive** = `surface` with a 1.5px
+  `surfaceOutline` and `onSurface` ink. The chip always shows its state in words
+  (`ON` / `OFF`, `+1` / `+0`, `ONE` / `NONE`), never by colour alone.
 
 ### Cards and containers
 
-Corner 16px, border 1.5px `surfaceOutline`, elevation 2, no visible shadow,
-padding 12dp on live screens and 16–20dp elsewhere. Inverted cards
-(`primaryFill` + `onPrimaryFill`) are reserved for the live "act now" strip:
-innings-break countdown, match-over countdown.
+`surface` fill, 16px corner, 1.5px `surfaceOutline`, zero shadow, 12dp padding on
+live screens and 16–20dp elsewhere. Inverted cards (`primaryFill` +
+`onPrimaryFill`) are reserved for the live "act now" strip: innings-break
+countdown, match-over countdown.
 
 ### Inputs and fields
 
-Outline border, 8px radius, dense where it sits in a row. Every field carries a
-**persistent** `labelText` or a standalone heading immediately above it — a
-placeholder is never the only label, because it vanishes the moment the user
-types. Sheet fields add `viewInsets.bottom` padding so the keyboard never covers
-the field or its confirm button.
+`surface` fill, 8px radius, 1.5px `surfaceOutline`, 2px `primaryFill` when
+focused. Every field carries a **persistent** `labelText` or a standalone heading
+immediately above it — a placeholder is never the only label, because it vanishes
+the moment the user types. Sheet fields add `viewInsets.bottom` padding so the
+keyboard never covers the field or its confirm button.
 
 ### Name rows — `PlayerRow` / `DetailRow`
 
-- `PlayerRow` 48dp min, `DetailRow` 54dp min: name left in w800, subtitle
-  beneath in w600 `onSurfaceVariant`, the value or affordance right.
+- `PlayerRow` 48dp min, `DetailRow` 54dp min: name left in w700, subtitle
+  beneath in w600 `mutedInk`, the value or affordance right.
 - **Selected** = solid `primaryFill` slab with `onPrimaryFill` text and a filled
   radio. Not a tint, not a checkmark alone.
 - **Locked/disabled** = solid `lockedFill`, `lockedInk`, and a lock glyph (or the
@@ -245,13 +298,14 @@ the field or its confirm button.
 
 ### Navigation
 
-AppBar: uppercase w900 15px title, icon actions only, each with a tooltip. Tabs
+AppBar: flat, `scaffoldBg` background, elevation 0, no surface tint, uppercase
+`w800` 15px title, 22dp icon actions each in a 48dp target with a tooltip. Tabs
 are underlined text (`UnderlineTabs`): the label reads as a heading, a 2.5px rule
 marks the open one, and nothing moves when selection changes.
 
 Page transitions are intentionally **instant** so route changes never animate
-against a live scoreboard, celebration or strip glide. Sheets use a 280ms
-ease-out settle, collapsing to 120ms when reduced motion is requested.
+against a live scoreboard, celebration or strip glide. Sheets settle in 280ms
+ease-out, collapsing to 120ms when reduced motion is requested.
 
 ### Scoreboard (signature)
 
@@ -267,23 +321,23 @@ the tile can be double-tapped.
 
 ### Ball badges (signature)
 
-36dp circles, solid fill, white or black numeral, **no borders, no glow, no
-scale, no corner markers** — all six balls in an over look structurally
-identical so the *colour* carries the meaning. Ordered by impact: wicket crimson
-> six magenta > four green > no-ball purple > wide amber > bye cyan > dot carbon
-> runs by cyan depth.
+36dp circles, solid fill from `context.events`, numeral in the role's own ink,
+**no borders, no glow, no scale, no corner markers** — all six balls in an over
+look structurally identical so the *colour* carries the meaning. Ordered by
+impact: wicket crimson > six magenta > four green > no-ball purple > wide amber >
+bye cyan > dot carbon > runs by cyan depth.
 
 ### Tables (scorecard, bowling figures, squad lists)
 
-- **One header band per table**, preset/`primaryFill` fill with `onPrimaryFill`
-  w900 11px uppercase labels. Batting and bowling tables in the same sheet use
-  the same band, so the sheet reads as one grid.
+- **One header band per table**, `primaryFill` fill with `onPrimaryFill` w800
+  11px uppercase labels. Batting and bowling tables in the same sheet use the
+  same band, so the sheet reads as one grid.
 - **Numeric columns are right-aligned, tabular, and the same width across
   tables** (batting `R | B | 4s | 6s`, bowling `O | M | R | W`). A figure that
   does not align with the figure above it is a bug.
 - Unplayed squad members are listed after played ones, with `did not bat` /
-  `did not bowl` in `onSurfaceVariant` — dimmed by *ink choice*, never by
-  opacity on the whole row.
+  `did not bowl` in `mutedInk` — dimmed by *ink choice*, never by opacity on the
+  whole row.
 - Undefined figures render `—`, never `0`.
 
 ## 8. Sheet contracts
@@ -308,9 +362,9 @@ identical so the *colour* carries the meaning. Ordered by impact: wicket crimson
 2. Three slots (`STRIKER`, `NON-STRIKER`, `BOWLER`) at 56dp, 8px corners, 6dp
    gutter. The active slot is a `primaryFill` slab with `onPrimaryFill` ink; a
    filled inactive slot is `surface` with a 1.5px `surfaceOutline` and a
-   `statGoodInk` check; an empty slot writes `TAP TO PICK` in
-   `onSurfaceVariant`, so no state is colour-only. No cricket-event colour
-   here — the bowler slot is structural, not a wicket.
+   `statGoodInk` check; an empty slot writes `TAP TO PICK` in `mutedInk`, so no
+   state is colour-only. No cricket-event colour here — the bowler slot is
+   structural, not a wicket.
 3. One search field, then one name list (`PlayerRow`, names only — no role or
    style tags). The pool is the batting XI for the two batter slots and the
    bowling XI for the bowler, minus every assigned name.
@@ -346,6 +400,10 @@ Layout-frozen by rule. Celebrations may only use `Transform`, `Opacity`,
 change a layout size. Runs and wickets numerals animate independently, never the
 score tile.
 
+Outdoor heat is a performance constraint: no `BackdropFilter`, no continuous
+shadow animation, no infinite ticker. Compositor-only effects keep the phone from
+throttling peak brightness.
+
 The over strip glides 900ms on a forward rollover and never fades on undo. Honour
 `MediaQuery.disableAnimationsOf` everywhere. Battery Saver forces celebrations
 `off`; it never dims a glare-first visual.
@@ -365,9 +423,13 @@ The over strip glides 900ms on a forward rollover and never fades on undo. Honou
 
 ### Do
 
-- **Do** read every colour through `context.tokens` / `context.colors` and every
-  gap through `context.spacing`.
-- **Do** express selection as a solid fill with `onPrimaryFill` text at w800+.
+- **Do** read every colour through `context.tokens` / `context.events` /
+  `context.colors` and every gap through `context.spacing`.
+- **Do** let the bright neutral scaffold and the white card do the separating in
+  light mode, so borders stay crisp instead of carrying the whole hierarchy.
+- **Do** reserve `w900` for score numerals and micro-labels, `w700` for titles
+  and `w600` for subtitles.
+- **Do** express selection as a solid fill with `onPrimaryFill` text at w700+.
 - **Do** express locked/disabled as `lockedFill` + `lockedInk` + a lock glyph and
   a written reason.
 - **Do** use `statGoodInk` / `statWarnInk` for derived figures.
@@ -390,6 +452,8 @@ The over strip glides 900ms on a forward rollover and never fades on undo. Honou
   copy: that is the Sunlight Rule failing.
 - **Don't** use crimson, magenta, green, amber, purple or cyan for anything that
   is not a cricket event.
+- **Don't** ship `elevation: 2` "for semantics" — it draws a shadow and a tint.
+- **Don't** make every string `w900` uppercase; that is not hierarchy.
 - **Don't** add a page transition, hero animation or layout-size change to
   anything that moves on a live score.
 - **Don't** hide a destructive action behind a collapsed trigger, or let a swipe
@@ -399,6 +463,7 @@ The over strip glides 900ms on a forward rollover and never fades on undo. Honou
 - **Don't** add a style preset, celebration or score font without wiring it into
   `StylePreset.presets` / `MatchStore.celebIds` / `ScoreFonts.ids` and the
   settings sheet in the same change.
+- **Don't** read `StylePreset` outside `scoreboard.dart` and the keypad.
 - **Don't** add a network call, a live-room viewer, a runtime font fetch or a CDN
   asset.
 
@@ -409,8 +474,9 @@ suggestion. It fails on:
 
 - `APP.md` missing, over 1000 words, or its `Version:` disagreeing with
   `pubspec.yaml`;
+- a role named in this document that is missing from `app_tokens.dart`;
 - raw `Color(0x` in `lib/screens/home.dart` or `break_result.dart`;
-- `lib/screens` raw-colour count above its baseline;
+- `lib/screens` raw-colour count above its baseline (64, currently 46);
 - text dimming via `withValues(alpha: 0.4x)` / `0.45`;
 - bare `#22C55E` / `#F59E0B` as a colour in `lib/screens`;
 - a `design-system/` directory reappearing.
