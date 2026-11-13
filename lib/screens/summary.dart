@@ -510,7 +510,7 @@ class TopPerformersView extends StatelessWidget {
     final squad = m.config.playersPerSide;
     final many = squad >= 8; // more players per side -> 3 batters, else 2
     final nBat = many ? 3 : 2;
-    final nBowl = 2;
+    const nBowl = 2;
     for (var n = 1; n <= 2; n++) {
       if (inningsNo != null && n != inningsNo) continue;
       final sheet = store.sheetFor(n);

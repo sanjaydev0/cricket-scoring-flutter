@@ -194,7 +194,7 @@ class HomeScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            FieldLabel('Style'),
+                            const FieldLabel('Style'),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -228,7 +228,7 @@ class HomeScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            FieldLabel('Score font'),
+                            const FieldLabel('Score font'),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -249,7 +249,7 @@ class HomeScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            FieldLabel('Celebrations'),
+                            const FieldLabel('Celebrations'),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,

@@ -62,7 +62,7 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: RectAppBar(title: 'Match setup'),
+      appBar: const RectAppBar(title: 'Match setup'),
       body: SafeArea(
         child: ResponsiveCenter(
           child: ListView(

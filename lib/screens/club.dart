@@ -40,7 +40,7 @@ class _ClubScreenState extends State<ClubScreen> {
       builder: (_, _) {
         final store = widget.store;
         return Scaffold(
-          appBar: RectAppBar(title: 'Club'),
+          appBar: const RectAppBar(title: 'Club'),
           body: SafeArea(
             child: ResponsiveCenter(
               child: ListView(
@@ -650,9 +650,9 @@ class _ClubScreenState extends State<ClubScreen> {
             .compareTo(store.careerBatting(a.id).runs),
       );
     if (list.isEmpty) {
-      return RectCard(
+      return const RectCard(
         padding: EdgeInsets.zero,
-        child: const EmptyState(
+        child: EmptyState(
           icon: Icons.groups_outlined,
           title: 'NO PLAYERS YET',
           message: 'Add a player, or bulk-add your whole roster from a pasted list. Career figures build up as you score.',
@@ -720,7 +720,7 @@ class _ClubScreenState extends State<ClubScreen> {
                 onClose: () => Navigator.pop(context),
               ),
               const SizedBox(height: 12),
-              SectionBand('Batting'),
+              const SectionBand('Batting'),
               const SizedBox(height: 8),
               _grid({
                 'Innings': '${b.innings}',
@@ -737,7 +737,7 @@ class _ClubScreenState extends State<ClubScreen> {
                 '50s': '${b.fifties}',
               }),
               const SizedBox(height: 12),
-              SectionBand('Bowling'),
+              const SectionBand('Bowling'),
               const SizedBox(height: 8),
               _grid({
                 'Innings': '${w.innings}',
@@ -754,7 +754,7 @@ class _ClubScreenState extends State<ClubScreen> {
                 '3w': '${w.threeHauls}',
               }),
               const SizedBox(height: 12),
-              SectionBand('Fielding'),
+              const SectionBand('Fielding'),
               const SizedBox(height: 8),
               _grid({'Catches': '$fC', 'Run outs': '$fR', 'Stumpings': '$fS'}),
               const SizedBox(height: 16),

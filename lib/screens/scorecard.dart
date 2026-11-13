@@ -22,7 +22,7 @@ class ScorecardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: RectAppBar(title: 'Scorecard'),
+      appBar: const RectAppBar(title: 'Scorecard'),
       body: SafeArea(
         child: ResponsiveCenter(
           maxWidth: 640,

@@ -232,7 +232,7 @@ void main() {
               const SheetHeader(title: 'Openers + Bowler', caption: 'Lions'),
               SheetHeader(
                 title: 'Over done',
-                band: Color(MatchStore.teamAColor),
+                band: const Color(MatchStore.teamAColor),
                 onClose: () {},
               ),
             ],

@@ -1460,14 +1460,14 @@ class _BenchRow extends StatelessWidget {
         children: [
           _AssignBtn(
             label: _teamTag(m.config.teamA),
-            color: Color(MatchStore.teamAColor),
+            color: const Color(MatchStore.teamAColor),
             enabled: !aFull,
             onTap: () => assign(m.config.teamA),
           ),
           const SizedBox(width: 4),
           _AssignBtn(
             label: _teamTag(m.config.teamB),
-            color: Color(MatchStore.teamBColor),
+            color: const Color(MatchStore.teamBColor),
             enabled: !bFull,
             onTap: () => assign(m.config.teamB),
           ),

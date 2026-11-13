@@ -33,7 +33,7 @@ class BreakScreen extends StatelessWidget {
         final ink = context.tokens.onPrimaryFill;
         final sheet = store.sheetFor(1);
         return Scaffold(
-          appBar: RectAppBar(title: 'Innings break'),
+          appBar: const RectAppBar(title: 'Innings break'),
           body: SafeArea(
             child: ResponsiveCenter(
               child: Column(
@@ -251,7 +251,7 @@ class ResultScreen extends StatelessWidget {
         final m = store.match;
         if (m == null) {
           return Scaffold(
-            appBar: RectAppBar(title: 'Result'),
+            appBar: const RectAppBar(title: 'Result'),
             body: Center(
               child: Text(
                 'No match',
@@ -273,7 +273,7 @@ class ResultScreen extends StatelessWidget {
         final inn2 = m.innings2;
         final ink = context.tokens.onPrimaryFill;
         return Scaffold(
-          appBar: RectAppBar(title: 'Match finished'),
+          appBar: const RectAppBar(title: 'Match finished'),
           body: SafeArea(
             child: ResponsiveCenter(
               child: ListView(
