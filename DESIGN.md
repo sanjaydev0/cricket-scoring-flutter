@@ -465,7 +465,8 @@ The over strip glides 900ms on a forward rollover and never fades on undo. Honou
 - **Don't** add a style preset, celebration or score font without wiring it into
   `StylePreset.presets` / `MatchStore.celebIds` / `ScoreFonts.ids` and the
   settings sheet in the same change.
-- **Don't** read `StylePreset` outside `scoreboard.dart` and the keypad.
+- **Don't** read `StylePreset` outside `scoreboard.dart`, the keypad and the two
+  style swatches (`StylePreset.ids` / `StylePreset.of`).
 - **Don't** add a network call, a live-room viewer, a runtime font fetch or a CDN
   asset.
 
@@ -481,6 +482,13 @@ suggestion. It fails on:
 - `lib/screens` raw-colour count above its baseline (10, currently 7);
 - text dimming via `withValues(alpha: 0.4x)` / `0.45`;
 - bare `#22C55E` / `#F59E0B` as a colour in `lib/screens`;
+- stock Material chrome (`Card(`, `ListTile(`, `SwitchListTile(`, `ExpansionTile(`,
+  `FilledButton(`, `ElevatedButton(`, `OutlinedButton(`, `TextButton(`) in the
+  screen layer — `scoreboard.dart` and `scoring.dart` are allowlisted because the
+  hero tile and the keypad are the arcade surface, and `widgets.dart` is the kit
+  itself;
+- `StylePreset` read anywhere but `scoreboard.dart`, the keypad, and the
+  `StylePreset.of` / `StylePreset.ids` swatches in `home.dart` and `sheets.dart`;
 - a `design-system/` directory reappearing.
 
 `tool/check-ux.sh` enforces single-line labels (`overflow: ellipsis`) so no

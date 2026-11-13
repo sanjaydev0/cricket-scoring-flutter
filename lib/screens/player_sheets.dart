@@ -1073,8 +1073,9 @@ void showNextBatterAfterRunOut(
                 },
               ),
             const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.pop(sheetCtx),
+            RectBtn(
+              primary: false,
+              onTap: () => Navigator.pop(sheetCtx),
               child: const Text('CANCEL — RECORD NOTHING'),
             ),
           ],

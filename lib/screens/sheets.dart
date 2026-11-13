@@ -1499,6 +1499,13 @@ class _BenchRow extends StatelessWidget {
 
 /// Solid team-colour assign key. Disabled keeps the label readable instead of
 /// fading into the card.
+/// Solid team-colour assign key. Disabled keeps the label readable instead of
+/// fading into the card.
+///
+/// Dense by design: three of these sit in the trailing slot of one roster row,
+/// so it cannot take the standard 52dp key's padding. It is still a rect key —
+/// solid fill, full-contrast ink, square corners — not a Material TextButton
+/// pretending to be one.
 class _AssignBtn extends StatelessWidget {
   final String label;
   final Color color;
@@ -1513,27 +1520,35 @@ class _AssignBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: TextButton(
-        onPressed: enabled ? onTap : null,
-        style: TextButton.styleFrom(
-          minimumSize: const Size(44, 40),
+    final t = context.tokens;
+    final ink = enabled ? Colors.white : t.lockedInk;
+    return Material(
+      color: enabled ? color : t.lockedFill,
+      borderRadius: BorderRadius.circular(context.spacing.radiusSm),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(context.spacing.radiusSm),
+        child: Container(
+          height: 44,
+          constraints: const BoxConstraints(minWidth: 44),
+          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          backgroundColor: enabled ? color : context.tokens.lockedFill,
-          foregroundColor: enabled ? Colors.white : context.tokens.lockedInk,
-          shape: RoundedRectangleBorder(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(context.spacing.radiusSm),
+            border: enabled
+                ? null
+                : Border.all(color: t.surfaceOutline, width: 1.5),
           ),
-        ),
-        child: Text(
-          '+$label',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.4,
+          child: Text(
+            '+$label',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.4,
+              color: ink,
+            ),
           ),
         ),
       ),

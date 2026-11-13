@@ -82,4 +82,34 @@ if [ -n "$BRIGHT" ]; then
   exit 1
 fi
 
-echo "APP.md ok ($WORDS words, v$APP_BASE) + token gate ok (raw colors: $TOTAL_RAW/10) + design gate ok"
+# ---- 3. One kit, no stock Material chrome --------------------------------
+# Every button, card, row and app bar in the screen layer comes from
+# lib/screens/widgets.dart. Stock Material widgets bring their own pill
+# silhouettes, drop shadows and 38%-alpha disabled states, which the Daylight
+# rules ban — and one stray Card is how the old chrome creeps back.
+# scoreboard.dart and scoring.dart are allowlisted on purpose: the hero tile
+# and the keypad are the arcade surface and are not rebuilt.
+STOCK="$(grep -rnE '\b(Card|ListTile|SwitchListTile|ExpansionTile|FilledButton|ElevatedButton|OutlinedButton|TextButton)\(' \
+  lib/screens --include='*.dart' 2>/dev/null \
+  | grep -v '^lib/screens/widgets.dart:' \
+  | grep -vE '^lib/screens/(scoreboard|scoring)\.dart:' || true)"
+if [ -n "$STOCK" ]; then
+  echo "FAIL: stock Material chrome in the screen layer — use the kit in lib/screens/widgets.dart:" >&2
+  echo "$STOCK" | head -n 10 >&2
+  exit 1
+fi
+
+# A preset owns the hero tile, the keys and the two style swatches. Nothing
+# else may read one: picking Game Boy must not turn the club roster green.
+# home.dart and sheets.dart are allowed the picker itself (StylePreset.ids to
+# list the presets, StylePreset.of for the swatch colour) and nothing more.
+PRESET="$(grep -rn 'StylePreset' lib/screens --include='*.dart' 2>/dev/null \
+  | grep -vE '^lib/screens/(scoreboard|scoring)\.dart:' \
+  | grep -vE '^lib/screens/(home|sheets)\.dart:.*StylePreset\.(of|ids)' || true)"
+if [ -n "$PRESET" ]; then
+  echo "FAIL: StylePreset read outside the score surface (scoreboard, keypad, style swatches):" >&2
+  echo "$PRESET" | head -n 10 >&2
+  exit 1
+fi
+
+echo "APP.md ok ($WORDS words, v$APP_BASE) + token gate ok (raw colors: $TOTAL_RAW/10) + chrome gate ok (kit only, no preset leak)"
