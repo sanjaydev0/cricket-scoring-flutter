@@ -30,7 +30,6 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
       builder: (_, _) {
         final s = store.currentSheet;
         if (s == null) return const SizedBox.shrink();
-        final preset = StylePreset.of(store.styleId);
         return SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -42,7 +41,7 @@ void showPlayerStatsSheet(BuildContext context, MatchStore store) {
                   _undoBanner(context, store, store.lastChange!),
                   const SizedBox(height: 10),
                 ],
-                _rowsHeader(preset, 'Batter', const ['R', 'B', '4s', '6s']),
+                _rowsHeader(context, 'Batter', const ['R', 'B', '4s', '6s']),
                 if (s.striker != null)
                   _batterRow(context, store, s, s.striker!, isStriker: true),
                 if (s.nonStriker != null)
@@ -138,20 +137,28 @@ Widget _undoBanner(BuildContext context, MatchStore store, String what) {
   );
 }
 
-/// Column header row in preset colors: label left, stat titles right.
-Widget _rowsHeader(StylePreset preset, String label, List<String> cols) {
+/// Column header band: label left, stat titles right, in the same solid band
+/// as every other table in the app.
+///
+/// It used to paint `preset.heroBg`, which meant picking Game Boy turned this
+/// sheet's header green — the preset boundary exists so that cannot happen.
+Widget _rowsHeader(BuildContext context, String label, List<String> cols) {
+  final t = context.tokens;
   return Container(
-    color: preset.heroBg,
+    color: t.primaryFill,
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     child: Row(
       children: [
         Expanded(
           child: Text(
-            label,
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: preset.heroFg,
-              fontWeight: FontWeight.w900,
-              fontSize: 13,
+              color: t.onPrimaryFill,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+              letterSpacing: 1.2,
             ),
           ),
         ),
@@ -162,9 +169,10 @@ Widget _rowsHeader(StylePreset preset, String label, List<String> cols) {
               c,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: preset.heroFg.withValues(alpha: 0.85),
+                color: t.onPrimaryFill,
                 fontWeight: FontWeight.w800,
-                fontSize: 11,
+                fontSize: 10,
+                letterSpacing: 0.6,
               ),
             ),
           ),

@@ -30,9 +30,10 @@ class BreakScreen extends StatelessWidget {
           );
         }
         final inn1 = m.innings1;
-        final preset = StylePreset.of(store.styleId);
+        final ink = context.tokens.onPrimaryFill;
+        final sheet = store.sheetFor(1);
         return Scaffold(
-          appBar: AppBar(title: const Text('INNINGS BREAK')),
+          appBar: RectAppBar(title: 'Innings break'),
           body: SafeArea(
             child: ResponsiveCenter(
               child: Column(
@@ -41,132 +42,190 @@ class BreakScreen extends StatelessWidget {
                     child: ListView(
                       padding: EdgeInsets.all(context.spacing.md),
                       children: [
-                        Card(
-                          color: preset.heroBg,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 20,
-                              horizontal: 16,
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    TeamDot(
-                                      inn1.battingTeam == m.config.teamA
-                                          ? MatchStore.teamAColor
-                                          : MatchStore.teamBColor,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${inn1.battingTeam}: ${inn1.runs}/${inn1.wickets}',
+                        // The innings that just closed. Inverted, like the live
+                        // card on Home: the one plate that says "this is the
+                        // state you are between".
+                        RectCard(
+                          inverted: true,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 18,
+                            horizontal: 16,
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  TeamDot(
+                                    inn1.battingTeam == m.config.teamA
+                                        ? MatchStore.teamAColor
+                                        : MatchStore.teamBColor,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      inn1.battingTeam,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w900,
-                                        color: preset.heroFg,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: ink,
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Overs ${CricketMath.ballsToOvers(inn1.legalDeliveries)}/${m.config.totalOvers} • CRR ${CricketMath.calcCRR(inn1.runs, inn1.legalDeliveries)}',
-                                  style: TextStyle(
-                                    color: preset.heroFg.withValues(alpha: 0.9),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (store.tracking &&
-                            store.sheetFor(1) != null &&
-                            store.sheetFor(1)!.bowlingCards.isNotEmpty) ...[
-                          Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(context.spacing.radiusMd),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    'BOWLING — ${inn1.bowlingTeam}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12,
-                                      letterSpacing: 1.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  BowlerRows(store.sheetFor(1)!.bowlingCards),
                                 ],
                               ),
-                            ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${inn1.runs}/${inn1.wickets}',
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  height: 1.0,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -1,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                  color: ink,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'OVERS ${CricketMath.ballsToOvers(inn1.legalDeliveries)}/${m.config.totalOvers}  ·  CRR ${CricketMath.calcCRR(inn1.runs, inn1.legalDeliveries)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                  color: ink,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                        ],
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 20,
-                              horizontal: 16,
-                            ),
+                        ),
+                        SizedBox(
+                          height: context.spacing.sm + context.spacing.xs,
+                        ),
+                        if (store.tracking &&
+                            sheet != null &&
+                            sheet.bowlingCards.isNotEmpty) ...[
+                          RectCard(
+                            padding: EdgeInsets.zero,
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Text(
-                                  'CHASE TARGET FOR ${inn1.bowlingTeam}',
-                                  style: const TextStyle(
-                                    letterSpacing: 1.2,
-                                    fontSize: 11,
-                                  ),
+                                SectionBand(
+                                  'Bowling',
+                                  trailing: inn1.bowlingTeam,
                                 ),
-                                Text(
-                                  '${m.target}',
-                                  style: TextStyle(
-                                    fontFamily: ScoreFonts.family(store.fontId),
-                                    fontSize: 52,
-                                    fontWeight: FontWeight.w900,
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                                Text(
-                                  'RRR ${CricketMath.calcRRR(m.target!, CricketMath.totalBalls(m.config.totalOvers))} RPO',
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: BowlerRows(sheet.bowlingCards),
                                 ),
                               ],
                             ),
+                          ),
+                          SizedBox(
+                            height: context.spacing.sm + context.spacing.xs,
+                          ),
+                        ],
+                        RectCard(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 18,
+                            horizontal: 16,
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'CHASE TARGET FOR ${inn1.bowlingTeam}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.4,
+                                  color: context.tokens.mutedInk,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${m.target}',
+                                style: TextStyle(
+                                  fontFamily: ScoreFonts.family(store.fontId),
+                                  fontSize: 52,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w900,
+                                  color: context.tokens.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'RRR ${CricketMath.calcRRR(m.target!, CricketMath.totalBalls(m.config.totalOvers))} RPO',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.tokens.mutedInk,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         if (store.tracking) ...[
-                          const SizedBox(height: 12),
-                          MatchDetail(
-                            store: store,
-                            initialInnings: 1,
-                            showBallsLink: true,
+                          SizedBox(
+                            height: context.spacing.sm + context.spacing.xs,
+                          ),
+                          RectCard(
+                            padding: EdgeInsets.zero,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: MatchDetail(
+                                store: store,
+                                initialInnings: 1,
+                                showBallsLink: true,
+                              ),
+                            ),
                           ),
                         ],
                       ],
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    padding: EdgeInsets.fromLTRB(
+                      context.spacing.md,
+                      4,
+                      context.spacing.md,
+                      context.spacing.md,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
-                          child: RectBtn(
-                            onTap: () {
-                              store.startSecondInnings();
-                              Navigator.pushReplacementNamed(
-                                context,
-                                '/scoring',
-                              );
-                            },
-                            child: const Text('COMMENCE 2ND INNINGS'),
+                          child: SizedBox(
+                            height: 60,
+                            child: RectBtn(
+                              onTap: () {
+                                store.startSecondInnings();
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/scoring',
+                                );
+                              },
+                              child: const Text(
+                                'COMMENCE 2ND INNINGS',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        TextButton(
-                          onPressed: () => store.undo(),
-                          child: const Text('Undo'),
+                        SizedBox(width: context.spacing.sm),
+                        RectBtn(
+                          primary: false,
+                          onTap: () => store.undo(),
+                          child: const Text('UNDO'),
                         ),
                       ],
                     ),
@@ -192,8 +251,13 @@ class ResultScreen extends StatelessWidget {
         final m = store.match;
         if (m == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('RESULT')),
-            body: const Center(child: Text('No match')),
+            appBar: RectAppBar(title: 'Result'),
+            body: Center(
+              child: Text(
+                'No match',
+                style: TextStyle(color: context.tokens.mutedInk),
+              ),
+            ),
           );
         }
         // Undo-safety: a restored live match leaves this screen.
@@ -207,89 +271,118 @@ class ResultScreen extends StatelessWidget {
           );
         }
         final inn2 = m.innings2;
+        final ink = context.tokens.onPrimaryFill;
         return Scaffold(
-          appBar: AppBar(title: const Text('MATCH FINISHED')),
+          appBar: RectAppBar(title: 'Match finished'),
           body: SafeArea(
             child: ResponsiveCenter(
               child: ListView(
                 padding: EdgeInsets.all(context.spacing.md),
                 children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
+                  // The outcome is the one thing this screen exists to say, so
+                  // it gets the inverted plate rather than a heading inside a
+                  // card full of everything else.
+                  RectCard(
+                    inverted: true,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 22,
+                      horizontal: 16,
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          m.winner == 'TIE' ? 'MATCH TIED' : '${m.winner} WON',
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontSize: 24,
+                            height: 1.15,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.4,
+                            color: ink,
+                          ),
+                        ),
+                        if ((m.winMargin ?? '').isNotEmpty) ...[
+                          const SizedBox(height: 4),
                           Text(
-                            m.winner == 'TIE'
-                                ? 'MATCH TIED'
-                                : '${m.winner} WON',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
+                            m.winMargin!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: ink,
                             ),
-                          ),
-                          Text(
-                            m.winMargin ?? '',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          if (store.tracking) ...[
-                            const SizedBox(height: 12),
-                            MatchDetail(
-                              store: store,
-                              initialInnings: inn2 == null ? 1 : 2,
-                              showBallsLink: true,
-                            ),
-                            const SizedBox(height: 16),
-                            AwardsView(store: store),
-                            const SizedBox(height: 12),
-                            RectBtn(
-                              primary: false,
-                              onTap: () => shareScorecard(context, store),
-                              child: const Text('COPY SCORECARD (WHATSAPP)'),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                          RectBtn(
-                            onTap: () => _rematch(context, store),
-                            child: const Text('REMATCH'),
-                          ),
-                          SizedBox(height: context.spacing.sm),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: RectBtn(
-                                  primary: false,
-                                  onTap: () {
-                                    store.newMatch();
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/',
-                                      (r) => false,
-                                    );
-                                  },
-                                  child: const Text('HOME'),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: RectBtn(
-                                  primary: false,
-                                  onTap: () {
-                                    store.newMatch();
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/setup',
-                                      (r) => r.isFirst,
-                                    );
-                                  },
-                                  child: const Text('NEW MATCH'),
-                                ),
-                              ),
-                            ],
                           ),
                         ],
+                      ],
+                    ),
+                  ),
+                  if (store.tracking) ...[
+                    SizedBox(height: context.spacing.sm + context.spacing.xs),
+                    RectCard(
+                      padding: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: MatchDetail(
+                          store: store,
+                          initialInnings: inn2 == null ? 1 : 2,
+                          showBallsLink: true,
+                        ),
                       ),
                     ),
+                    SizedBox(height: context.spacing.sm + context.spacing.xs),
+                    AwardsView(store: store),
+                    SizedBox(height: context.spacing.sm + context.spacing.xs),
+                    RectBtn(
+                      primary: false,
+                      onTap: () => shareScorecard(context, store),
+                      child: const Text('COPY SCORECARD (WHATSAPP)'),
+                    ),
+                  ],
+                  SizedBox(height: context.spacing.md),
+                  SizedBox(
+                    height: 60,
+                    child: RectBtn(
+                      onTap: () => _rematch(context, store),
+                      child: const Text(
+                        'REMATCH',
+                        style: TextStyle(fontSize: 15, letterSpacing: 0.8),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: context.spacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RectBtn(
+                          primary: false,
+                          onTap: () {
+                            store.newMatch();
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/',
+                              (r) => false,
+                            );
+                          },
+                          child: const Text('HOME'),
+                        ),
+                      ),
+                      SizedBox(width: context.spacing.sm),
+                      Expanded(
+                        child: RectBtn(
+                          primary: false,
+                          onTap: () {
+                            store.newMatch();
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/setup',
+                              (r) => r.isFirst,
+                            );
+                          },
+                          child: const Text('NEW MATCH'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
