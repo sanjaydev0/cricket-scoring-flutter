@@ -57,8 +57,8 @@ if [ "$HOME_RAW" != "0" ]; then
   exit 1
 fi
 TOTAL_RAW="$(grep -rn 'Color(0x' lib/screens --include='*.dart' 2>/dev/null | wc -l | tr -d ' ')"
-if [ "$TOTAL_RAW" -gt 64 ]; then
-  echo "FAIL: screens raw Color(0x count $TOTAL_RAW exceeds baseline 64 — tokens, not hex" >&2
+if [ "$TOTAL_RAW" -gt 10 ]; then
+  echo "FAIL: screens raw Color(0x count $TOTAL_RAW exceeds baseline 10 — tokens, not hex" >&2
   exit 1
 fi
 
@@ -82,4 +82,4 @@ if [ -n "$BRIGHT" ]; then
   exit 1
 fi
 
-echo "APP.md ok ($WORDS words, v$APP_BASE) + token gate ok (raw colors: $TOTAL_RAW/64) + design gate ok"
+echo "APP.md ok ($WORDS words, v$APP_BASE) + token gate ok (raw colors: $TOTAL_RAW/10) + design gate ok"

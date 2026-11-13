@@ -222,53 +222,42 @@ class BallBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = ball.badge;
-    late Color bg;
-    late Color fg;
+    final ev = context.events;
     final isWicketBadge = t == 'W' || RegExp(r'^W\+\d+$').hasMatch(t);
+    final EventRole role;
     if (isWicketBadge) {
-      bg = const Color(0xFFDC143C); // crimson
-      fg = Colors.white;
+      role = ev.eventWicket;
     } else if (t == '6' || t.startsWith('N6')) {
-      bg = const Color(0xFFEC008C); // hyper magenta
-      fg = Colors.white;
+      role = ev.eventSix;
     } else if (t == '4' || t.startsWith('N4')) {
-      bg = const Color(0xFF15803D); // deep green, white numeral
-      fg = Colors.white;
+      role = ev.eventFour;
     } else if (t.startsWith('N') || t == 'NB') {
-      bg = const Color(0xFF7B2CBF);
-      fg = Colors.white;
+      role = ev.eventNoBall;
     } else if (t.startsWith('WD')) {
-      bg = const Color(0xFFFFBA08);
-      fg = Colors.black;
+      role = ev.eventWide;
     } else if (t.startsWith('B') || t.startsWith('LB')) {
-      bg = const Color(0xFF00B4D8);
-      fg = Colors.black;
+      role = ev.eventBye;
     } else if (t == '0') {
-      bg = const Color(0xFF131316); // carbon black
-      fg = Colors.white;
+      role = ev.eventDot;
     } else if (t == '1') {
-      bg = const Color(0xFFA5F3FC); // light cyan
-      fg = Colors.black;
+      role = ev.eventRun1;
     } else if (t == '2') {
-      bg = const Color(0xFF22D3EE); // cyan
-      fg = Colors.black;
+      role = ev.eventRun2;
     } else if (t == '3') {
-      bg = const Color(0xFF0E7490); // deep cyan
-      fg = Colors.white;
+      role = ev.eventRun3;
     } else {
-      bg = const Color(0xFF334155);
-      fg = Colors.white;
+      role = ev.eventOther;
     }
     // Every badge identical — no borders, glow, scale or markers.
     return Container(
       width: 36,
       height: 36,
-      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+      decoration: BoxDecoration(color: role.fill, shape: BoxShape.circle),
       alignment: Alignment.center,
       child: Text(
         t,
         style: TextStyle(
-          color: fg,
+          color: role.ink,
           fontWeight: FontWeight.w900,
           // W+2 style badges get a smaller numeral to hold the circle.
           fontSize: t.length > 2 ? 10 : 12,
@@ -299,8 +288,8 @@ class KeyBtn extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final bg = armed ? const Color(0xFFFFBA08) : color;
-    final onFg = armed ? Colors.black : fg;
+    final bg = armed ? context.events.eventWide.fill : color;
+    final onFg = armed ? context.events.eventWide.ink : fg;
     return SizedBox(
       height: 72,
       child: FilledButton(

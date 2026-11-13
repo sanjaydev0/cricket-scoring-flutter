@@ -467,14 +467,9 @@ class _MatchDetailState extends State<MatchDetail> {
                               : c.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
                             fontSize: 14,
-                            color:
-                                (c.playerId == sheet.strikerId ||
-                                    c.playerId == sheet.nonStrikerId)
-                                ? const Color(0xFF1D4ED8)
-                                : null,
                           ),
                         ),
                         Text(

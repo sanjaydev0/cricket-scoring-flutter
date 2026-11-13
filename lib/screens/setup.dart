@@ -626,7 +626,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1D4ED8),
+                    color: Color(MatchStore.teamAColor),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(

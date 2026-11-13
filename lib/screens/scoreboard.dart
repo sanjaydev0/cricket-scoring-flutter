@@ -312,7 +312,9 @@ class _ScoreboardState extends State<Scoreboard> {
             mode: celebId,
             valueKey: '${inn.runs}',
             fire: (isFour || isSix) && !calm,
-            tint: isFour ? const Color(0xFF2DC653) : const Color(0xFFEC008C),
+            tint: isFour
+                ? context.events.eventFour.fill
+                : context.events.eventSix.fill,
             text: '${inn.runs}',
             style: numStyle,
           ),
@@ -327,7 +329,7 @@ class _ScoreboardState extends State<Scoreboard> {
             mode: celebId,
             valueKey: '${inn.wickets}',
             fire: isW && !calm,
-            tint: const Color(0xFFDC143C),
+            tint: context.events.eventWicket.fill,
             text: '${inn.wickets}',
             style: numStyle,
           ),

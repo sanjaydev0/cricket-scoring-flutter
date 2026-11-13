@@ -147,10 +147,10 @@ class _ClubScreenState extends State<ClubScreen> {
                       onPressed: () => _renameClubSheet(context, store, c),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline,
                         size: 18,
-                        color: Color(0xFFDC143C),
+                        color: context.colors.error,
                       ),
                       tooltip: 'Delete club',
                       onPressed: () => _deleteClubConfirm(context, store, c),
@@ -832,7 +832,7 @@ class _ClubScreenState extends State<ClubScreen> {
             width: 100,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.tokens.borderRow),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(

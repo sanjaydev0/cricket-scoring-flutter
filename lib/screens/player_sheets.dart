@@ -109,12 +109,12 @@ Widget _undoBanner(BuildContext context, MatchStore store, String what) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: const Color(0xFF131316),
+      color: context.tokens.primaryFill,
       borderRadius: BorderRadius.circular(10),
     ),
     child: Row(
       children: [
-        const Icon(Icons.swap_horiz, size: 18, color: Colors.white),
+        Icon(Icons.swap_horiz, size: 18, color: context.tokens.onPrimaryFill),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -188,8 +188,8 @@ Widget _batterRow(
         showBatterOptionsSheet(context, store, c, isStriker: isStriker),
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: context.tokens.borderRow)),
       ),
       child: Row(
         children: [
@@ -207,10 +207,10 @@ Widget _batterRow(
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right,
                       size: 18,
-                      color: Color(0xFF94A3B8),
+                      color: context.tokens.mutedInk,
                     ),
                   ],
                 ),
@@ -323,9 +323,11 @@ class _BatterOptionsState extends State<_BatterOptions> {
     final sheet = store.currentSheet;
     if (sheet == null) return const SizedBox.shrink();
     final card = widget.card;
+    // The striker is the live actor, so his sheet leads with the go-fill; the
+    // non-striker's is quieter. Two unrelated brand colours read as decoration.
     final accent = widget.isStriker
-        ? const Color(0xFF1D4ED8)
-        : const Color(0xFF0F766E);
+        ? context.tokens.primaryFill
+        : context.tokens.mutedInk;
     final retireAs = _retireAs;
     if (retireAs == null) {
       return SafeArea(
@@ -752,7 +754,7 @@ void showNextBatterSheet(
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 10),
-              const RowSectionLabel('NEXT BATTER', color: Color(0xFF1D4ED8)),
+              RowSectionLabel('NEXT BATTER', color: context.tokens.primaryFill),
               if (waiting.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -792,9 +794,9 @@ void showNextBatterSheet(
                     },
                   ),
               if (store.askFielder && type.hasFielder) ...[
-                const RowSectionLabel(
+                RowSectionLabel(
                   'WHO TOOK IT? (optional)',
-                  color: Color(0xFFDC143C),
+                  color: context.events.eventWicket.fill,
                 ),
                 for (final id in _fieldingIds(store, sheet))
                   PlayerRow(
@@ -880,9 +882,12 @@ class _RunOutFormState extends State<RunOutForm> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const RowSectionLabel('RUN OUT', color: Color(0xFFDC143C)),
+        RowSectionLabel('RUN OUT', color: context.events.eventWicket.fill),
         const SizedBox(height: 6),
-        const RowSectionLabel('1. RUNS COMPLETED', color: Color(0xFFDC143C)),
+        RowSectionLabel(
+          '1. RUNS COMPLETED',
+          color: context.events.eventWicket.fill,
+        ),
         // 0–2 only: three completed runs before a run-out is a rarity in this
         // format, and the fourth row pushed the confirm key off short screens.
         for (final n in [0, 1, 2])
@@ -897,9 +902,9 @@ class _RunOutFormState extends State<RunOutForm> {
             selected: runs == n,
             onTap: () => setState(() => runs = n),
           ),
-        const RowSectionLabel(
+        RowSectionLabel(
           '2. WHO WAS DISMISSED?',
-          color: Color(0xFFDC143C),
+          color: context.events.eventWicket.fill,
         ),
         PlayerRow(
           name: strikerName,
@@ -917,9 +922,9 @@ class _RunOutFormState extends State<RunOutForm> {
           selected: nonStrikerOut,
           onTap: () => setState(() => nonStrikerOut = true),
         ),
-        const RowSectionLabel(
+        RowSectionLabel(
           '3. WHICH END WAS HE OUT AT?',
-          color: Color(0xFFDC143C),
+          color: context.events.eventWicket.fill,
         ),
         PlayerRow(
           name: "Striker's end",
@@ -942,9 +947,9 @@ class _RunOutFormState extends State<RunOutForm> {
           style: const TextStyle(fontSize: 11),
         ),
         if (sheet != null && store.askFielder) ...[
-          const RowSectionLabel(
+          RowSectionLabel(
             'WHO TOOK IT? (optional)',
-            color: Color(0xFFDC143C),
+            color: context.events.eventWicket.fill,
           ),
           for (final id in _fieldingIds(store, sheet))
             PlayerRow(

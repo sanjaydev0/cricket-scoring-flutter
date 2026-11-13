@@ -70,6 +70,13 @@ class _ScoringScreenState extends State<ScoringScreen> {
           );
         }
         final inn = store.innings!;
+        // Team identity travels as a solid band, never a tint. It comes from
+        // the match, not from a literal, so both sides get their own colour.
+        final teamColor = Color(
+          inn.battingTeam == m.config.teamA
+              ? MatchStore.teamAColor
+              : MatchStore.teamBColor,
+        );
         final nb = store.nbArmed;
         final preset = StylePreset.of(store.styleId);
         final scoreFamily = ScoreFonts.family(store.fontId);
@@ -119,7 +126,7 @@ class _ScoringScreenState extends State<ScoringScreen> {
                   if (store.breakDest != null) ...[
                     const SizedBox(height: 10),
                     Card(
-                      color: const Color(0xFF131316),
+                      color: context.tokens.primaryFill,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -132,8 +139,8 @@ class _ScoringScreenState extends State<ScoringScreen> {
                                 store.breakDest == '/break'
                                     ? 'INNINGS COMPLETE — BREAK IN ${store.breakWait}s'
                                     : 'MATCH OVER — RESULT IN ${store.breakWait}s',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: context.tokens.onPrimaryFill,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
                                 ),
@@ -152,7 +159,7 @@ class _ScoringScreenState extends State<ScoringScreen> {
                       store.currentSheet?.needsNewBowler == true) ...[
                     const SizedBox(height: 10),
                     Card(
-                      color: const Color(0xFF1D4ED8),
+                      color: teamColor,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -186,7 +193,7 @@ class _ScoringScreenState extends State<ScoringScreen> {
                           store.currentSheet?.bowlerId == null)) ...[
                     const SizedBox(height: 10),
                     Card(
-                      color: const Color(0xFF1D4ED8),
+                      color: teamColor,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -224,8 +231,8 @@ class _ScoringScreenState extends State<ScoringScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (nb)
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 8),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
                                 child: Center(
                                   child: Text(
                                     'NB ARMED',
@@ -233,7 +240,7 @@ class _ScoringScreenState extends State<ScoringScreen> {
                                       fontSize: 11,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: 2,
-                                      color: Color(0xFF7B2CBF),
+                                      color: context.events.eventNoBall.fill,
                                     ),
                                   ),
                                 ),
@@ -285,8 +292,8 @@ class _ScoringScreenState extends State<ScoringScreen> {
                                 KeyBtn(
                                   label: '4',
                                   sub: nb ? 'N4' : 'FOUR',
-                                  color: const Color(0xFF15803D),
-                                  fg: Colors.white,
+                                  color: context.events.eventFour.fill,
+                                  fg: context.events.eventFour.ink,
                                   armed: nb,
                                   radius: preset.keyRadius,
                                   onTap: () => _tap(context, 'FOUR'),
@@ -294,8 +301,8 @@ class _ScoringScreenState extends State<ScoringScreen> {
                                 KeyBtn(
                                   label: '6',
                                   sub: nb ? 'N6' : 'SIX',
-                                  color: const Color(0xFFEC008C),
-                                  fg: Colors.white,
+                                  color: context.events.eventSix.fill,
+                                  fg: context.events.eventSix.ink,
                                   armed: nb,
                                   radius: preset.keyRadius,
                                   onTap: () => _tap(context, 'SIX'),
@@ -303,8 +310,8 @@ class _ScoringScreenState extends State<ScoringScreen> {
                                 KeyBtn(
                                   label: 'WD',
                                   sub: '+${m.config.rules.widePenalty}',
-                                  color: const Color(0xFFFFBA08),
-                                  fg: Colors.black,
+                                  color: context.events.eventWide.fill,
+                                  fg: context.events.eventWide.ink,
                                   radius: preset.keyRadius,
                                   onTap: () => _tap(context, 'WIDE'),
                                 ),
@@ -313,8 +320,8 @@ class _ScoringScreenState extends State<ScoringScreen> {
                                   sub: nb
                                       ? 'ARMED'
                                       : '+${m.config.rules.noBallPenalty}',
-                                  color: const Color(0xFF7B2CBF),
-                                  fg: Colors.white,
+                                  color: context.events.eventNoBall.fill,
+                                  fg: context.events.eventNoBall.ink,
                                   armed: nb,
                                   radius: preset.keyRadius,
                                   onTap: () => store.toggleNb(),
@@ -322,8 +329,8 @@ class _ScoringScreenState extends State<ScoringScreen> {
                                 KeyBtn(
                                   label: 'W',
                                   sub: 'WICKET',
-                                  color: const Color(0xFFDC143C),
-                                  fg: Colors.white,
+                                  color: context.events.eventWicket.fill,
+                                  fg: context.events.eventWicket.ink,
                                   radius: preset.keyRadius,
                                   onTap: () => _wicketDialog(context),
                                 ),

@@ -17,9 +17,10 @@ registered as a `ThemeExtension` on both `UmpireTheme.light()` and
 
 The rule that follows: **if a screen needs a colour that is not a role, add the
 role** (both light and dark values, in `app_tokens.dart`) — never write
-`Color(0x…)` in a screen. `lib/screens` has a raw-colour budget of 64 and sits
-at 46; `tool/check-master.sh` fails the release if it grows. Raw hex is legal
-only in `theme.dart` (preset registry) and `app_tokens.dart` (role definitions).
+`Color(0x…)` in a screen. `lib/screens` has a raw-colour budget of 10 and sits
+at 7 (press overlays and celebration tints only); `tool/check-master.sh` fails
+the release if it grows. Raw hex is legal only in `theme.dart` (preset registry)
+and `app_tokens.dart` (role definitions).
 
 Both themes ship. Dark mode is a user setting (`store.themeId`), so every role
 carries a light and a dark value and every widget must read the role. A rule
@@ -476,7 +477,7 @@ suggestion. It fails on:
   `pubspec.yaml`;
 - a role named in this document that is missing from `app_tokens.dart`;
 - raw `Color(0x` in `lib/screens/home.dart` or `break_result.dart`;
-- `lib/screens` raw-colour count above its baseline (64, currently 46);
+- `lib/screens` raw-colour count above its baseline (10, currently 7);
 - text dimming via `withValues(alpha: 0.4x)` / `0.45`;
 - bare `#22C55E` / `#F59E0B` as a colour in `lib/screens`;
 - a `design-system/` directory reappearing.
