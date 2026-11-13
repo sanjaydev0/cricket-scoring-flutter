@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cricket_scoring/screens/widgets.dart';
+import 'package:cricket_scoring/store.dart';
 import 'package:cricket_scoring/theme.dart';
 
 /// The design rules that are easy to break by accident: a name row is a
@@ -102,6 +103,111 @@ void main() {
     expect(light.statGoodInk, isNot(dark.statGoodInk));
     expect(light.statWarnInk, isNot(dark.statWarnInk));
     expect(light.surfaceOutline, isNot(dark.surfaceOutline));
+  });
+
+  group('the chrome kit', () {
+    testWidgets('a rect card is flat: no Card, no elevation', (tester) async {
+      await tester.pumpWidget(app(const RectCard(child: Text('MATCH FORMAT'))));
+      expect(find.byType(Card), findsNothing);
+      final tokens = UmpireTheme.light().extension<DesignTokens>()!;
+      final box = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(RectCard),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      final deco = box.decoration! as BoxDecoration;
+      expect(deco.color, tokens.surface);
+      expect((deco.border! as Border).top.color, tokens.surfaceOutline);
+    });
+
+    testWidgets('a settings row is a 56dp target and a locked one is solid', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        app(
+          const Column(
+            children: [
+              SettingsRow(label: 'Sound', subtitle: 'Single quick bleeps'),
+              SettingsRow(
+                label: 'Battery saver',
+                subtitle: 'No celebration',
+                locked: true,
+                last: true,
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(
+        tester.getSize(find.byType(SettingsRow).first).height,
+        greaterThanOrEqualTo(56),
+      );
+      final tokens = UmpireTheme.light().extension<DesignTokens>()!;
+      final locked = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(SettingsRow).last,
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      expect((locked.decoration! as BoxDecoration).color, tokens.lockedFill);
+      expect(find.byIcon(Icons.lock), findsOneWidget);
+    });
+
+    testWidgets('a rect toggle is a 48dp target that states its value', (
+      tester,
+    ) async {
+      var v = false;
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) => app(
+            RectToggle(
+              value: v,
+              semanticsLabel: 'Dark mode',
+              onChanged: (x) => setState(() => v = x),
+            ),
+          ),
+        ),
+      );
+      final target = tester.getSize(find.byType(InkWell));
+      expect(target.width, greaterThanOrEqualTo(48));
+      expect(target.height, greaterThanOrEqualTo(48));
+      await tester.tap(find.byType(InkWell));
+      await tester.pumpAndSettle();
+      expect(v, isTrue);
+      final tokens = UmpireTheme.light().extension<DesignTokens>()!;
+      final track = tester.widget<AnimatedContainer>(
+        find.byType(AnimatedContainer),
+      );
+      expect((track.decoration! as BoxDecoration).color, tokens.primaryFill);
+    });
+
+    testWidgets('a sheet header bands in a team colour or sits flat', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        app(
+          Column(
+            children: [
+              const SheetHeader(title: 'Openers + Bowler', caption: 'Lions'),
+              SheetHeader(
+                title: 'Over done',
+                band: Color(MatchStore.teamAColor),
+                onClose: () {},
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(find.text('OPENERS + BOWLER'), findsOneWidget);
+      expect(find.text('OVER DONE'), findsOneWidget);
+      expect(find.byTooltip('Close'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   testWidgets('a detail row is a 48dp target too', (tester) async {

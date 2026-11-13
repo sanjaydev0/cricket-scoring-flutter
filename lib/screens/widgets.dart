@@ -1210,3 +1210,354 @@ class UnderlineTabs extends StatelessWidget {
     );
   }
 }
+
+/// A flat card: surface fill, 1.5px structural border, 16px corner, no shadow.
+///
+/// This is the only card in the app. Material's `Card` is banned in
+/// `lib/screens`: it arrives with elevation, a surface tint and a margin no
+/// screen here wants, and elevation is a shadow this app does not ship.
+class RectCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final VoidCallback? onTap;
+
+  /// `primaryFill` + `onPrimaryFill`: reserved for the live "act now" strip.
+  final bool inverted;
+
+  /// Solid fill override, for a team band or an event slab.
+  final Color? fill;
+  final Color? borderColor;
+  const RectCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.onTap,
+    this.inverted = false,
+    this.fill,
+    this.borderColor,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final body = Padding(padding: padding, child: child);
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: fill ?? (inverted ? t.primaryFill : t.surface),
+        borderRadius: BorderRadius.circular(context.spacing.radiusLg),
+        border: Border.all(color: borderColor ?? t.surfaceOutline, width: 1.5),
+      ),
+      child: onTap == null
+          ? body
+          : Material(
+              color: Colors.transparent,
+              child: InkWell(onTap: onTap, child: body),
+            ),
+    );
+  }
+}
+
+/// The app bar: flat, `scaffoldBg`, one 1px hairline, uppercase w800 title.
+///
+/// A thin wrapper rather than a new header, so `Scaffold.appBar` keeps working
+/// and the theme still owns the colours.
+class RectAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final List<Widget> actions;
+  const RectAppBar({required this.title, this.actions = const [], super.key});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) => AppBar(
+    title: Text(title.toUpperCase()),
+    actions: actions,
+    shape: Border(bottom: BorderSide(color: context.tokens.borderRow)),
+  );
+}
+
+/// One settings line: label, optional reason, optional control.
+///
+/// Replaces `ListTile` and `SwitchListTile` so a settings list stops looking
+/// like stock Material. Locked state is a solid fill with full-contrast ink,
+/// never an opacity — the reason is written in [subtitle].
+class SettingsRow extends StatelessWidget {
+  final String label;
+  final String? subtitle;
+  final IconData? icon;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool locked;
+  final bool last;
+  const SettingsRow({
+    required this.label,
+    this.subtitle,
+    this.icon,
+    this.trailing,
+    this.onTap,
+    this.locked = false,
+    this.last = false,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final ink = locked ? t.lockedInk : t.onSurface;
+    final subInk = locked ? t.lockedInk : t.mutedInk;
+    final body = Container(
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: locked ? t.lockedFill : null,
+        border: last ? null : Border(bottom: BorderSide(color: t.borderRow)),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 20, color: ink),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: ink,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: subInk,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (locked) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.lock, size: 16, color: t.lockedInk),
+          ] else if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing!,
+          ],
+        ],
+      ),
+    );
+    if (onTap == null || locked) return body;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(onTap: onTap, child: body),
+    );
+  }
+}
+
+/// A rectangular toggle: solid track, solid knob, no pill.
+///
+/// The M3 switch is the last pill-shaped silhouette left in the chrome. This
+/// keeps the 48dp target and states the value in shape and colour, never in
+/// colour alone (the knob moves, and Semantics carries `toggled`).
+class RectToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final String? semanticsLabel;
+  const RectToggle({
+    required this.value,
+    this.onChanged,
+    this.semanticsLabel,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final enabled = onChanged != null;
+    final track = enabled
+        ? (value ? t.primaryFill : t.lockedFill)
+        : t.lockedFill;
+    final knob = enabled
+        ? (value ? t.onPrimaryFill : t.lockedInk)
+        : t.lockedInk;
+    return Semantics(
+      toggled: value,
+      label: semanticsLabel,
+      button: true,
+      child: InkWell(
+        onTap: enabled ? () => onChanged!(!value) : null,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: AnimatedContainer(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 140),
+              curve: Curves.easeOutCubic,
+              width: 44,
+              height: 26,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: track,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: AnimatedAlign(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: knob,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A text field with a persistent label above it.
+///
+/// The theme owns the border, fill and focus ring; this exists so every screen
+/// asks for the same field instead of hand-rolling an `InputDecoration`.
+class RectField extends StatelessWidget {
+  final String label;
+  final TextEditingController? controller;
+  final ValueChanged<String>? onChanged;
+  final IconData? prefixIcon;
+  final Widget? suffixIcon;
+  final String? hint;
+  final bool autofocus;
+  final TextInputAction textInputAction;
+  const RectField({
+    required this.label,
+    this.controller,
+    this.onChanged,
+    this.prefixIcon,
+    this.suffixIcon,
+    this.hint,
+    this.autofocus = false,
+    this.textInputAction = TextInputAction.done,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    onChanged: onChanged,
+    autofocus: autofocus,
+    textInputAction: textInputAction,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: prefixIcon == null
+          ? null
+          : Icon(prefixIcon, size: 20, color: context.tokens.mutedInk),
+      suffixIcon: suffixIcon,
+    ),
+  );
+}
+
+/// The top of a sheet: title, optional caption, optional team band, one exit.
+///
+/// A banded header carries white ink on a saturated team colour; a flat header
+/// sits on the sheet surface with a hairline underneath. Nothing here floats.
+class SheetHeader extends StatelessWidget {
+  final String title;
+  final String? caption;
+  final Color? band;
+  final Widget? trailing;
+  final VoidCallback? onClose;
+  const SheetHeader({
+    required this.title,
+    this.caption,
+    this.band,
+    this.trailing,
+    this.onClose,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final banded = band != null;
+    final ink = banded ? Colors.white : t.onSurface;
+    final subInk = banded ? Colors.white : t.mutedInk;
+    return Container(
+      color: band,
+      padding: EdgeInsets.fromLTRB(16, banded ? 0 : 14, 6, banded ? 8 : 10),
+      decoration: banded
+          ? null
+          : BoxDecoration(
+              border: Border(bottom: BorderSide(color: t.borderRow)),
+            ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: banded ? 18 : 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                    color: ink,
+                  ),
+                ),
+                if (caption != null)
+                  Text(
+                    caption!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: subInk,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          ?trailing,
+          if (onClose != null)
+            IconButton(
+              onPressed: onClose,
+              tooltip: 'Close',
+              color: ink,
+              icon: const Icon(Icons.close, size: 20),
+            ),
+        ],
+      ),
+    );
+  }
+}
