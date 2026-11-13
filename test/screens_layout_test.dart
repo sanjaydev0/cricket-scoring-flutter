@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cricket_scoring/models.dart';
 import 'package:cricket_scoring/screens/player_sheets.dart';
+import 'package:cricket_scoring/screens/club.dart';
 import 'package:cricket_scoring/screens/history.dart';
 import 'package:cricket_scoring/screens/home.dart';
 import 'package:cricket_scoring/screens/scorecard.dart';
@@ -222,6 +223,27 @@ void main() {
     // The score is on the card, so a resume never needs a second screen.
     expect(find.text('4/0'), findsOneWidget);
     expect(find.textContaining('CRR'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('the club screen lists the roster as one table', (tester) async {
+    final s = MatchStore();
+    s.createClub(name: 'Gully Kings');
+    for (var i = 1; i <= 8; i++) {
+      s.addPlayer(name: 'Player $i');
+    }
+    await phone(tester, ClubScreen(s));
+    expect(find.text('CLUB'), findsWidgets);
+    // The roster is a single card of rows, not a card per player.
+    expect(find.textContaining('Player 1'), findsWidgets);
+    await tester.tap(find.text('STATS'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('No matches yet'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an empty club offers to create one', (tester) async {
+    await phone(tester, ClubScreen(MatchStore()));
+    expect(find.text('CREATE CLUB'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

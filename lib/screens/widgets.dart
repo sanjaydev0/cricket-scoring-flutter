@@ -648,6 +648,9 @@ class DetailRow extends StatelessWidget {
   /// The number itself. Tabular figures so live values do not jitter.
   final String? value;
 
+  /// Leading glyph or avatar, before the name.
+  final Widget? leading;
+
   /// Trailing affordance (check, chevron, arrow).
   final Widget? trailing;
 
@@ -657,16 +660,22 @@ class DetailRow extends StatelessWidget {
   /// Dims the row and blocks the tap (XI full, already picked elsewhere).
   final bool dimmed;
 
+  /// The last row of a card: no bottom rule, so the card's own border is the
+  /// only line.
+  final bool last;
+
   const DetailRow({
     super.key,
     required this.title,
     this.subtitle,
     this.valueLabel,
     this.value,
+    this.leading,
     this.trailing,
     this.onTap,
     this.enabled = true,
     this.dimmed = false,
+    this.last = false,
   });
 
   @override
@@ -682,10 +691,11 @@ class DetailRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: dimmed ? t.lockedFill : null,
-          border: Border(bottom: BorderSide(color: t.borderRow)),
+          border: last ? null : Border(bottom: BorderSide(color: t.borderRow)),
         ),
         child: Row(
           children: [
+            if (leading != null) ...[leading!, const SizedBox(width: 10)],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1463,6 +1473,7 @@ class RectField extends StatelessWidget {
   final Widget? suffixIcon;
   final String? hint;
   final String? errorText;
+  final ValueChanged<String>? onSubmitted;
   final TextCapitalization textCapitalization;
   final bool autofocus;
   final TextInputAction textInputAction;
@@ -1474,6 +1485,7 @@ class RectField extends StatelessWidget {
     this.suffixIcon,
     this.hint,
     this.errorText,
+    this.onSubmitted,
     this.textCapitalization = TextCapitalization.none,
     this.autofocus = false,
     this.textInputAction = TextInputAction.done,
@@ -1484,6 +1496,7 @@ class RectField extends StatelessWidget {
   Widget build(BuildContext context) => TextField(
     controller: controller,
     onChanged: onChanged,
+    onSubmitted: onSubmitted,
     autofocus: autofocus,
     textCapitalization: textCapitalization,
     textInputAction: textInputAction,
