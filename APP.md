@@ -1,6 +1,6 @@
 # CricScore — App Anchor
 
-Version: 2.28.0
+Version: 2.29.0
 
 > **How to read this:** this file is the memory of what CricScore *is*.
 > Read it before touching scoring, persistence, sound, or screens.
@@ -53,6 +53,10 @@ account, no server, and no network permission.
   full-width REMATCH primary + HOME / NEW MATCH secondaries, all single-line.
 - `/history`: archives list → `ArchiveDetail` (one innings at a time + SUMMARY).
 - `/club`: profiles (local PIN), clubs, roster, career figures.
+- Every screen outside the score surface is built from one chrome kit in
+  `lib/screens/widgets.dart`: `RectAppBar`, `RectCard` (plain or inverted),
+  `SectionBand`, `FieldLabel`, `SettingsRow` + `RectToggle`, `RectField`,
+  `SheetHeader`, `UnderlineTabs`, `DetailRow`, `PlayerRow`, `RectBtn`.
 
 ## Data keys (`shared_preferences`, source of truth)
 
@@ -82,9 +86,16 @@ account, no server, and no network permission.
   Deleting one archive must never strip another's cards.
 - **Design rules live in `DESIGN.md`.** Read it before any UI change. It is
   written in theme roles (`context.tokens.*`), not hex; the component ID index is
-  `docs/ui-inventory.html`. `bash tool/check-master.sh` enforces the daylight
-  rules (no ink dimming by alpha, no bare bright green/amber, no
-  `design-system/` tree).
+  `docs/ui-inventory.html`.
+- **A preset owns the score surface only.** `StylePreset` may set the hero tile,
+  the keypad keys and the two style swatches; nothing else reads one, so Game Boy
+  cannot turn the roster green.
+- **One chrome kit.** `tool/check-master.sh` fails on a stock `Card`, `ListTile`,
+  `SwitchListTile`, `ExpansionTile`, `FilledButton`, `ElevatedButton`,
+  `OutlinedButton` or `TextButton` in `lib/screens` (`scoreboard.dart` and
+  `scoring.dart` are allowlisted — the hero and keypad are the arcade surface),
+  on a `StylePreset` leak, on ink dimmed by alpha, on bare bright green/amber, and
+  on a returning `design-system/` tree.
 
 ## Commands
 

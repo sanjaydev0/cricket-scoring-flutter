@@ -21,7 +21,8 @@ SOURCES=(
   lib/screens/scoreboard.dart lib/screens/sheets.dart
   lib/screens/player_sheets.dart lib/screens/setup.dart lib/screens/home.dart
   lib/screens/club.dart lib/screens/summary.dart lib/screens/break_result.dart
-  lib/screens/history.dart lib/domain/players.dart
+  lib/screens/history.dart lib/screens/match_detail.dart lib/screens/scorecard.dart
+  lib/domain/players.dart
 )
 missing=0
 for f in "${SOURCES[@]}"; do

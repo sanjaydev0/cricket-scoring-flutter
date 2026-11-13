@@ -36,7 +36,7 @@
   .copybtn{margin-top:8px;font-size:11px;font-weight:800;padding:6px 10px;border-radius:6px;border:1.5px solid #000;background:#fff;cursor:pointer}
   .hidden{display:none!important}
   /* ------- mock primitives (pictures only) ------- */
-  .m-appbar{background:var(--blue);color:#fff;font-weight:900;font-size:13px;padding:10px 12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
+  .m-appbar{background:#f8fafc;color:var(--ink);font-weight:800;font-size:12px;letter-spacing:.6px;padding:10px 12px;border:1px solid var(--line);border-bottom:2px solid var(--carbon);border-radius:6px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase}
   .m-appbar .icons{letter-spacing:6px}
   .m-hero{background:var(--blue);color:#fff;border-radius:8px;padding:14px;text-align:center}
   .m-hero .score{font-size:44px;font-weight:900;letter-spacing:1px}
@@ -84,19 +84,41 @@
   .m-good{color:var(--good);font-weight:900}
   .m-warn{color:var(--warn);font-weight:900}
   .m-goodpill{background:#dcfce7;color:var(--good);border:1px solid #15803d;border-radius:4px;padding:1px 5px;font-weight:900;font-size:10px}
+  /* ------- 2.29 chrome kit ------- */
+  .m-card{border:1.5px solid #0f172a;border-radius:12px;overflow:hidden;background:#fff}
+  .m-card .body{padding:10px}
+  .m-band{background:var(--carbon);color:#fff;font-size:10px;font-weight:800;letter-spacing:1.2px;padding:7px 10px;display:flex;justify-content:space-between;text-transform:uppercase}
+  .m-band.blue{background:var(--blue)}
+  .m-inv{background:var(--carbon);color:#fff;border-radius:12px;padding:12px}
+  .m-inv .lbl{font-size:9px;font-weight:800;letter-spacing:1.4px}
+  .m-inv .big{font-size:30px;font-weight:900;letter-spacing:-1px;line-height:1}
+  .m-inv .meta{font-size:9px;font-weight:800;letter-spacing:1.2px}
+  .m-mast{display:flex;gap:10px;align-items:center}
+  .m-mast .t{font-size:14px;font-weight:800}
+  .m-mast .c{font-size:9px;font-weight:800;letter-spacing:1.2px;color:var(--muted)}
+  .m-srow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;min-height:42px}
+  .m-srow:last-child{border-bottom:0}
+  .m-srow small{display:block;font-size:10px;color:var(--muted);font-weight:600}
+  .m-toggle{width:40px;height:22px;border-radius:4px;background:var(--carbon);position:relative;flex:none}
+  .m-toggle::after{content:"";position:absolute;top:3px;left:21px;width:16px;height:16px;background:#fff;border-radius:2px}
+  .m-toggle.off{background:var(--locked)}
+  .m-toggle.off::after{left:3px;background:#94a3b8}
+  .m-field{border:1.5px solid #0f172a;border-radius:8px;padding:8px 10px;font-size:12px;color:var(--muted);background:#fff}
+  .m-flabel{font-size:9px;font-weight:800;letter-spacing:1.4px;color:var(--muted);margin:8px 0 5px}
+  .m-sub{font-size:10px;color:var(--muted);font-weight:600;line-height:1.35}
 </style>
 </head>
 <body>
 <header>
   <h1>CRICSCORE · UI INVENTORY</h1>
-  <p>Static pictures only — every mock below is non-interactive (<kbd>pointer-events:none</kbd>). Search an element, copy its ID, paste it back to change / modify / remove it. Rules live in <a href="../DESIGN.md">DESIGN.md</a>; roles live in <code>lib/core/theme/app_tokens.dart</code>.</p>
+  <p>Static pictures only — every mock below is non-interactive (<kbd>pointer-events:none</kbd>). Search an element, copy its ID, paste it back to change / modify / remove it. Rules live in <a href="../DESIGN.md">DESIGN.md</a>; roles live in <code>lib/core/theme/app_tokens.dart</code>; the chrome primitives are the <a href="#kit">Chrome kit</a> section, and <code>tool/check-master.sh</code> fails if a screen uses anything else.</p>
   <div class="searchbar">
     <input id="q" type="search" placeholder="Search: e.g. wicket, keypad, hero, bento, bench, row, font, badge…" autocomplete="off">
   </div>
   <p id="count" style="margin:6px 0 0"></p>
 </header>
 <nav class="toc">
-  <a href="#screens">Screens</a><a href="#keypad">Keypad</a><a href="#widgets">Widgets</a><a href="#sheets">Sheets &amp; dialogs</a><a href="#type">Typography</a><a href="#theme">Theme presets</a><a href="#badges">Ball badges</a><a href="#states">States</a><a href="#club">Club &amp; players</a><a href="#summary">Summary</a>
+  <a href="#screens">Screens</a><a href="#kit">Chrome kit</a><a href="#keypad">Keypad</a><a href="#widgets">Widgets</a><a href="#sheets">Sheets &amp; dialogs</a><a href="#type">Typography</a><a href="#theme">Theme presets</a><a href="#badges">Ball badges</a><a href="#states">States</a><a href="#club">Club &amp; players</a><a href="#summary">Summary</a>
 </nav>
 <main>
 
@@ -107,14 +129,22 @@
   <div class="grid">
     <div class="card" data-tags="home start resume rematch archives club settings dark mode battery">
       <h3>Home</h3><div class="id">screen.home</div><div class="ref">lib/screens/home.dart · route <code>/</code></div>
-      <div class="mock"><div class="m-appbar"><span>CRICSCORE</span><span class="icons">◐ ⚙</span></div><div style="height:8px"></div><div class="m-rectbtn">START NEW MATCH</div><div style="height:6px"></div><div class="m-rectbtn sec">REMATCH • …</div><div style="height:6px"></div><div class="m-rectbtn sec">CLUB + PLAYERS</div><div style="height:6px"></div><div class="m-rectbtn sec">ARCHIVES</div></div>
-      <p>Entry hub: Start / Rematch / Resume / Archives, plus the settings sections (sound, haptics, dark mode, ask-fielder, battery saver, data backup).</p>
+      <div class="mock"><div class="m-appbar"><span>CRICSCORE</span><span class="icons">◐ ⚙</span></div><div style="height:6px"></div>
+        <div class="m-card"><div class="body m-mast"><span style="font-size:18px">🏏</span><div><div class="t">UMPIRE SCORER</div><div class="c">OFFLINE · 14 PLAYERS · 2 CLUBS</div></div></div></div><div style="height:6px"></div>
+        <div class="m-inv"><div class="lbl">LIVE · INNINGS 1</div><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px"><span style="font-size:13px;font-weight:700">EAGLES XI</span><span class="big">54/1</span><span>›</span></div><div class="meta">3.2 OVERS · CRR 16.20</div></div><div style="height:6px"></div>
+        <div class="m-rectbtn" style="padding:14px">START NEW MATCH</div><div style="height:6px"></div>
+        <div style="display:flex;gap:6px"><div class="m-rectbtn sec" style="flex:1">CLUB + PLAYERS</div><div class="m-rectbtn sec" style="flex:1">ARCHIVES</div></div></div>
+      <p>A masthead plate that reports what is actually stored (OFFLINE · players · clubs) instead of a marketing line, then the live match as an inverted card: innings label, team, 34px tabular score, overs + CRR, and the whole card is the resume target. START NEW MATCH is a 60dp primary key; REMATCH appears only when there is something to redo. Settings is a four-group bento sheet (LOOK / SCORING / DEVICE / DATA).</p>
       <button class="copybtn" data-id="screen.home">COPY ID</button>
     </div>
     <div class="card" data-tags="setup match config teams overs players rules squad track batting first">
       <h3>Match setup</h3><div class="id">screen.setup</div><div class="ref">lib/screens/setup.dart · route <code>/setup</code></div>
-      <div class="mock"><div class="m-appbar"><span>MATCH SETUP</span><span></span></div><div style="height:8px"></div><div class="m-rectbtn sec">TEAMS A / B + BATTING FIRST</div><div style="height:6px"></div><div class="m-rectbtn sec">FORMAT • overs / players / double-side</div><div style="height:6px"></div><div class="m-rectbtn sec">TRACK PLAYERS + XI PICKERS</div><div style="height:6px"></div><div class="m-rectbtn">START SCORING</div></div>
-      <p>Track-players toggle, then Team A/B name rows (names are rows, never chips) with a bench-first pool.</p>
+      <div class="mock"><div class="m-appbar"><span>MATCH SETUP</span><span></span></div><div style="height:6px"></div>
+        <div class="m-card"><div class="m-band"><span>Teams</span></div><div class="body"><div class="m-field">Team A</div><div style="height:5px"></div><div class="m-field">Team B</div><div class="m-flabel">BATTING FIRST</div><div class="m-chip2 on">● BLUE</div><div class="m-chip2">● RED</div></div></div><div style="height:5px"></div>
+        <div class="m-card"><div class="m-band"><span>Format</span><span>6 v 6</span></div><div class="body"><div class="m-srow" style="border:0;padding:4px 0"><span>Overs</span><span>− 6 +</span></div><div class="m-srow" style="border:0;padding:4px 0"><span>Players / side</span><span>− 6 +</span></div></div></div><div style="height:5px"></div>
+        <div class="m-card"><div class="m-band"><span>Rules</span></div><div class="m-srow"><span>Free hit on no-ball<small>Next ball is protected</small></span><span class="m-toggle"></span></div><div class="m-srow"><span>Last man standing<small>Bat on alone</small></span><span class="m-toggle off"></span></div></div><div style="height:5px"></div>
+        <div class="m-rectbtn" style="padding:14px">START SCORING</div></div>
+      <p>Four banded cards in one column: TEAMS, FORMAT, RULES, PLAYERS. Team names are <code>RectField</code>s with a visible Required error, rules are <code>SettingsRow</code> + <code>RectToggle</code> rows, and the squad panel opens one side at a time with a bench-first pool. Names are rows, never chips.</p>
       <button class="copybtn" data-id="screen.setup">COPY ID</button>
     </div>
     <div class="card" data-tags="scoring keypad hero strip live umpire main">
@@ -131,34 +161,121 @@
     </div>
     <div class="card" data-tags="break innings target chase commence countdown">
       <h3>Innings break</h3><div class="id">screen.break</div><div class="ref">lib/screens/break_result.dart · route <code>/break</code></div>
-      <div class="mock"><div class="m-appbar"><span>INNINGS BREAK</span><span></span></div><div style="height:8px"></div><div class="m-hero"><div class="score">78/6</div><div class="meta">CHASE TARGET 79</div></div><div style="height:6px"></div><div class="m-rectbtn">COMMENCE 2ND INNINGS</div></div>
-      <p>Shows the innings-1 scorecard when tracking; the 10s countdown banner with NEXT lives on scoring.</p>
+      <div class="mock"><div class="m-appbar"><span>INNINGS BREAK</span><span></span></div><div style="height:6px"></div>
+        <div class="m-inv" style="text-align:center"><div style="font-size:11px;font-weight:700">● EAGLES XI</div><div class="big" style="font-size:40px">78/6</div><div class="meta">OVERS 6.0/6 · CRR 13.00</div></div><div style="height:6px"></div>
+        <div class="m-card"><div class="m-band"><span>Bowling</span><span>RED</span></div><div class="body m-sub">Ravi 1-0-14-1 · Amit 2-0-22-2</div></div><div style="height:6px"></div>
+        <div class="m-card"><div class="body" style="text-align:center"><div class="m-flabel" style="margin:0">CHASE TARGET FOR RED</div><div style="font-size:40px;font-weight:900">79</div><div class="m-sub">RRR 13.17 RPO</div></div></div><div style="height:6px"></div>
+        <div class="m-rectbtn" style="padding:14px">COMMENCE 2ND INNINGS</div></div>
+      <p>The innings that just closed gets the inverted plate; the chase target is a card with a micro-label and a 52px numeral in <code>onSurface</code> ink — crimson means a wicket in this app, not a target. The scorecard rides in its own card; UNDO in the footer is a rect key. The 10s countdown banner with NEXT lives on scoring.</p>
       <button class="copybtn" data-id="screen.break">COPY ID</button>
     </div>
     <div class="card" data-tags="result finished winner scorecard awards share whatsapp rematch">
       <h3>Result / match summary</h3><div class="id">screen.result</div><div class="ref">lib/screens/break_result.dart · route <code>/result</code> · tables in <code>summary.dart</code></div>
-      <div class="mock"><div class="m-appbar"><span>MATCH FINISHED</span><span></span></div><div style="height:8px"></div><div class="m-hero"><div class="score">TITANS WON</div><div class="meta">Won by 6 wickets</div></div><div style="height:6px"></div><div class="m-rectbtn">REMATCH</div><div style="height:6px"></div><div class="m-rectbtn sec">COPY SCORECARD (WHATSAPP)</div></div>
-      <p>Scorecard tables, fall of wickets, awards, player-of-match override, share-copy, full-width REMATCH.</p>
+      <div class="mock"><div class="m-appbar"><span>MATCH FINISHED</span><span></span></div><div style="height:6px"></div>
+        <div class="m-inv" style="text-align:center"><div style="font-size:20px;font-weight:900">TITANS WON</div><div style="font-size:11px;font-weight:600">Won by 6 wickets</div></div><div style="height:6px"></div>
+        <div class="m-card"><div class="body m-sub">scorecard + summary tabs</div></div><div style="height:5px"></div>
+        <div class="m-card"><div class="m-band"><span>Match awards</span></div><div class="m-srow"><span>Best batter</span><span>Rohit 34 (21)</span></div><div class="m-srow"><span>PLAYER OF THE MATCH</span><span>Rohit</span></div></div><div style="height:5px"></div>
+        <div class="m-rectbtn sec">COPY SCORECARD (WHATSAPP)</div><div style="height:5px"></div>
+        <div class="m-rectbtn" style="padding:14px">REMATCH</div><div style="height:5px"></div>
+        <div style="display:flex;gap:6px"><div class="m-rectbtn sec" style="flex:1">HOME</div><div class="m-rectbtn sec" style="flex:1">NEW MATCH</div></div></div>
+      <p>The outcome is the inverted plate (winner at 24px w900 plus the margin). Scorecard, awards and share are siblings in their own cards rather than one card holding a card; POTM candidates are rows, not chips.</p>
       <button class="copybtn" data-id="screen.result">COPY ID</button>
     </div>
     <div class="card" data-tags="history archives past matches detail delete">
       <h3>Archives</h3><div class="id">screen.history</div><div class="ref">lib/screens/history.dart · route <code>/history</code></div>
-      <div class="mock"><div class="m-appbar"><span>ARCHIVES</span><span></span></div><div style="height:8px"></div><div class="m-rectbtn sec">78/6 vs TITANS · Oct 4 ▸</div><div style="height:6px"></div><div class="m-rectbtn sec">54/1 vs … · Oct 3 ▸</div></div>
-      <p>Dated list, tap for detail (one innings at a time + SUMMARY), delete per row behind a confirm.</p>
+      <div class="mock"><div class="m-appbar"><span>ARCHIVES</span><span></span></div><div style="height:6px"></div>
+        <div class="m-card"><div class="m-srow"><span>BLUE vs RED<small>4 Oct 2026 · BLUE WON<br>BLUE: 78/6 (6.0) · RED: 54/1 (3.2)</small></span><span>🗑 ›</span></div><div class="m-srow"><span>RED vs BLUE<small>3 Oct 2026 · TIE<br>RED: 60/4 (6.0) · BLUE: 60/6 (6.0)</small></span><span>🗑 ›</span></div></div></div>
+      <p>One card of rows: teams as the title, date plus result and both innings scores on a two-line subtitle, delete on the right behind a danger confirm. Tap opens the detail (one innings at a time + SUMMARY).</p>
       <button class="copybtn" data-id="screen.history">COPY ID</button>
     </div>
     <div class="card" data-tags="club roster players profiles search stats career">
       <h3>Club + players</h3><div class="id">screen.club</div><div class="ref">lib/screens/club.dart · route <code>/club</code></div>
-      <div class="mock"><div class="m-appbar"><span>CLUB</span><span></span></div><div style="height:8px"></div><div class="m-rectbtn sec">PLAYERS | STATS</div><div style="height:6px"></div><div class="m-rectbtn sec">🔍 Search players… · + ADD · BULK ADD</div></div>
-      <p>Local PIN profiles, club, roster rows, career profile sheet per player.</p>
+      <div class="mock"><div class="m-appbar"><span>CLUB</span><span></span></div><div style="height:6px"></div>
+        <div class="m-card"><div class="m-band"><span>Club</span><span>2</span></div><div class="m-srow"><span>Gully Kings<small>DEFAULT CLUB — new players are added here</small></span><span>●</span></div><div class="m-srow"><span>Sunday XI<small>Tap to set as default club</small></span><span>○</span></div></div><div style="height:6px"></div>
+        <div style="display:flex;gap:16px;border-bottom:2px solid var(--line);font-size:11px;font-weight:900;letter-spacing:1px;margin-bottom:6px"><span style="border-bottom:2px solid var(--carbon);padding:5px 0;margin-bottom:-2px">PLAYERS</span><span style="color:var(--muted);padding:5px 0">STATS</span></div>
+        <div class="m-field">🔍 Search players</div><div style="height:5px"></div>
+        <div class="m-card"><div class="m-srow"><span><b style="font-size:11px">RS</b> Rohit Sharma<small>Batter • RHB • none</small></span><span><small>MATCHES</small>3 ›</span></div><div class="m-srow" style="background:var(--locked)"><span>Sanjay • INACTIVE<small>Bowler • RHB • fast</small></span><span><small>MATCHES</small>0 ›</span></div></div></div>
+      <p>Local PIN profiles, the club as rows (never chips — a club row carries rename and delete), one card per homogeneous list with a single rule between rows, and inactive players locked by <code>DetailRow.dimmed</code> (solid <code>lockedFill</code> + <code>lockedInk</code> + a written INACTIVE tag), never by an opacity.</p>
       <button class="copybtn" data-id="screen.club">COPY ID</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CHROME KIT ================= -->
+<section id="kit">
+  <h2>2 · Chrome kit</h2>
+  <div class="sub"><code>lib/screens/widgets.dart</code> — the only chrome primitives. Every screen outside the score surface is built from these, and <code>tool/check-master.sh</code> fails on a stock <code>Card</code>, <code>ListTile</code>, <code>SwitchListTile</code> or tonal button in <code>lib/screens</code>.</div>
+  <div class="grid">
+    <div class="card" data-tags="rectcard card plate inverted surface frame">
+      <h3>RectCard</h3><div class="id">widget.rectcard</div><div class="ref">lib/screens/widgets.dart · 12px radius, 1.5px surfaceOutline, no shadow</div>
+      <div class="mock">
+        <div class="m-card"><div class="body"><b style="font-size:12px">Plain card</b><div class="m-sub">surface fill, square 12px frame, zero elevation</div></div></div>
+        <div style="height:6px"></div>
+        <div class="m-inv"><div class="lbl">INVERTED</div><div style="font-size:13px;font-weight:700">act-now plate</div></div>
+      </div>
+      <p>One frame for every group: a roster, a settings group, a table. <code>inverted: true</code> flips to <code>primaryFill</code> / <code>onPrimaryFill</code> and is reserved for the one plate on a screen that means "this is your state" or "go" — the Home live card, the break summary, the result outcome. <code>padding: EdgeInsets.zero</code> clips, so a leading <code>SectionBand</code> inherits the corners.</p>
+      <button class="copybtn" data-id="widget.rectcard">COPY ID</button>
+    </div>
+    <div class="card" data-tags="rectappbar appbar title uppercase rule">
+      <h3>RectAppBar</h3><div class="id">widget.rectappbar</div><div class="ref">lib/screens/widgets.dart · kToolbarHeight</div>
+      <div class="mock"><div class="m-appbar"><span>CLUB</span><span class="icons">◐ ⚙</span></div></div>
+      <p><code>scaffoldBg</code> fill, <code>onSurface</code> ink, a solid <code>borderRow</code> rule underneath, uppercase 15px w800. No elevation, no tint, no shadow when scrolled. Long team pairs ellipsize instead of shrinking the title.</p>
+      <button class="copybtn" data-id="widget.rectappbar">COPY ID</button>
+    </div>
+    <div class="card" data-tags="sectionband band header table slab label figure">
+      <h3>SectionBand</h3><div class="id">widget.sectionband</div><div class="ref">lib/screens/widgets.dart · 9px vertical padding</div>
+      <div class="mock"><div class="m-card"><div class="m-band"><span>Format</span><span>6 v 6</span></div><div class="body"><div class="m-sub">the card's own header</div></div></div></div>
+      <p>Solid <code>primaryFill</code> slab with an <code>onPrimaryFill</code> micro-label and one optional figure on the right. The same band leads a batting table, a squad panel and a settings group, so every card announces itself the same way instead of a bare bold line.</p>
+      <button class="copybtn" data-id="widget.sectionband">COPY ID</button>
+    </div>
+    <div class="card" data-tags="fieldlabel microlabel caption 10px tracking">
+      <h3>FieldLabel</h3><div class="id">widget.fieldlabel</div><div class="ref">lib/screens/widgets.dart · 10px w800, 1.4 tracking</div>
+      <div class="mock"><div class="m-flabel">BATTING FIRST</div><div class="m-flabel">DOUBLE-SIDE PLAYER</div></div>
+      <p>The caption above a control cluster: what the next row of keys sets. <code>mutedInk</code>, never an alpha-dimmed <code>onSurface</code>. 10px is the floor — anything smaller is unreadable at arm's length in sun.</p>
+      <button class="copybtn" data-id="widget.fieldlabel">COPY ID</button>
+    </div>
+    <div class="card" data-tags="settingsrow row toggle label subtitle last locked">
+      <h3>SettingsRow</h3><div class="id">widget.settingsrow</div><div class="ref">lib/screens/widgets.dart · 56dp min</div>
+      <div class="mock"><div class="m-card"><div class="m-srow"><span>Arcade sounds<small>Single quick bleeps</small></span><span class="m-toggle"></span></div><div class="m-srow"><span>Battery saver<small>No celebration</small></span><span class="m-toggle off"></span></div></div></div>
+      <p>Replaces <code>ListTile</code> / <code>SwitchListTile</code>. When the trailing control is a <code>RectToggle</code> the whole 56dp row flips it — a 48dp knob is a small target for a thumb in the sun, and tapping the label is what everyone tries first. <code>last</code> drops the bottom rule; <code>locked</code> is a solid <code>lockedFill</code> with the reason written in the subtitle.</p>
+      <button class="copybtn" data-id="widget.settingsrow">COPY ID</button>
+    </div>
+    <div class="card" data-tags="recttoggle switch toggle knob square state">
+      <h3>RectToggle</h3><div class="id">widget.recttoggle</div><div class="ref">lib/screens/widgets.dart · 44×24 track</div>
+      <div class="mock"><span class="m-toggle"></span> &nbsp; <span class="m-toggle off"></span> &nbsp; <span class="m-toggle" style="background:#94a3b8;opacity:.45"></span></div>
+      <p>On = solid <code>primaryFill</code>, off = solid <code>lockedFill</code> + <code>lockedInk</code>. The M3 switch was the last pill silhouette in the chrome; this is a square knob in a square track, same state language as every other key.</p>
+      <button class="copybtn" data-id="widget.recttoggle">COPY ID</button>
+    </div>
+    <div class="card" data-tags="rectfield textfield input error label capitalization">
+      <h3>RectField</h3><div class="id">widget.rectfield</div><div class="ref">lib/screens/widgets.dart · 8px radius, 1.5px frame</div>
+      <div class="mock"><div class="m-field">Team A</div><div style="height:6px"></div><div class="m-field" style="border-color:var(--crimson);color:var(--crimson)">Required</div></div>
+      <p>Every text input: label always visible, optional <code>errorText</code>, optional <code>onSubmitted</code> and <code>textCapitalization</code>. Screens never hand-roll an <code>InputDecoration</code> or an <code>OutlineInputBorder</code>.</p>
+      <button class="copybtn" data-id="widget.rectfield">COPY ID</button>
+    </div>
+    <div class="card" data-tags="sheetheader sheet header title caption close">
+      <h3>SheetHeader</h3><div class="id">widget.sheetheader</div><div class="ref">lib/screens/widgets.dart · banded or flat</div>
+      <div class="mock"><div class="m-card"><div class="body" style="display:flex;justify-content:space-between;align-items:center"><span><b style="font-size:12px">OVERS HISTORY</b><div class="m-sub">Innings 1 · BLUE 54/1 (3.2 ov)</div></span><span style="font-weight:900">✕</span></div></div></div>
+      <p>One header for every sheet: title, optional caption, optional close. <code>band:</code> paints it in a team colour with white ink; flat is the default.</p>
+      <button class="copybtn" data-id="widget.sheetheader">COPY ID</button>
+    </div>
+    <div class="card" data-tags="underlinetabs tabs switch players stats scorecard summary">
+      <h3>UnderlineTabs</h3><div class="id">widget.underlinetabs</div><div class="ref">lib/screens/widgets.dart</div>
+      <div class="mock"><div style="display:flex;gap:16px;border-bottom:2px solid var(--line);font-size:11px;font-weight:900;letter-spacing:1px"><span style="border-bottom:2px solid var(--carbon);padding:6px 0;margin-bottom:-2px">PLAYERS</span><span style="color:var(--muted);padding:6px 0">STATS</span></div></div>
+      <p>Two-way switches (PLAYERS/STATS, SCORECARD/SUMMARY). A filled key pair read as two actions; an underline reads as one panel and a label.</p>
+      <button class="copybtn" data-id="widget.underlinetabs">COPY ID</button>
+    </div>
+    <div class="card" data-tags="empty state no players no matches invite">
+      <h3>EmptyState</h3><div class="id">widget.empty</div><div class="ref">lib/screens/widgets.dart · compact variant</div>
+      <div class="mock"><div class="m-card"><div class="body" style="text-align:center"><div style="font-size:20px">👥</div><b style="font-size:12px">NO PLAYERS YET</b><div class="m-sub">Add one with the + above, or build the roster first in CLUB + PLAYERS.</div></div></div></div>
+      <p>Never a blank card: every empty list says what is missing and what to do about it.</p>
+      <button class="copybtn" data-id="widget.empty">COPY ID</button>
     </div>
   </div>
 </section>
 
 <!-- ================= KEYPAD ================= -->
 <section id="keypad">
-  <h2>2 · Scoring keypad</h2>
+  <h2>3 · Scoring keypad</h2>
   <div class="sub"><code>lib/screens/scoring.dart</code> — 3-column grid, 1.5 aspect, 72dp keys.</div>
   <div class="grid">
     <div class="card" data-tags="keypad grid runs dots fours six wide noball wicket">
@@ -180,7 +297,7 @@
     <div class="card" data-tags="appbar actions sound overs style font config">
       <h3>Scoring app bar</h3><div class="id">scoring.appbar</div><div class="ref">lib/screens/scoring.dart</div>
       <div class="mock"><div class="m-appbar"><span>INN 1 • EAGLES XI</span><span class="icons">♪ ☰ 🎨</span></div></div>
-      <p><code>scoring.appbar.sound</code> · <code>scoring.appbar.overs</code> · <code>scoring.appbar.config</code> (mid-match settings) · <code>scoring.appbar.look</code>.</p>
+      <p>Uses the theme app bar, so the scoring screen and the rest of the app share one bar: <code>scaffoldBg</code>, ink title, solid bottom rule. <code>scoring.appbar.sound</code> · <code>scoring.appbar.overs</code> · <code>scoring.appbar.config</code> (mid-match settings) · <code>scoring.appbar.look</code>.</p>
       <button class="copybtn" data-id="scoring.appbar">COPY ID</button>
     </div>
   </div>
@@ -188,7 +305,7 @@
 
 <!-- ================= WIDGETS ================= -->
 <section id="widgets">
-  <h2>3 · Shared widgets</h2>
+  <h2>4 · Shared widgets</h2>
   <div class="sub"><code>lib/screens/widgets.dart</code> — every mock below is a picture; the real ones are the only controls in the app.</div>
   <div class="grid">
     <div class="card" data-tags="rectbtn button carbon primary secondary danger disabled">
@@ -209,8 +326,8 @@
     </div>
     <div class="card" data-tags="detailrow person line value label">
       <h3>DetailRow</h3><div class="id">widget.detailrow</div><div class="ref">lib/screens/widgets.dart · 54dp min</div>
-      <div class="mock"><div class="m-row">Ravi Kumar <span style="text-align:right"><span style="font-size:9px;color:#64748b">MATCHES</span><br>14</span></div></div>
-      <p>Title left, label + value right. <code>dimmed</code> swaps to the locked fill; it is never faded.</p>
+      <div class="mock"><div class="m-card"><div class="m-srow"><span><b style="font-size:11px">RS</b> Rohit Sharma<small>Batter • RHB • none</small></span><span><small>MATCHES</small>14 ›</span></div><div class="m-srow" style="background:var(--locked)"><span>Sanjay • INACTIVE<small>Bowler • RHB • fast</small></span><span><small>MATCHES</small>0 ›</span></div></div></div>
+      <p>Title left, optional leading disc, label + value right, optional trailing glyph. <code>dimmed</code> swaps to <code>lockedFill</code> + <code>lockedInk</code>; it is never faded. <code>last</code> drops the bottom rule so the card's own frame is the only line.</p>
       <button class="copybtn" data-id="widget.detailrow">COPY ID</button>
     </div>
     <div class="card" data-tags="keybtn key 72px glare border preset radius">
@@ -266,13 +383,13 @@
 
 <!-- ================= SHEETS ================= -->
 <section id="sheets">
-  <h2>4 · Sheets &amp; dialogs</h2>
+  <h2>5 · Sheets &amp; dialogs</h2>
   <div class="sub">Bottom sheets rise to mid-screen; dialogs center. Wicket family lives in two files.</div>
   <div class="grid">
     <div class="card" data-tags="wicket dialog dismissal grid bowled caught lbw stumped hit">
       <h3>Wicket dialog (untracked)</h3><div class="id">sheet.wicket</div><div class="ref">lib/screens/sheets.dart · complex/simple toggle</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">RECORD DISMISSAL</b><div class="m-keypad" style="margin-top:8px"><div class="m-key" style="background:#fff">BOWLED</div><div class="m-key" style="background:#fff">CAUGHT</div><div class="m-key" style="background:#fff">RUN OUT ›</div><div class="m-key" style="background:#fff">LBW</div></div></div></div>
-      <p>Simple mode: Bowled + Run Out only. No-ball armed or free hit → run-out only (laws).</p>
+      <div class="mock"><div class="m-sheet"><b style="font-size:12px">RECORD DISMISSAL</b><div class="m-flabel">SELECT WICKET TYPE</div><div class="m-keypad"><div class="m-key" style="background:#fff">BOWLED</div><div class="m-key" style="background:#fff">CAUGHT</div><div class="m-key" style="background:#fff">RUN OUT ›</div><div class="m-key" style="background:#fff">LBW</div></div><div style="height:8px"></div><div class="m-rectbtn sec">CANCEL</div></div></div>
+      <p>Simple mode: Bowled + Run Out only. No-ball armed or free hit → run-out only (laws). The caption is a <code>FieldLabel</code> and CANCEL is a secondary <code>RectBtn</code>.</p>
       <button class="copybtn" data-id="sheet.wicket">COPY ID</button>
     </div>
     <div class="card" data-tags="runout runs completed next batter two sheet w w1 w2">
@@ -319,8 +436,10 @@
     </div>
     <div class="card" data-tags="overs history list badges">
       <h3>Overs history</h3><div class="id">sheet.overs</div><div class="ref">lib/screens/sheets.dart</div>
-      <div class="mock"><div class="m-sheet"><b style="font-size:12px">OVERS HISTORY // INNINGS 1</b><div style="margin-top:6px"><div class="m-strip"><span class="m-badge" style="background:#131316">0</span><span class="m-badge" style="background:#15803d">4</span><span class="m-badge" style="background:#dc143c">W</span></div></div></div></div>
-      <p>Per-over cards with badge wraps + totals.</p>
+      <div class="mock"><div class="m-sheet"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12px">OVERS HISTORY</b><span style="font-weight:900">✕</span></div><div class="m-sub">Innings 1 · BLUE 54/1 (3.2 ov)</div><div style="height:6px"></div><div class="m-rectbtn sec">SCORECARD</div><div style="height:6px"></div>
+        <div class="m-card"><div class="body"><div style="display:flex;justify-content:space-between;font-size:10px;font-weight:800"><span>OVER 01</span><span style="color:var(--muted)">8 RUNS · 1 WKT</span></div><div style="margin-top:6px"><span class="m-badge" style="background:#131316">0</span> <span class="m-badge" style="background:#15803d">4</span> <span class="m-badge" style="background:#dc143c">W</span></div></div></div><div style="height:4px"></div>
+        <div class="m-card"><div class="body"><div style="display:flex;justify-content:space-between;font-size:10px;font-weight:800"><span>OVER 02</span><span style="color:var(--muted)">6 RUNS · 0 WKT</span></div><div style="margin-top:6px"><span class="m-badge" style="background:#a5f3fc;color:#000">1</span> <span class="m-badge" style="background:#ec008c">6</span></div></div></div></div></div>
+      <p>Opens with a <code>SheetHeader</code>, then every over as a row of ONE table — number and runs/wickets on the title line, the ball badges beneath. A card per over made six frames for six lines.</p>
       <button class="copybtn" data-id="sheet.overs">COPY ID</button>
     </div>
     <div class="card" data-tags="extras byes legbyes wide noball">
@@ -351,7 +470,7 @@
 
 <!-- ================= TYPE ================= -->
 <section id="type">
-  <h2>5 · Typography &amp; fonts</h2>
+  <h2>6 · Typography &amp; fonts</h2>
   <div class="sub"><code>lib/theme.dart</code> — 10 bundled OFL faces for score numerals; UI text is system + w800/w900.</div>
   <div class="grid" id="fontgrid">
     <div class="card" data-tags="font stadium default score numerals"><h3>Stadium Sans (default)</h3><div class="id">font.stadium</div><div class="ref">family null → system fallback</div><div class="mock"><div class="fontrow"><div class="big">142/7</div><div style="font-size:11px">Hero 68px w900 tabular · card 18px · badge 12px</div></div></div><button class="copybtn" data-id="font.stadium">COPY ID</button></div>
@@ -369,7 +488,7 @@
 
 <!-- ================= THEME ================= -->
 <section id="theme">
-  <h2>6 · Style presets</h2>
+  <h2>7 · Style presets</h2>
   <div class="sub"><code>lib/theme.dart</code> — 7 presets. Every one glare-proof: saturated fills, near-black/white text, no pastels. Presets change the hero/keypad, never the semantic roles.</div>
   <div class="grid">
     <div class="card" data-tags="preset umpire pro blue default"><h3>Umpire Pro</h3><div class="id">theme.umpire</div><div class="mock"><span class="sw" style="background:#1d4ed8"></span><span class="sw" style="background:#fff"></span>hero blue / white · keys default · radius 14</div><button class="copybtn" data-id="theme.umpire">COPY ID</button></div>
@@ -384,7 +503,7 @@
 
 <!-- ================= BADGES ================= -->
 <section id="badges">
-  <h2>7 · Ball badges (over strip language)</h2>
+  <h2>8 · Ball badges (over strip language)</h2>
   <div class="sub"><code>lib/screens/widgets.dart</code> — 36dp circles, fixed colours. Ask before changing: badge colours are load-bearing.</div>
   <div class="grid">
     <div class="card" data-tags="badge dot carbon black 0"><h3>Dot</h3><div class="id">badge.0</div><div class="mock"><span class="m-badge" style="background:#131316">0</span> carbon / white</div><button class="copybtn" data-id="badge.0">COPY ID</button></div>
@@ -400,7 +519,7 @@
 
 <!-- ================= STATES ================= -->
 <section id="states">
-  <h2>8 · States &amp; banners</h2>
+  <h2>9 · States &amp; banners</h2>
   <div class="sub">Transient UI — the things screenshots miss.</div>
   <div class="grid">
     <div class="card" data-tags="nb armed purple banner"><h3>NB ARMED</h3><div class="id">state.nbarmed</div><div class="mock"><div class="m-banner" style="background:#7b2cbf">NB ARMED</div></div><p>Next ball resolves as no-ball; the wicket grid collapses to run-out only.</p><button class="copybtn" data-id="state.nbarmed">COPY ID</button></div>
@@ -414,11 +533,11 @@
 
 <!-- ================= CLUB ================= -->
 <section id="club">
-  <h2>9 · Club &amp; player UI</h2>
+  <h2>10 · Club &amp; player UI</h2>
   <div class="sub"><code>lib/screens/club.dart</code> — all local, all offline.</div>
   <div class="grid">
     <div class="card" data-tags="profile pin unlock local create continue without"><h3>Profiles</h3><div class="id">club.profile</div><div class="mock"><div class="m-rectbtn">CREATE PROFILE</div><div style="height:4px"></div><div class="m-rectbtn sec">CONTINUE WITHOUT</div></div><p>Name + 4-digit PIN chips; never a hard lock.</p><button class="copybtn" data-id="club.profile">COPY ID</button></div>
-    <div class="card" data-tags="roster row avatar role active rename search add bulk"><h3>Roster rows</h3><div class="id">club.roster</div><div class="mock"><div class="m-row">RS · Rohit Sharma <span>3 matches ✓ ✎</span></div></div><p>Search field, +ADD, role chips, BULK ADD paste-a-list, active toggle, rename.</p><button class="copybtn" data-id="club.roster">COPY ID</button></div>
+    <div class="card" data-tags="roster row avatar role active rename search add bulk"><h3>Roster rows</h3><div class="id">club.roster</div><div class="mock"><div class="m-card"><div class="m-srow"><span><b style="font-size:11px">RS</b> Rohit Sharma<small>Batter • RHB • none</small></span><span><small>MATCHES</small>3 ›</span></div></div></div><p>Search field, +ADD, role chips, BULK ADD paste-a-list, active toggle, rename — all in the player sheet, so the row stays scannable on a phone.</p><button class="copybtn" data-id="club.roster">COPY ID</button></div>
     <div class="card" data-tags="career batting bowling fielding tabs average economy strike"><h3>Career profile sheet</h3><div class="id">club.career</div><div class="mock"><table class="m-table"><tr><th>BATTING</th><th class="n">Runs 120</th><th class="n">Avg 40.0</th><th class="n">SR 133.3</th></tr><tr><td>BOWLING</td><td class="n">6 wkts</td><td class="n">Econ 7.50</td><td class="n">Best 3/12</td></tr></table></div><p>Undefined stats show <b>—</b>, never 0. Matches/W/L and fielding counts included.</p><button class="copybtn" data-id="club.career">COPY ID</button></div>
     <div class="card" data-tags="setup squad xi picker rows bench validation"><h3>Squad pickers (setup)</h3><div class="id">club.squad</div><div class="mock"><div class="m-sheet"><b style="font-size:12px">TEAM A XI (5 picked)</b><div style="margin-top:6px"><div class="m-row sel">Rohit <span>●</span></div><div class="m-row">Vikram <span>○</span></div></div></div></div><p>Name rows + search per side; ≥2 per side or tracking stays off.</p><button class="copybtn" data-id="club.squad">COPY ID</button></div>
   </div>
@@ -426,17 +545,17 @@
 
 <!-- ================= SUMMARY ================= -->
 <section id="summary">
-  <h2>10 · Summary &amp; awards</h2>
+  <h2>11 · Summary &amp; awards</h2>
   <div class="sub"><code>lib/screens/summary.dart</code> — rendered on break (innings 1) and result (both).</div>
   <div class="grid">
-    <div class="card" data-tags="scorecard batting bowling table dismissal fall wickets"><h3>Scorecard tables</h3><div class="id">summary.scorecard</div><div class="mock"><table class="m-table"><tr><th>BATTER</th><th class="n">R(B)</th><th class="n">4s/6s</th><th class="n">SR</th></tr><tr><td>Rohit<br><small>c b Ravi</small></td><td class="n">34 (21)</td><td class="n">4/1</td><td class="n">161.9</td></tr><tr><td>Ravi</td><td class="n">2/18 (4 ov)</td><td class="n">—</td><td class="n">4.50</td></tr></table></div><p>Batting in order, bowling W-then-R, fall-of-wickets line. Numeric columns align across both tables.</p><button class="copybtn" data-id="summary.scorecard">COPY ID</button></div>
-    <div class="card" data-tags="awards best batter bowler destructive tightest partnership potm"><h3>Awards + POTM</h3><div class="id">summary.awards</div><div class="mock"><div class="m-rectbtn sec">Best batter · Rohit 34 (21)</div><div style="height:4px"></div><div class="m-rectbtn sec">PLAYER OF THE MATCH: Rohit ●</div></div><p>Guards: economy needs 2 overs, SR needs 6 balls. POTM suggested, tappable override.</p><button class="copybtn" data-id="summary.awards">COPY ID</button></div>
+    <div class="card" data-tags="scorecard batting bowling table dismissal fall wickets"><h3>Scorecard tables</h3><div class="id">summary.scorecard</div><div class="mock"><table class="m-table"><tr><th>BATTER</th><th class="n">R(B)</th><th class="n">4s/6s</th><th class="n">SR</th></tr><tr><td>Rohit<br><small>c b Ravi</small></td><td class="n">34 (21)</td><td class="n">4/1</td><td class="n">161.9</td></tr><tr><td>Ravi</td><td class="n">2/18 (4 ov)</td><td class="n">—</td><td class="n">4.50</td></tr></table></div><p>Batting in order, bowling W-then-R, fall-of-wickets line. Numeric columns align across both tables. A squad member who did not bat or bowl is dimmed by INK (<code>mutedInk</code> + the words "did not bat" / "did not bowl"), never by an opacity — 55% black is a smudge at 10,000 lux. Table headers are the micro-label spec and every rule is a solid 1px <code>borderRow</code>.</p><button class="copybtn" data-id="summary.scorecard">COPY ID</button></div>
+    <div class="card" data-tags="awards best batter bowler destructive tightest partnership potm"><h3>Awards + POTM</h3><div class="id">summary.awards</div><div class="mock"><div class="m-card"><div class="m-band"><span>Match awards</span></div><div class="m-srow"><span>Best batter</span><span>Rohit 34 (21)</span></div><div class="m-srow"><span>Best bowler</span><span>Ravi 3-18</span></div><div class="m-srow"><span>PLAYER OF THE MATCH</span><span>Rohit</span></div><div class="m-srow sel"><span>Rohit<small>AWARDED</small></span><span>●</span></div><div class="m-srow"><span>Ravi</span><span>○</span></div></div></div><p>A banded table: aligned label/value lines with tabular figures. Guards: economy needs 2 overs, SR needs 6 balls. POTM candidates are <code>PlayerRow</code>s — a person is a row everywhere in this app — and the suggestion is tappable to override.</p><button class="copybtn" data-id="summary.awards">COPY ID</button></div>
     <div class="card" data-tags="share whatsapp copy text"><h3>Share copy</h3><div class="id">summary.share</div><div class="mock"><div class="m-rectbtn">COPY SCORECARD (WHATSAPP)</div></div><p>Text block to clipboard — pastes into WhatsApp, no screenshot service, no network.</p><button class="copybtn" data-id="summary.share">COPY ID</button></div>
   </div>
 </section>
 
 </main>
-<footer>IDs mirror code names. To request a change, paste an ID: “make <b>scoring.keypad.btn-w</b> bigger”. Verify refs with <code>tool/ui-inventory.sh --no-open</code> after UI changes. Normative rules: <code>DESIGN.md</code>.</footer>
+<footer>IDs mirror code names. To request a change, paste an ID: “make <b>scoring.keypad.btn-w</b> bigger”. Verify refs with <code>tool/ui-inventory.sh --no-open</code> after UI changes. Normative rules: <code>DESIGN.md</code>; the screen layer may only use the kit in <code>lib/screens/widgets.dart</code>.</footer>
 <script>
 const q = document.getElementById('q');
 const count = document.getElementById('count');
