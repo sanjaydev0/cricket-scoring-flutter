@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../store.dart';
+import '../theme.dart';
 import 'match_detail.dart';
 import 'widgets.dart';
 
@@ -21,16 +22,29 @@ class ScorecardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('SCORECARD')),
+      appBar: RectAppBar(title: 'Scorecard'),
       body: SafeArea(
         child: ResponsiveCenter(
           maxWidth: 640,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-            child: MatchDetail(
-              store: store,
-              initialInnings: inningsNo,
-              showBallsLink: true,
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.md,
+              8,
+              context.spacing.md,
+              context.spacing.lg,
+            ),
+            // The tables sit in a card so they are a page, not loose figures
+            // floating on the scaffold.
+            child: RectCard(
+              padding: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: MatchDetail(
+                  store: store,
+                  initialInnings: inningsNo,
+                  showBallsLink: true,
+                ),
+              ),
             ),
           ),
         ),

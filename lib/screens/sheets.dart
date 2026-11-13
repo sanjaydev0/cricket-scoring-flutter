@@ -32,11 +32,7 @@ void showWicketDialog(BuildContext context, MatchStore store) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'SELECT WICKET TYPE',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 12),
+              const FieldLabel('Select wicket type'),
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
@@ -60,9 +56,10 @@ void showWicketDialog(BuildContext context, MatchStore store) {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('✕'),
+        RectBtn(
+          primary: false,
+          onTap: () => Navigator.pop(context),
+          child: const Text('CANCEL'),
         ),
       ],
     ),
@@ -105,76 +102,108 @@ void showOversSheet(BuildContext context, MatchStore store) {
   final inn = store.innings!;
   final m = store.match!;
   final innIdx = m.currentInnings;
+  final overs = [
+    for (final o in inn.overs)
+      if (o.balls.isNotEmpty) o,
+  ];
   showAppSheet(
     context,
     showDragHandle: true,
-    builder: (_) => SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.all(16),
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'OVERS HISTORY // INNINGS $innIdx',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    Text(
-                      '${inn.battingTeam}: ${inn.runs}/${inn.wickets} (${CricketMath.ballsToOvers(inn.legalDeliveries)} ov)',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              RectBtn(
-                onTap: () => Navigator.pop(context),
-                child: const Text('✕ CLOSE'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          RectBtn(
-            primary: false,
-            onTap: () {
-              Navigator.pop(context);
-              showScorecard(context, store, inningsNo: innIdx);
-            },
-            child: const Text('SCORECARD'),
-          ),
-          const SizedBox(height: 12),
-          for (final o in inn.overs)
-            if (o.balls.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'OVER ${o.overNumber.toString().padLeft(2, '0')} // ${o.balls.fold<int>(0, (s, b) => s + b.totalRuns)} RUNS • ${o.balls.where((b) => b.isWicket).length} WKT',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [for (final b in o.balls) BallBadge(b)],
-                      ),
-                    ],
+    isScrollControlled: true,
+    builder: (ctx) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SheetHeader(
+              title: 'Overs history',
+              caption:
+                  'Innings $innIdx · ${inn.battingTeam} ${inn.runs}/${inn.wickets} '
+                  '(${CricketMath.ballsToOvers(inn.legalDeliveries)} ov)',
+              onClose: () => Navigator.pop(ctx),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  RectBtn(
+                    primary: false,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      showScorecard(context, store, inningsNo: innIdx);
+                    },
+                    child: const Text('SCORECARD'),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  // Every over is a row of one table: number, runs, wickets,
+                  // then the six badges. A card per over made six frames for
+                  // six lines.
+                  RectCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < overs.length; i++)
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                            decoration: BoxDecoration(
+                              border: i == overs.length - 1
+                                  ? null
+                                  : Border(
+                                      bottom: BorderSide(
+                                        color: context.tokens.borderRow,
+                                      ),
+                                    ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'OVER ${overs[i].overNumber.toString().padLeft(2, '0')}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                          letterSpacing: 1,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${overs[i].balls.fold<int>(0, (s, b) => s + b.totalRuns)} RUNS  ·  '
+                                      '${overs[i].balls.where((b) => b.isWicket).length} WKT',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.6,
+                                        color: context.tokens.mutedInk,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    for (final b in overs[i].balls)
+                                      BallBadge(b),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-        ],
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -1379,9 +1408,13 @@ class _BenchPool extends StatelessWidget {
                 common: common,
               ),
           if (q.isEmpty && pool.length > 6)
-            TextButton(
-              onPressed: onToggleAll,
-              child: Text(showAll ? 'SHOW FEWER' : 'SHOW ALL ${pool.length}'),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: RectBtn(
+                primary: false,
+                onTap: onToggleAll,
+                child: Text(showAll ? 'SHOW FEWER' : 'SHOW ALL ${pool.length}'),
+              ),
             ),
         ],
       ),

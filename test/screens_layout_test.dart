@@ -10,6 +10,7 @@ import 'package:cricket_scoring/screens/history.dart';
 import 'package:cricket_scoring/screens/home.dart';
 import 'package:cricket_scoring/screens/scorecard.dart';
 import 'package:cricket_scoring/screens/setup.dart';
+import 'package:cricket_scoring/screens/sheets.dart';
 import 'package:cricket_scoring/screens/widgets.dart';
 import 'package:cricket_scoring/store.dart';
 
@@ -262,6 +263,57 @@ void main() {
     // The result line names the winner and both innings scores on one row.
     expect(find.textContaining('WON'), findsOneWidget);
     expect(find.textContaining('BLUE'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('the overs sheet lists one row per over on a phone', (
+    tester,
+  ) async {
+    final s = fixture();
+    s.score(action: 'FOUR');
+    s.score(action: 'SIX');
+    await phone(
+      tester,
+      Builder(
+        builder: (ctx) => Scaffold(
+          body: Center(
+            child: RectBtn(
+              onTap: () => showOversSheet(ctx, s),
+              child: const Text('OVERS'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('OVERS'));
+    await tester.pumpAndSettle();
+    expect(find.text('OVERS HISTORY'), findsOneWidget);
+    expect(find.textContaining('OVER 01'), findsOneWidget);
+    // The scorecard shortcut is a key, not a text link.
+    expect(find.text('SCORECARD'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the wicket dialog fits six dismissal keys on a phone', (
+    tester,
+  ) async {
+    final s = fixture();
+    await phone(
+      tester,
+      Builder(
+        builder: (ctx) => Scaffold(
+          body: Center(
+            child: RectBtn(
+              onTap: () => showWicketDialog(ctx, s),
+              child: const Text('WICKET'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('WICKET'));
+    await tester.pumpAndSettle();
+    expect(find.text('SELECT WICKET TYPE'), findsOneWidget);
+    expect(find.text('CANCEL'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -188,27 +188,52 @@ class _MatchDetailState extends State<MatchDetail> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
+            // A long score pair plus its overs must never overflow the half
+            // width a two-team header gives it: the figure scales down, the
+            // overs give way first.
             if (alignEnd && overs != null) ...[
-              Text(
-                overs,
-                style: TextStyle(fontSize: 12, color: context.tokens.mutedInk),
+              Flexible(
+                child: Text(
+                  overs,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.tokens.mutedInk,
+                  ),
+                ),
               ),
               const SizedBox(width: 6),
             ],
-            Text(
-              score,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 26,
-                height: 1,
-                fontFeatures: [FontFeature.tabularFigures()],
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: alignEnd
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Text(
+                  score,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 26,
+                    height: 1,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
               ),
             ),
             if (!alignEnd && overs != null) ...[
               const SizedBox(width: 6),
-              Text(
-                overs,
-                style: TextStyle(fontSize: 12, color: context.tokens.mutedInk),
+              Flexible(
+                child: Text(
+                  overs,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.tokens.mutedInk,
+                  ),
+                ),
               ),
             ],
           ],
