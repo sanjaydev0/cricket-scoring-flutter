@@ -1361,10 +1361,20 @@ class SettingsRow extends StatelessWidget {
         ],
       ),
     );
-    if (onTap == null || locked) return body;
+    if (locked) return body;
+    // A row whose control is a toggle is tappable along its whole width: a
+    // 48dp knob is a small target for a thumb in the sun, and tapping the
+    // label of a switch is what everyone tries first anyway.
+    final toggle = trailing;
+    final tap =
+        onTap ??
+        (toggle is RectToggle
+            ? () => toggle.onChanged?.call(!toggle.value)
+            : null);
+    if (tap == null) return body;
     return Material(
       color: Colors.transparent,
-      child: InkWell(onTap: onTap, child: body),
+      child: InkWell(onTap: tap, child: body),
     );
   }
 }
@@ -1452,6 +1462,8 @@ class RectField extends StatelessWidget {
   final IconData? prefixIcon;
   final Widget? suffixIcon;
   final String? hint;
+  final String? errorText;
+  final TextCapitalization textCapitalization;
   final bool autofocus;
   final TextInputAction textInputAction;
   const RectField({
@@ -1461,6 +1473,8 @@ class RectField extends StatelessWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.hint,
+    this.errorText,
+    this.textCapitalization = TextCapitalization.none,
     this.autofocus = false,
     this.textInputAction = TextInputAction.done,
     super.key,
@@ -1471,10 +1485,12 @@ class RectField extends StatelessWidget {
     controller: controller,
     onChanged: onChanged,
     autofocus: autofocus,
+    textCapitalization: textCapitalization,
     textInputAction: textInputAction,
     decoration: InputDecoration(
       labelText: label,
       hintText: hint,
+      errorText: errorText,
       prefixIcon: prefixIcon == null
           ? null
           : Icon(prefixIcon, size: 20, color: context.tokens.mutedInk),
@@ -1556,6 +1572,89 @@ class SheetHeader extends StatelessWidget {
               color: ink,
               icon: const Icon(Icons.close, size: 20),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A micro-label above a control cluster inside a card.
+///
+/// Not a heading: it is the caption that tells you what the next row of keys
+/// sets. `w800` at 10px with 1.4 tracking is the smallest legible size at
+/// arm's length in sun, which is why it never goes smaller.
+class FieldLabel extends StatelessWidget {
+  final String text;
+  const FieldLabel(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8, left: 2),
+    child: Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.4,
+        color: context.tokens.mutedInk,
+      ),
+    ),
+  );
+}
+
+/// The header band of a card section: solid fill, uppercase micro-label, one
+/// optional figure on the right.
+///
+/// This is the table-header language from DESIGN.md — the same band leads a
+/// batting table, a squad panel and a settings group, so every card in the app
+/// announces itself the same way instead of using a bare bold line.
+class SectionBand extends StatelessWidget {
+  final String title;
+  final String? trailing;
+  final Color? fill;
+  final Color? ink;
+  const SectionBand(
+    this.title, {
+    this.trailing,
+    this.fill,
+    this.ink,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final fg = ink ?? t.onPrimaryFill;
+    return Container(
+      color: fill ?? t.primaryFill,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+                color: fg,
+              ),
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            Text(
+              trailing!,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+                color: fg,
+              ),
+            ),
+          ],
         ],
       ),
     );

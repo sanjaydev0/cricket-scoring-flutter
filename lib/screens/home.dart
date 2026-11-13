@@ -194,7 +194,7 @@ class HomeScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _FieldLabel('STYLE'),
+                            FieldLabel('Style'),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -228,7 +228,7 @@ class HomeScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            _FieldLabel('SCORE FONT'),
+                            FieldLabel('Score font'),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -249,7 +249,7 @@ class HomeScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            _FieldLabel('CELEBRATIONS'),
+                            FieldLabel('Celebrations'),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -481,26 +481,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-/// A micro-label above a control cluster inside a settings card.
-class _FieldLabel extends StatelessWidget {
-  final String text;
-  const _FieldLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, left: 2),
-    child: Text(
-      text,
-      style: TextStyle(
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.4,
-        color: context.tokens.mutedInk,
-      ),
-    ),
-  );
 }
 
 /// The identity plate: what the app is, and how much is already in it.

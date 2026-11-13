@@ -186,6 +186,42 @@ void main() {
       expect((track.decoration! as BoxDecoration).color, tokens.primaryFill);
     });
 
+    testWidgets('a section band is a solid slab, not a grey caption', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        app(const SectionBand('Format', trailing: '6 v 6')),
+      );
+      final tokens = UmpireTheme.light().extension<DesignTokens>()!;
+      final band = tester.widget<Container>(find.byType(Container).first);
+      expect(band.color, tokens.primaryFill);
+      expect(find.text('FORMAT'), findsOneWidget);
+      expect(find.text('6 v 6'), findsOneWidget);
+    });
+
+    testWidgets('a settings row with a toggle flips it from the label', (
+      tester,
+    ) async {
+      var v = false;
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) => app(
+            SettingsRow(
+              label: 'Track players + stats',
+              trailing: RectToggle(
+                value: v,
+                onChanged: (x) => setState(() => v = x),
+              ),
+            ),
+          ),
+        ),
+      );
+      // The row is the target, not just the 48dp knob.
+      await tester.tap(find.text('Track players + stats'));
+      await tester.pumpAndSettle();
+      expect(v, isTrue);
+    });
+
     testWidgets('a sheet header bands in a team colour or sits flat', (
       tester,
     ) async {
